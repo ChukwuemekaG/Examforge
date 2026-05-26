@@ -1,0 +1,44 @@
+[
+    {
+        "id": 1,
+        "title": "Study Skills and Time Management",
+        "description": "Techniques for effective studying, creating reading schedules, and managing academic time.",
+        "link": "/uni/gst101/study-skills.json"
+    },
+    {
+        "id": 2,
+        "title": "Listening Comprehension",
+        "description": "Active listening strategies, identifying main ideas in lectures, and the Cornell note-taking system.",
+        "link": "/uni/gst101/listening-comprehension.json"
+    },
+    {
+        "id": 3,
+        "title": "Reading Strategies",
+        "description": "How to read faster, skim for general ideas, scan for specific facts, and the SQ3R reading method.",
+        "link": "/uni/gst101/reading-strategies.json"
+    },
+    {
+        "id": 4,
+        "title": "Basic Grammar: Parts of Speech",
+        "description": "Deep dive into nouns, verbs, adjectives, adverbs, pronouns, prepositions, conjunctions, and interjections.",
+        "link": "/uni/gst101/parts-of-speech.json"
+    },
+    {
+        "id": 5,
+        "title": "Sentence Construction and Types",
+        "description": "Understanding simple, compound, complex, and compound-complex sentences, and identifying clauses.",
+        "link": "/uni/gst101/sentence-construction.json"
+    },
+    {
+        "id": 6,
+        "title": "Vocabulary Development",
+        "description": "Using context clues, prefixes, suffixes, root words, synonyms, and antonyms to build academic vocabulary.",
+        "link": "/uni/gst101/vocabulary.json"
+    },
+    {
+        "id": 7,
+        "title": "Common Errors in English",
+        "description": "Identifying and correcting subject-verb agreement issues, misplaced modifiers, and tense inconsistencies.",
+        "link": "/uni/gst101/common-errors.json"
+    }
+]

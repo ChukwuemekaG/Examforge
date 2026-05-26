@@ -1,0 +1,197 @@
+{
+  "id": "/",
+  "name": "Examforge",
+  "short_name": "Examforge",
+  "description": "An interactive educational platform and quiz engine for students.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1f2429",
+  "theme_color": "#1f2429",
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-view.png",
+      "sizes": "720x1640",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/screenshots/desktop-view.png",
+      "sizes": "1366x768",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-20.png",
+      "sizes": "20x20",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-24.png",
+      "sizes": "24x24",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-30.png",
+      "sizes": "30x30",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-36.png",
+      "sizes": "36x36",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-40.png",
+      "sizes": "40x40",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-44.png",
+      "sizes": "44x44",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-60.png",
+      "sizes": "60x60",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-80.png",
+      "sizes": "80x80",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.targetsize-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.altform-unplated_targetsize-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.altform-unplated_targetsize-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.altform-unplated_targetsize-48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.altform-unplated_targetsize-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.altform-lightunplated_targetsize-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.altform-lightunplated_targetsize-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.altform-lightunplated_targetsize-48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square44x44Logo.altform-lightunplated_targetsize-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/windows/Square150x150Logo.scale-100.png",
+      "sizes": "150x150",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square150x150Logo.scale-125.png",
+      "sizes": "187x187",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square150x150Logo.scale-150.png",
+      "sizes": "225x225",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square150x150Logo.scale-200.png",
+      "sizes": "300x300",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/Square150x150Logo.scale-400.png",
+      "sizes": "600x600",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/windows/StoreLogo.scale-100.png",
+      "sizes": "50x50",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/StoreLogo.scale-125.png",
+      "sizes": "62x62",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/StoreLogo.scale-150.png",
+      "sizes": "75x75",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/StoreLogo.scale-200.png",
+      "sizes": "100x100",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/windows/StoreLogo.scale-400.png",
+      "sizes": "200x200",
+      "type": "image/png"
+    }
+  ]
+}

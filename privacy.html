@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Protocol | Examforge - Data Security</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+    <style>
+        .privacy-container { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
+        .protocol-card {
+            background: var(--white);
+            border: var(--border-thickness) solid var(--black);
+            box-shadow: 12px 12px 0px var(--brand-red);
+            padding: 40px;
+        }
+        .data-section { margin-bottom: 45px; }
+        .data-section h3 {
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            border-left: var(--border-thickness) solid var(--brand-red);
+            padding-left: 15px;
+            margin-bottom: 20px;
+            color: var(--black);
+            letter-spacing: 1px;
+        }
+        .data-section p, .data-section ul {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: var(--text-muted);
+        }
+        .data-section ul { padding-left: 20px; list-style-type: none; }
+        .data-section ul li::before {
+            content: "> ";
+            color: var(--brand-red);
+            font-weight: bold;
+        }
+        .log-timestamp { font-family: monospace; font-size: 0.8rem; opacity: 0.6; margin-bottom: 40px; display: block; }
+        
+        @media (max-width: 600px) {
+            .protocol-card { padding: 25px 15px; }
+            .data-section h3 { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav id="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <a href="index.html" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+                    <img src="512.png" alt="Examforge Logo" class="logo">
+                    <h1 class="brand-name" style="color: var(--black); font-size: 1.5rem;">EXAMFORGE</h1>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="about.html" class="nav-link">About</a>
+                <a href="terms.html" class="nav-link">Terms</a>
+                <label class="theme-switch">
+                    <input type="checkbox" class="theme-toggle-checkbox">
+                    <span class="slider">
+                        <span class="material-icons-round">light_mode</span>
+                    </span>
+                </label>
+                <button class="btn-sharp-outline" onclick="window.location.href='login.html'">LOG IN</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero" style="min-height: auto; padding-top: 140px; padding-bottom: 40px;">
+        <div class="hero-container" style="grid-template-columns: 1fr;">
+            <div class="hero-text-block">
+                <div class="sharp-badge">ENCRYPTION ACTIVE</div>
+                <h1>PRIVACY<br><span class="text-red">PROTOCOL.</span></h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="privacy-container">
+        <span class="log-timestamp">DATA_INTEGRITY_LOG: 2026.05.10 // LOCATION: AWKA_NG</span>
+        
+        <div class="protocol-card">
+            <section class="data-section">
+                <h3>01 // DATA TRANSMISSION</h3>
+                <p>When you interact with the Examforge network, we ingest specific data points to optimize your study experience. This includes:</p>
+                <ul>
+                    <li>Identification data (Name and Email address).</li>
+                    <li>Academic preferences (Courses like MAT 102 or MCB 222).</li>
+                    <li>Performance metrics (CBT scores and timing analytics).</li>
+                </ul>
+            </section>
+
+            <section class="data-section">
+                <h3>02 // SYSTEM UTILIZATION</h3>
+                <p>Your data is used solely for the refinement of your educational path. The Forge utilizes this information to:</p>
+                <ul>
+                    <li>Generate accurate performance charts for subject areas like Microbiology.</li>
+                    <li>Sync your progress across devices via the cloud.</li>
+                    <li>Verify your identity during high-stakes CBT simulations.</li>
+                </ul>
+            </section>
+
+            <section class="data-section">
+                <h3>03 // LOCAL STORAGE & PWA</h3>
+                <p>As a Progressive Web App, Examforge utilizes local storage and service workers to cache assets for offline use. This allows students in areas with intermittent connectivity, such as parts of Anambra State, to maintain their study momentum without a live connection.</p>
+            </section>
+
+            <section class="data-section">
+                <h3>04 // THIRD-PARTY ARCHIVES</h3>
+                <p>We leverage industrial-grade infrastructure to secure your data:</p>
+                <ul>
+                    <li><strong>Firebase:</strong> For secure authentication and database hosting.</li>
+                    <li><strong>EmailJS:</strong> For direct communication between the student and the Forge support desk.</li>
+                </ul>
+            </section>
+
+            <section class="data-section">
+                <h3>05 // ARCHIVE RETENTION</h3>
+                <p>Your academic records remain in the Forge matrix as long as your account is active. You maintain the right to request a complete "Data Purge"—permanently deleting your account and all associated performance history from our archives.</p>
+            </section>
+
+            <section class="data-section">
+                <h3>06 // COMPLIANCE</h3>
+                <p>This protocol is governed by the data protection standards of the Federal Republic of Nigeria. All system operations are conducted with transparency and discipline.</p>
+            </section>
+
+            <div class="sharp-badge bg-red text-white" style="width: 100%; text-align: center; margin-top: 20px;">
+                SECURE LOG END
+            </div>
+        </div>
+    </main>
+
+    <footer class="sharp-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>EXAMFORGE</h3>
+                <p class="brand-motto">DISCIPLINE. DIRECTION. DISTINCTION.</p>
+            </div>
+            <div class="footer-links">
+                <h4>CORE LINKS</h4>
+                <a href="index.html">Home</a>
+                <a href="faq.html">Support</a>
+                <a href="terms.html">Terms</a>
+            </div>
+            <div class="footer-contact">
+                <h4>SYSTEM COMMS</h4>
+                <p>EMAIL: examforgeacademy@gmail.com</p>
+                <p>HQ: Awka, Anambra State</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>EXAMFORGE &copy; 2026. DATA ENCRYPTED. SYSTEM SECURED.</p>
+        </div>
+    </footer>
+
+    <script src="index.js"></script>
+</body>
+
+</html>

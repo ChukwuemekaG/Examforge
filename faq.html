@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ & Support | Examforge - Resolve Queries</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+        (function() {
+            // Replace 'YOUR_PUBLIC_KEY' with your actual EmailJS Public Key
+            emailjs.init("YOUR_PUBLIC_KEY");
+        })();
+    </script>
+
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <style>
+        .faq-container { max-width: 800px; margin: 0 auto; padding: 40px 0; }
+        .faq-item { 
+            border: var(--border-thickness) solid var(--black); 
+            margin-bottom: 20px; 
+            background: var(--white);
+            box-shadow: 4px 4px 0px var(--black);
+        }
+        .faq-question {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .faq-answer {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease-out;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+        .faq-item.active .faq-answer {
+            padding-bottom: 20px;
+            max-height: 500px;
+        }
+        .faq-item.active .faq-question {
+            border-bottom: var(--border-thickness) solid var(--black);
+            background: var(--surface-alt);
+        }
+
+        /* Contact Form Styling */
+        .support-form {
+            background: var(--black);
+            color: var(--white);
+            padding: 40px;
+            border: var(--border-thickness) solid var(--black);
+            box-shadow: 8px 8px 0px var(--brand-red);
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 0.8rem; letter-spacing: 1px; }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--gray-light);
+            background: #1a1a1a;
+            color: white;
+            font-family: poppins;
+            outline: none;
+        }
+        .form-group input:focus { border-color: var(--brand-red); }
+        .status-msg { margin-top: 20px; font-weight: 700; display: none; }
+        /* --- Mobile-Friendly Contact Grid --- */
+.contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: start;
+}
+
+/* Stack vertically on tablets and mobile */
+@media screen and (max-width: 970px) {
+    .contact-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+    
+    /* Center the title box on mobile for better balance */
+    #contact .section-title-box {
+        display: block;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    /* Ensure the form takes full width */
+    .support-form {
+        padding: 30px 20px;
+        box-shadow: 4px 4px 0px var(--brand-red); /* Slightly smaller shadow for mobile */
+    }
+}
+
+/* Extra tight fix for very small screens (like iPhone SE) */
+@media screen and (max-width: 480px) {
+    .support-form h2 {
+        font-size: 1.2rem;
+    }
+    .form-group label {
+        font-size: 0.7rem;
+    }
+}
+    </style>
+</head>
+
+<body>
+
+    <nav id="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <a href="index.html" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+                    <img src="512.png" alt="Examforge Logo" class="logo">
+                    <h1 class="brand-name" style="color: var(--black); font-size: 1.5rem;">EXAMFORGE</h1>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="about.html" class="nav-link">About</a>
+                <a href="features.html" class="nav-link">Features</a>
+                <label class="theme-switch">
+                    <input type="checkbox" class="theme-toggle-checkbox">
+                    <span class="slider">
+                        <span class="material-icons-round">light_mode</span>
+                    </span>
+                </label>
+                <button class="btn-sharp-outline" onclick="window.location.href='login.html'">LOG IN</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero" style="min-height: auto; padding-top: 140px;">
+        <div class="hero-container" style="grid-template-columns: 1fr;">
+            <div class="hero-text-block" style="text-align: center;">
+                <div class="sharp-badge">SUPPORT PROTOCOL</div>
+                <h1>FREQUENTLY ASKED<br><span class="text-red">QUESTIONS.</span></h1>
+            </div>
+        </div>
+    </header>
+
+    <section class="terminal-section">
+        <div class="faq-container">
+            <div class="faq-item">
+                <div class="faq-question">What exactly is Examforge? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">Examforge is a high-performance educational platform designed to help Nigerian students master JAMB, WAEC, and specialized University courses through rigorous testing and analytics.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Does it cover 200-level University courses? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">Yes. We have specialized modules for courses, specifically tailored for university curricula.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Can I use the platform without internet? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">As a Progressive Web App (PWA), Examforge supports offline caching, allowing you to access previously loaded study materials and quizzes without an active data connection.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">How realistic is the CBT environment? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">The interface is modeled directly after standard CBT software used in JAMB and professional examinations to build your confidence and timing.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Are the past questions verified? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">Our database is sourced from official past questions and verified by subject matter experts to ensure accuracy in both the questions and the explanations provided.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Is there a mobile app? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">You can install Examforge directly to your home screen using the "Add to Home Screen" prompt on your browser, giving you a full-screen, app-like experience.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">How do I track my performance? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">After every session, the system provides a detailed breakdown of your score, identifying weak topics that require more discipline.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Is my study progress saved? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">Yes, as long as you are logged into your account, your quiz history and analytics are synchronized across all your devices.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">How can I suggest a new course? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">We are constantly expanding. You can suggest a specific course outline or subject via the contact form at the bottom of this page.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Who is behind Examforge? <span class="material-icons-round">add</span></div>
+                <div class="faq-answer">Examforge is developed in Awka, Anambra State, by a team dedicated to engineering better educational outcomes for African students.</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-section" id="contact">
+        <div class="hero-container contact-grid">
+            <div class="hero-text-block">
+                <div class="section-title-box"><h2>STILL HAVE QUESTIONS?</h2></div>
+                <p style="border-left: none; padding-left: 0;">Our support desk is operational. If you encounter any technical issues or have inquiries about course content, transmit your message through the secure terminal.</p>
+                <div class="sharp-card bg-red text-white" style="padding: 20px;">
+                    <p class="text-white" style="margin: 0;"><strong>RESPONSE TIME:</strong> &lt; 24 HOURS</p>
+                    <p class="text-white" style="margin: 0;"><strong>HQ:</strong> AWKA, ANAMBRA, NG</p>
+                </div>
+            </div>
+
+            <div class="support-form">
+                <form id="contact-form">
+                    <div class="form-group">
+                        <label>FULL NAME</label>
+                        <input type="text" name="user_name" required placeholder="STUDENT NAME">
+                    </div>
+                    <div class="form-group">
+                        <label>EMAIL ADDRESS</label>
+                        <input type="email" name="user_email" required placeholder="EMAIL@EXAMPLE.COM">
+                    </div>
+                    <div class="form-group">
+                        <label>QUERY TYPE</label>
+                        <input type="text" name="subject" placeholder="TECHNICAL / ACADEMIC">
+                    </div>
+                    <div class="form-group">
+                        <label>MESSAGE</label>
+                        <textarea name="message" rows="5" required placeholder="TRANSMIT YOUR MESSAGE..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-sharp-solid" style="width: 100%; border-color: white;">TRANSMIT MESSAGE</button>
+                    <p id="status" class="status-msg"></p>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <footer class="sharp-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>EXAMFORGE</h3>
+                <p class="brand-motto">DISCIPLINE. DIRECTION. DISTINCTION.</p>
+            </div>
+            <div class="footer-links">
+                <h4>QUICK LINKS</h4>
+                <a href="index.html">Home</a>
+                <a href="about.html">About</a>
+                <a href="features.html">Features</a>
+            </div>
+            <div class="footer-contact">
+                <h4>COMMS</h4>
+                <p>EMAIL: examforgeacademy@gmail.com</p>
+                <p>TEL: +234 (0) 7086227208</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>EXAMFORGE &copy; 2026. ALL RIGHTS RESERVED.</p>
+        </div>
+    </footer>
+
+    <script src="index.js"></script>
+    <script>
+        // FAQ Accordion Logic
+        document.querySelectorAll('.faq-question').forEach(button => {
+            button.addEventListener('click', () => {
+                const faqItem = button.parentElement;
+                faqItem.classList.toggle('active');
+                const icon = button.querySelector('.material-icons-round');
+                icon.textContent = faqItem.classList.contains('active') ? 'remove' : 'add';
+            });
+        });
+
+        // EmailJS Form Submission
+        const btn = document.querySelector('button[type="submit"]');
+        const statusMsg = document.getElementById('status');
+
+        document.getElementById('contact-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            btn.textContent = 'TRANSMITTING...';
+            btn.disabled = true;
+
+            // Replace with your Service ID and Template ID
+            emailjs.sendForm('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', this)
+                .then(() => {
+                    btn.textContent = 'TRANSMITTED';
+                    statusMsg.style.display = 'block';
+                    statusMsg.style.color = '#00E676';
+                    statusMsg.textContent = '> SUCCESS: MESSAGE RECEIVED BY THE FORGE.';
+                    this.reset();
+                }, (error) => {
+                    btn.textContent = 'RETRY';
+                    btn.disabled = false;
+                    statusMsg.style.display = 'block';
+                    statusMsg.style.color = '#c22b27';
+                    statusMsg.textContent = '> ERROR: TRANSMISSION FAILED. CHECK NETWORK.';
+                    console.log('FAILED...', error);
+                });
+        });
+    </script>
+</body>
+
+</html>

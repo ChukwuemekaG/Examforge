@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "title": "Use of English and Communication Skills I",
+    "codes": ["GST 101", "GNS 101", "USE 101", "GES 101"],
+    "description": "Foundational course on effective reading, comprehension, study skills, and basic grammar for academic writing.",
+    "level": "100 Level",
+    "semester": "First Semester",
+    "tags": ["General Studies", "Compulsory", "2 Units"],
+    "link": "/topics.json?json=uni-100l-gst101-topics.json&title=GST 101: Use of English I&level=100 Level"
+  },
+  
+  {
+    "id": 4,
+    "title": "Elementary Mathematics I (Algebra & Trigonometry)",
+    "codes": ["MTH 101", "MAT 101", "MAT 111"],
+    "description": "Fundamental concepts including set theory, real numbers, quadratic equations, indices, surds, and basic trigonometry.",
+    "level": "100 Level",
+    "semester": "First Semester",
+    "tags": ["Science Core", "Engineering", "3 Units"],
+    "link": "/topics.json?json=uni-100l-mth101-topics.json&title=MTH 101: General Math I&level=100 Level"
+  }
+]

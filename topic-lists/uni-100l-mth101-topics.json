@@ -1,0 +1,56 @@
+[
+    {
+        "id": 1,
+        "title": "Set Theory",
+        "description": "Set notation, operations (union, intersection, complement), Venn diagrams, and De Morgan's laws.",
+        "link": "/uni/mth101/set-theory.json"
+    },
+    {
+        "id": 2,
+        "title": "Real Numbers, Surds, and Indices",
+        "description": "Properties of real numbers, rationalization of surds, and laws of indices/logarithms.",
+        "link": "/uni/mth101/real-numbers-surds.json"
+    },
+    {
+        "id": 3,
+        "title": "Equations and Inequalities",
+        "description": "Solving linear, quadratic, and simultaneous equations, and graphical solutions of inequalities.",
+        "link": "/uni/mth101/equations-inequalities.json"
+    },
+    {
+        "id": 4,
+        "title": "Polynomials and Partial Fractions",
+        "description": "Factor/remainder theorems, division of polynomials, and decomposing into partial fractions.",
+        "link": "/uni/mth101/polynomials.json"
+    },
+    {
+        "id": 5,
+        "title": "Sequences and Series",
+        "description": "Arithmetic Progression (AP), Geometric Progression (GP), and sum to infinity.",
+        "link": "/uni/mth101/sequences-series.json"
+    },
+    {
+        "id": 6,
+        "title": "Binomial Theorem",
+        "description": "Permutations, combinations, Pascal's triangle, and binomial expansion for positive integers.",
+        "link": "/uni/mth101/binomial-theorem.json"
+    },
+    {
+        "id": 7,
+        "title": "Mathematical Induction",
+        "description": "The principle of mathematical induction and its application in proving algebraic statements.",
+        "link": "/uni/mth101/mathematical-induction.json"
+    },
+    {
+        "id": 8,
+        "title": "Complex Numbers",
+        "description": "Algebra of complex numbers, Argand diagrams, and polar/exponential forms.",
+        "link": "/uni/mth101/complex-numbers.json"
+    },
+    {
+        "id": 9,
+        "title": "Trigonometry",
+        "description": "Trigonometric ratios, circular measure, identities, compound angles, and solving trigonometric equations.",
+        "link": "/uni/mth101/trigonometry.json"
+    }
+]

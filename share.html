@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Static OG fallbacks (crawlers that don't run JS see these) -->
+    <title>ExamForge Quiz Challenge</title>
+    <meta name="description" content="Take the quiz and test your knowledge on ExamForge.">
+
+    <meta property="og:title"       content="ExamForge Quiz Challenge">
+    <meta property="og:description" content="Take the quiz and test your knowledge on ExamForge.">
+    <meta property="og:image"       content="/examforge.jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height"content="630">
+    <meta property="og:url"         content="">
+    <meta property="og:type"        content="website">
+    <meta property="og:site_name"   content="ExamForge">
+
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="ExamForge Quiz Challenge">
+    <meta name="twitter:description" content="Take the quiz and test your knowledge on ExamForge.">
+    <meta name="twitter:image"       content="/examforge.jpeg">
+
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--white);
+            color: var(--black);
+            transition: background-color 0.15s linear, color 0.15s linear;
+        }
+
+        /* Hero grid visual pattern for background matching home page */
+        .page::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background: 
+                linear-gradient(90deg, var(--gray-light) 1px, transparent 1px) 0 0 / 50px 50px,
+                linear-gradient(var(--gray-light) 1px, transparent 1px) 0 0 / 50px 50px;
+            opacity: 0.4;
+            transition: opacity var(--sharp-transition);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 20px 60px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 540px;
+            background: var(--surface);
+            border: var(--border-thickness) solid var(--border);
+            box-shadow: var(--shadow-lg);
+            border-radius: 0px;
+            overflow: hidden;
+            animation: up 0.45s cubic-bezier(.16,1,.3,1) both;
+            transition: var(--sharp-transition);
+        }
+        @keyframes up { 
+            from { opacity: 0; transform: translateY(24px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        .band {
+            background: var(--brand);
+            padding: 28px 32px 24px;
+            position: relative;
+            overflow: hidden;
+            border-bottom: var(--border-thickness) solid var(--border);
+        }
+        .band::before { 
+            content: ''; 
+            position: absolute; 
+            top: -24px; 
+            right: -24px; 
+            width: 120px; 
+            height: 120px; 
+            border: 3px solid rgba(255, 255, 255, 0.15); 
+            border-radius: 50%; 
+        }
+        .band::after  { 
+            content: ''; 
+            position: absolute; 
+            bottom: -44px; 
+            right: 16px; 
+            width: 90px; 
+            height: 90px; 
+            border: 3px solid rgba(255, 255, 255, 0.08); 
+            border-radius: 50%; 
+        }
+
+        .type-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0px;
+            padding: 4px 12px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 14px;
+        }
+
+        .quiz-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.25rem, 4vw, 1.75rem);
+            font-weight: 800;
+            color: white;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .body { 
+            padding: 28px 32px; 
+            background: var(--surface);
+        }
+
+        .meta-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 12px; 
+            margin-bottom: 20px; 
+        }
+
+        .pill {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface-alt);
+            border: 2px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            padding: 10px 12px;
+            transition: var(--sharp-transition);
+        }
+        .pill-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 0px;
+            background: var(--brand-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+            border: 1px solid var(--border);
+        }
+        .pill-label {
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .pill-val {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .flags { 
+            display: flex; 
+            gap: 8px; 
+            flex-wrap: wrap; 
+            margin-bottom: 20px; 
+        }
+        .flag {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border: 2px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text);
+        }
+        .flag-strict { background: var(--danger-dim); }
+        .flag-mock   { background: var(--brand-dim); }
+        .flag-timed  { background: #ffd166; color: #000000; }
+        .flag-daily  { background: var(--success-dim); }
+
+        .msg {
+            background: var(--surface-alt);
+            border: 2px solid var(--border);
+            border-left: 6px solid var(--brand);
+            box-shadow: var(--shadow-sm);
+            padding: 12px 16px;
+            font-size: 0.8rem;
+            color: var(--text);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .due {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: var(--danger-dim);
+            border: 2px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 16px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .btn-start {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px;
+            background: var(--brand);
+            color: white;
+            border: var(--border-thickness) solid var(--border);
+            box-shadow: var(--shadow-md);
+            font-size: 0.95rem;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--sharp-transition);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .btn-start:hover {
+            background: var(--brand-hover);
+            transform: translate(-2px, -2px);
+            box-shadow: var(--shadow-lg);
+        }
+        .btn-start:active {
+            transform: translate(2px, 2px);
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-start svg { 
+            width: 20px; 
+            height: 20px; 
+            fill: white; 
+            flex-shrink: 0; 
+        }
+
+        .share-row { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            margin-top: 14px; 
+        }
+        .share-url {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--surface-alt);
+            border: 2px solid var(--border);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .btn-copy {
+            flex-shrink: 0;
+            padding: 10px 16px;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--sharp-transition);
+            text-transform: uppercase;
+        }
+        .btn-copy:hover {
+            background: var(--surface-alt);
+            transform: translate(-1px, -1px);
+            box-shadow: var(--shadow-md);
+        }
+        .btn-copy:active {
+            transform: translate(1px, 1px);
+            box-shadow: none;
+        }
+        .btn-copy.copied {
+            background: var(--success-dim);
+            border-color: var(--border);
+        }
+
+        @media(max-width:480px){
+            main { padding-top: 100px; }
+            .band, .body { padding: 22px 20px; }
+            .meta-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <!-- Navbar matching index/about pages -->
+    <nav id="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <a href="/" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+                    <img src="512.png" alt="Examforge Logo" class="logo">
+                    <h1 class="brand-name" style="color: var(--black); font-size: 1.5rem;">EXAMFORGE</h1>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="/#features" class="nav-link">Features</a>
+                <a href="/about.html" class="nav-link">About</a>
+
+                <label class="theme-switch" title="Toggle Dark/Light Mode">
+                    <input type="checkbox" class="theme-toggle-checkbox">
+                    <span class="slider">
+                        <span class="material-icons-round icon-light">light_mode</span>
+                        <span class="material-icons-round icon-dark">dark_mode</span>
+                    </span>
+                </label>
+
+                <button id="loginBtn" class="btn-sharp-outline">LOG IN</button>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="card">
+            <div class="band">
+                <div class="type-tag" id="type-tag">📚 Quiz</div>
+                <div class="quiz-title" id="title-display">Loading…</div>
+            </div>
+            <div class="body" id="card-body">
+                <div style="text-align:center;padding:24px;color:var(--text-muted);">One moment…</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Professional footer matching global brand layout -->
+    <footer class="sharp-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>EXAMFORGE</h3>
+                <p class="brand-motto">DISCIPLINE. DIRECTION. DISTINCTION.</p>
+                <p class="footer-desc">The ultimate preparation forge for JAMB, WAEC, and University-level excellence. No distractions, just results.</p>
+            </div>
+
+            <div class="footer-links">
+                <h4>EXPLORE</h4>
+                <a href="/">Home</a>
+                <a href="/#features">Features</a>
+                <a href="/index.html#leaderboard">Live Ranks</a>
+            </div>
+
+            <div class="footer-links">
+                <h4>LEGAL & SUPPORT</h4>
+                <a href="/faq.html">F.A.Q</a>
+                <a href="/terms.html">Terms of Execution</a>
+                <a href="/privacy.html">Privacy Protocol</a>
+                <a href="/support.html">Support Desk</a>
+            </div>
+
+            <div class="footer-contact">
+                <h4>COMMS</h4>
+                <a href="mailto:examforgeacademy@gmail.com">EMAIL: examforgeacademy@gmail.com</a>
+                <a href="tel:+2347086227208">TEL: +234 (0) 7086227208</a>
+                <p>HQ: Awka, Anambra State, NG</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>EXAMFORGE &copy; 2026. ALL RIGHTS RESERVED. SYSTEM SECURED.</p>
+        </div>
+    </footer>
+</div>
+
+<script>
+(function(){
+    const p        = new URLSearchParams(location.search);
+    const title    = p.get('title')    ? decodeURIComponent(p.get('title'))    : null;
+    const courseId = p.get('course')   || null;
+    const topicId  = p.get('topic')    || null;
+    const courses  = p.get('courses')  || null;
+    const mode     = p.get('mode')     || null;
+    const dueDate  = p.get('dueDate')  || null;
+    const dueTime  = p.get('dueTime')  || null;
+    const message  = p.get('message')  ? decodeURIComponent(p.get('message'))  : null;
+    const timeLimit= p.get('timeLimit')|| null;
+    const isStrict = p.get('strict')   === '1';
+    const isMock   = p.get('mock')     === '1';
+    const isDaily  = p.get('daily')    === '1';
+
+    let quizUrl = '', displayTitle = title || 'ExamForge Quiz', typeLabel = '📚 Quiz';
+
+    if (mode === 'jamb' && courses) {
+        const titlesParam = p.get('titles') ? `&titles=${p.get('titles')}` : '';
+        quizUrl = `quiz.html?courses=${encodeURIComponent(courses)}&mode=jamb${titlesParam}`;
+        displayTitle = title || `JAMB Mock — ${courses.split(',').map(c=>c.toUpperCase()).join(', ')}`;
+        typeLabel = '🎓 JAMB Mock Exam';
+    } else if (courseId && topicId) {
+        const tp = title ? `&title=${encodeURIComponent(title)}` : '';
+        quizUrl = `quiz.html?course=${encodeURIComponent(courseId)}&topic=${encodeURIComponent(topicId)}${tp}`;
+        if (topicId === '__full__') {
+            displayTitle = title || `${courseId.toUpperCase()} — Full Exam`;
+            typeLabel = '📋 Full Course Exam';
+        } else {
+            displayTitle = title || `${courseId.toUpperCase()} Quiz`;
+            typeLabel = isDaily ? '📅 Daily Quiz' : '📝 Practice Quiz';
+        }
+    } else {
+        document.getElementById('title-display').textContent = 'Invalid link';
+        document.getElementById('card-body').innerHTML = `
+            <div style="text-align:center;padding:32px 16px">
+                <p style="color:var(--text-muted);margin-bottom:16px">This link appears broken or expired.</p>
+                <a href="/" style="padding:10px 20px;background:var(--black);color:var(--white);border-radius:0px;font-weight:700;text-decoration:none;font-size:0.85rem;border:2px solid var(--border)">Go to ExamForge</a>
+            </div>`;
+        return;
+    }
+
+    if (isDaily) typeLabel = '📅 Daily Quiz';
+
+    // ── Update OG tags ──────────────────────────────────────────────
+    const ogTitle = `${displayTitle} — ExamForge`;
+    const ogDesc  = message || `Challenge yourself! Take the ${displayTitle} quiz on ExamForge.${timeLimit ? ` ⏱ ${timeLimit} minutes.` : ''} Can you ace it?`;
+
+    document.title = ogTitle;
+    const setMeta = (sel, attr, val) => { const el = document.querySelector(sel); if(el) el.setAttribute('content', val); };
+    setMeta('meta[name="description"]',        'content', ogDesc);
+    setMeta('meta[property="og:title"]',       'content', ogTitle);
+    setMeta('meta[property="og:description"]', 'content', ogDesc);
+    setMeta('meta[property="og:url"]',         'content', location.href);
+    setMeta('meta[name="twitter:title"]',      'content', ogTitle);
+    setMeta('meta[name="twitter:description"]','content', ogDesc);
+
+    // ── Render card ─────────────────────────────────────────────────
+    document.getElementById('type-tag').textContent = typeLabel;
+    document.getElementById('title-display').textContent = displayTitle;
+
+    const flags = [
+        (isStrict || isMock) && `<span class="flag flag-strict">🔒 Exam Only</span>`,
+        isMock               && `<span class="flag flag-mock">🎭 Results Hidden</span>`,
+        isDaily              && `<span class="flag flag-daily">📅 Daily Quiz</span>`,
+        timeLimit            && `<span class="flag flag-timed">⏱ ${timeLimit} min</span>`,
+    ].filter(Boolean);
+
+    const pills = [
+        courseId && courseId !== '__full__' && `
+            <div class="pill"><div class="pill-icon">📘</div>
+            <div><div class="pill-label">Course</div><div class="pill-val">${courseId.toUpperCase()}</div></div></div>`,
+        topicId && topicId !== '__full__' && `
+            <div class="pill"><div class="pill-icon">🗂</div>
+            <div><div class="pill-label">Topic</div><div class="pill-val">${topicId.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</div></div></div>`,
+        timeLimit && `
+            <div class="pill"><div class="pill-icon">⏱</div>
+            <div><div class="pill-label">Time Limit</div><div class="pill-val">${timeLimit} min</div></div></div>`,
+        dueDate && `
+            <div class="pill"><div class="pill-icon">📅</div>
+            <div><div class="pill-label">Due</div><div class="pill-val">${dueDate}${dueTime ? ' '+dueTime : ''}</div></div></div>`,
+    ].filter(Boolean);
+
+    document.getElementById('card-body').innerHTML = `
+        ${dueDate ? `<div class="due">⏰ Due by ${dueDate}${dueTime ? ' at '+dueTime : ''}</div>` : ''}
+        ${pills.length ? `<div class="meta-grid">${pills.join('')}</div>` : ''}
+        ${flags.length ? `<div class="flags">${flags.join('')}</div>` : ''}
+        ${message ? `<div class="msg">"${message}"</div>` : ''}
+        <a href="${quizUrl}" class="btn-start">
+            <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+            Start Quiz Now
+        </a>
+        <div class="share-row">
+            <div class="share-url">${location.href}</div>
+            <button class="btn-copy" id="copy-btn" onclick="copyUrl()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy link
+            </button>
+        </div>
+    `;
+})();
+
+function copyUrl(){
+    navigator.clipboard.writeText(location.href).then(()=>{
+        const b = document.getElementById('copy-btn');
+        b.textContent = '✓ Copied!'; b.classList.add('copied');
+        setTimeout(()=>{ b.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy link'; b.classList.remove('copied'); }, 2000);
+    }).catch(()=>{
+        const t=document.createElement('textarea'); t.value=location.href;
+        document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+    });
+}
+
+// Unified theme engine synchronizer
+document.addEventListener('DOMContentLoaded', () => {
+    const themeCheckboxes = document.querySelectorAll('.theme-toggle-checkbox');
+
+    function setTheme(themeName) {
+        document.documentElement.setAttribute('data-theme', themeName);
+        localStorage.setItem('examforge-theme', themeName);
+        const isDark = themeName === 'dark';
+        themeCheckboxes.forEach(cb => {
+            if (cb.checked !== isDark) {
+                cb.checked = isDark;
+            }
+        });
+    }
+
+    const initialTheme = localStorage.getItem('examforge-theme') || 'light';
+    setTheme(initialTheme);
+
+    themeCheckboxes.forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            setTheme(e.target.checked ? 'dark' : 'light');
+        });
+    });
+
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            window.location.href = '/login.html';
+        });
+    }
+});
+</script>
+</body>
+</html>

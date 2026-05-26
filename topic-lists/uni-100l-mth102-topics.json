@@ -1,0 +1,56 @@
+[
+    {
+        "id": 1,
+        "title": "Functions, Domain, and Range",
+        "description": "Types of functions (even, odd, periodic, composite, inverse) and sketching basic graphs.",
+        "link": "/uni/mth102/functions-domain.json"
+    },
+    {
+        "id": 2,
+        "title": "Limits and Continuity",
+        "description": "Evaluating limits algebraically, limits at infinity, L'Hopital's rule, and the concept of continuity.",
+        "link": "/uni/mth102/limits-continuity.json"
+    },
+    {
+        "id": 3,
+        "title": "Differentiation from First Principles",
+        "description": "The formal definition of a derivative and calculating gradients of curves.",
+        "link": "/uni/mth102/first-principles.json"
+    },
+    {
+        "id": 4,
+        "title": "Rules of Differentiation",
+        "description": "Product rule, quotient rule, chain rule, and implicit differentiation.",
+        "link": "/uni/mth102/differentiation-rules.json"
+    },
+    {
+        "id": 5,
+        "title": "Derivatives of Special Functions",
+        "description": "Differentiation of trigonometric, exponential, and logarithmic functions.",
+        "link": "/uni/mth102/special-functions.json"
+    },
+    {
+        "id": 6,
+        "title": "Applications of Differentiation",
+        "description": "Rates of change, tangents and normals, turning points (maxima and minima), and curve sketching.",
+        "link": "/uni/mth102/applications-differentiation.json"
+    },
+    {
+        "id": 7,
+        "title": "Indefinite Integrals",
+        "description": "Integration as reverse differentiation, standard integrals, and the constant of integration.",
+        "link": "/uni/mth102/indefinite-integrals.json"
+    },
+    {
+        "id": 8,
+        "title": "Methods of Integration",
+        "description": "Integration by substitution, integration by parts, and integration using partial fractions.",
+        "link": "/uni/mth102/methods-integration.json"
+    },
+    {
+        "id": 9,
+        "title": "Definite Integrals and Applications",
+        "description": "The fundamental theorem of calculus, finding the area under a curve, and volume of solids of revolution.",
+        "link": "/uni/mth102/definite-integrals.json"
+    }
+]

@@ -1,0 +1,605 @@
+{
+    "timeLimit": 30,
+    "questions": [
+        {
+            "id": 1,
+            "question": "Dummy Question 1 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 2,
+            "question": "Dummy Question 2 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 3,
+            "question": "Dummy Question 3 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 4,
+            "question": "Dummy Question 4 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 5,
+            "question": "Dummy Question 5 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 6,
+            "question": "Dummy Question 6 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 7,
+            "question": "Dummy Question 7 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 8,
+            "question": "Dummy Question 8 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 9,
+            "question": "Dummy Question 9 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 10,
+            "question": "Dummy Question 10 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 11,
+            "question": "Dummy Question 11 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 12,
+            "question": "Dummy Question 12 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 13,
+            "question": "Dummy Question 13 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 14,
+            "question": "Dummy Question 14 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 15,
+            "question": "Dummy Question 15 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 16,
+            "question": "Dummy Question 16 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 17,
+            "question": "Dummy Question 17 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 18,
+            "question": "Dummy Question 18 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 19,
+            "question": "Dummy Question 19 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 20,
+            "question": "Dummy Question 20 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 21,
+            "question": "Dummy Question 21 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 22,
+            "question": "Dummy Question 22 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 23,
+            "question": "Dummy Question 23 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 24,
+            "question": "Dummy Question 24 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 25,
+            "question": "Dummy Question 25 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 26,
+            "question": "Dummy Question 26 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 27,
+            "question": "Dummy Question 27 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 28,
+            "question": "Dummy Question 28 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 29,
+            "question": "Dummy Question 29 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 30,
+            "question": "Dummy Question 30 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 31,
+            "question": "Dummy Question 31 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 32,
+            "question": "Dummy Question 32 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 33,
+            "question": "Dummy Question 33 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 34,
+            "question": "Dummy Question 34 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 35,
+            "question": "Dummy Question 35 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 36,
+            "question": "Dummy Question 36 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 37,
+            "question": "Dummy Question 37 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 38,
+            "question": "Dummy Question 38 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 39,
+            "question": "Dummy Question 39 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 40,
+            "question": "Dummy Question 40 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 41,
+            "question": "Dummy Question 41 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 42,
+            "question": "Dummy Question 42 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 43,
+            "question": "Dummy Question 43 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 44,
+            "question": "Dummy Question 44 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 45,
+            "question": "Dummy Question 45 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 46,
+            "question": "Dummy Question 46 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 47,
+            "question": "Dummy Question 47 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 48,
+            "question": "Dummy Question 48 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 49,
+            "question": "Dummy Question 49 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        },
+        {
+            "id": 50,
+            "question": "Dummy Question 50 for Functions Domain: Which of the following is correct?",
+            "options": [
+                "Option A for Functions Domain",
+                "Option B for Functions Domain (Correct)",
+                "Option C for Functions Domain",
+                "Option D for Functions Domain"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Functions Domain."
+        }
+    ]
+}

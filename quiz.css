@@ -1,0 +1,393 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+html {
+    min-width: 350px; /* Allows the layout to shrink smaller for mobile devices */
+    overscroll-behavior-y: none;
+}
+
+::selection {
+    background: var(--brand-red);
+    color: #ffffff;
+}
+/* =========================================
+   1. CORE THEMES (LIGHT / DARK)
+========================================= */
+:root, [data-theme="light"] {
+    min-width: 350px; /* Allows the layout to shrink smaller for mobile devices */
+    --brand:        #C0392B;
+    --brand-hover:  #A93226;
+    --brand-dim: #FFD6E0;
+    --bg: #f5f5f5; /* Retro off-white */
+    --surface: #FFFFFF;
+    --surface-alt: #F4F4F0;
+    --text: #000000;
+    --text-muted: #555555;
+    --border: #000000;
+    --success: #00E676;
+    --success-dim: #B3FFD6;
+    --danger-dim: #FFCCCC;
+    
+    /* Hard, solid brutalist shadows */
+    --shadow-sm: 2px 2px 0px 0px #000000;
+    --shadow-md: 4px 4px 0px 0px #000000;
+    --shadow-lg: 8px 8px 0px 0px #000000;
+    
+    --r-sm: 4px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --transition: all 0.15s ease-out;
+}
+
+[data-theme="dark"] {
+    --brand:        #C0392B;
+    --brand-hover:  #A93226;
+    --brand-dim: #4A0014;
+    --bg: #1b1c24; 
+    --surface: #1d1d26;
+    --surface-alt: #1c1c23;
+    --text: #FFFFFF;
+    --text-muted: #AAAAAA;
+    --border: #FFFFFF; /* White borders for extreme contrast */
+    --success: #00E676;
+    --success-dim: #00331A;
+    --danger-dim: #4A0000;
+    
+    /* Shadows turn white (or very light) in dark mode to maintain the brutalist pop */
+    --shadow-sm: 2px 2px 0px 0px #FFFFFF;
+    --shadow-md: 4px 4px 0px 0px #FFFFFF;
+    --shadow-lg: 8px 8px 0px 0px #FFFFFF;
+}
+
+/* =========================================
+   2. GLOBAL RESET & BASE
+========================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; -moz-user-select: none; -webkit-user-select: none; -ms-user-select: none; -webkit-user-drag: none;}
+
+body { 
+    background-color: var(--bg); 
+    color: var(--text); 
+    margin: 0; 
+    padding: 0;
+    overscroll-behavior-y: none;
+    overflow: hidden; 
+    transition: background-color var(--transition), color var(--transition);
+    min-width: 350px; /* Allows the layout to shrink smaller for mobile devices */
+}
+
+/* =========================================
+   3. VIEWS & LAYOUT
+========================================= */
+.view { 
+    display: none; 
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; 
+    height: 100vh; /* Fallback for older mobile browsers */
+    height: 100dvh; 
+    background: var(--bg); 
+    z-index: 100; 
+    padding: 20px; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; 
+}
+
+/* Flexbox converts the views into centering containers */
+.view.active { 
+    display: flex; 
+    flex-direction: column;
+} 
+#loading-view.view.active {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+#quiz-view.view.active { 
+    display: flex; 
+    flex-direction: row; /* Restores the CBT engine split layout */
+    padding: 0; 
+}
+
+/* Top Nav for Config */
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto 20px auto;
+    padding: 20px 0;
+    flex-shrink: 0;
+}
+.logo-text {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--text);
+}
+
+/* =========================================
+   4. COMPONENTS: CARDS & BUTTONS
+========================================= */
+.card { 
+    background: var(--surface); 
+    width: 100%; 
+    max-width: 600px; 
+    padding: 40px; 
+    border-radius: var(--r-lg); 
+    border: 3px solid var(--border); 
+    box-shadow: var(--shadow-lg); 
+    margin: auto; /* Vertically and horizontally centers the box */
+}
+
+.card-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; color: var(--text); }
+.card-desc { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 32px; line-height: 1.5; font-weight: 500; }
+.text-muted { color: var(--text-muted); font-size: 0.9rem; margin-top: 10px; font-weight: 500; }
+
+.btn { 
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; 
+    font-weight: 700; font-size: 1rem; padding: 14px 24px; 
+    border-radius: var(--r-md); cursor: pointer; 
+    border: 3px solid var(--border); 
+    box-shadow: var(--shadow-md);
+    transition: var(--transition); 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none !important; }
+
+.btn-primary { background: var(--brand); color: #fff; border-color: var(--border); }
+.btn-primary:hover:not(:disabled) { background: var(--brand-hover); transform: translate(-2px, -2px); box-shadow: var(--shadow-lg); }
+.btn-primary:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+
+.btn-outline { background: var(--surface); color: var(--text); }
+.btn-outline:hover:not(:disabled) { background: var(--surface-alt); transform: translate(-2px, -2px); box-shadow: var(--shadow-lg); }
+.btn-outline:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+
+.btn-danger { background: #FF3B30; color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #E32A20; transform: translate(-2px, -2px); box-shadow: var(--shadow-lg); }
+
+.btn-block { width: 100%; }
+
+.btn-ghost { background: transparent; color: var(--text); padding: 8px; border: 2px solid transparent; border-radius: var(--r-sm); box-shadow: none;}
+.btn-ghost:hover { background: var(--surface-alt); border-color: var(--border); box-shadow: var(--shadow-sm); transform: translate(-1px, -1px);}
+
+/* =========================================
+   5. RADIO BUTTONS (CONFIG VIEW)
+========================================= */
+.radio-group { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;}
+.radio-card { 
+    display: flex; padding: 20px; align-items: flex-start; 
+    border: 3px solid var(--border); border-radius: var(--r-md);
+    background: var(--surface); box-shadow: var(--shadow-sm);
+    cursor: pointer; transition: var(--transition);
+}
+.radio-card input[type="radio"] { display: none; } 
+.radio-content { display: flex; gap: 16px; align-items: center; width: 100%;}
+.radio-content .material-icons-round { font-size: 32px; }
+.radio-text { display: flex; flex-direction: column; }
+.radio-title { font-weight: 700; font-size: 1.1rem; }
+.radio-card small { font-weight: 500; color: var(--text-muted); font-size: 0.85rem;}
+
+.radio-card:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-md); background: var(--surface-alt); }
+.radio-card:has(input:checked) { 
+    background: var(--brand); color: #fff; 
+    transform: translate(-2px, -2px); box-shadow: var(--shadow-md); 
+}
+.radio-card:has(input:checked) small { color: #fff; opacity: 0.9; }
+
+/* =========================================
+   6. THEME TOGGLE SWITCH
+========================================= */
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 64px;
+    height: 34px;
+}
+.theme-switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute; cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--surface);
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: .4s;
+    border-radius: 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px;
+}
+.slider .material-icons-round { font-size: 16px; color: var(--text); z-index: 1;}
+.slider:before {
+    position: absolute; content: "";
+    height: 22px; width: 22px;
+    left: 4px; bottom: 4px;
+    background-color: var(--brand);
+    border: 2px solid var(--border);
+    transition: .4s;
+    border-radius: 50%;
+    z-index: 2;
+}
+input:checked + .slider { background-color: var(--surface-alt); }
+input:checked + .slider:before { transform: translateX(30px); background-color: var(--text); border-color: var(--bg);}
+
+/* =========================================
+   7. CBT LAYOUT & ENGINE
+========================================= */
+.cbt-layout { flex-direction: row; background: var(--bg); align-items: stretch; }
+.cbt-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); position: relative; }
+.cbt-sidebar { width: 320px; background: var(--surface-alt); border-left: 3px solid var(--border); display: flex; flex-direction: column; }
+
+.quiz-header { display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px; background: var(--surface); border-bottom: 3px solid var(--border); height: 75px; }
+
+/* Fixed Squishing Subject Tabs */
+.subject-tabs { 
+    display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; 
+    flex: 1; min-width: 0; margin-right: 16px; 
+}
+.subject-tab { 
+    padding: 12px 24px; font-size: 0.9rem; font-weight: 700; color: var(--text); 
+    background: var(--surface-alt); border: 3px solid var(--border); border-bottom: none; 
+    border-radius: var(--r-md) var(--r-md) 0 0; cursor: pointer; margin-bottom: -3px; 
+    white-space: nowrap; flex-shrink: 0; /* Prevents text from squishing on mobile */
+}
+.subject-tab.active { background: var(--brand); color: #fff; box-shadow: var(--shadow-sm); z-index: 10; }
+
+.header-actions { display: flex; align-items: center; gap: 16px; padding-bottom: 12px; flex-shrink: 0; }
+.timer { 
+    font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; 
+    color: var(--text); background: var(--surface); padding: 4px 12px; 
+    border-radius: var(--r-sm); border: 3px solid var(--border); box-shadow: var(--shadow-sm);
+}
+.timer.danger { color: #fff; background: #FF3B30; animation: pulse 1s infinite; }
+
+.progress-track { width: 100%; height: 8px; background: var(--bg); border-bottom: 3px solid var(--border); }
+.progress-fill { height: 100%; background: var(--brand); width: 0%; border-right: 3px solid var(--border); transition: width 0.3s ease; }
+
+/* Quiz Body & Options */
+.quiz-body { flex: 1; overflow-y: auto; padding: 40px; max-width: 850px; margin: 0 auto; width: 100%; }
+.question-meta { display: flex; justify-content: space-between; margin-bottom: 24px; font-weight: 700; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;}
+.question-text { font-size: 1.4rem; font-weight: 700; line-height: 1.6; margin-bottom: 32px; color: var(--text); }
+
+.options-grid { display: flex; flex-direction: column; gap: 16px; }
+.option-btn { 
+    width: 100%; text-align: left; padding: 18px 24px; 
+    background: var(--surface); border: 3px solid var(--border); 
+    border-radius: var(--r-md); font-size: 1.05rem; font-weight: 600; color: var(--text); 
+    box-shadow: var(--shadow-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; 
+}
+.option-btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: var(--shadow-md); }
+.option-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+
+.option-btn.selected { background: var(--text); color: var(--bg); }
+.option-btn.selected strong, .option-btn.selected .indicator { color: var(--bg) !important; }
+
+.option-btn.correct { background: var(--success); color: #000; border-color: var(--border); }
+.option-btn.wrong { background: #FF3B30; color: #fff; border-color: var(--border); }
+.option-btn.correct strong, .option-btn.wrong strong { color: inherit !important; }
+
+.explanation-box { margin-top: 32px; padding: 24px; background: var(--surface-alt); border: 3px solid var(--border); box-shadow: var(--shadow-sm); border-radius: var(--r-md); }
+.explanation-box h4 { font-size: 0.9rem; text-transform: uppercase; font-weight: 800; color: var(--brand); margin-bottom: 8px; }
+.hidden { display: none !important; }
+
+.quiz-footer { display: flex; justify-content: space-between; padding: 20px 40px; background: var(--surface); border-top: 3px solid var(--border); }
+
+/* Sidebar Map */
+.sidebar-header { padding: 20px; border-bottom: 3px solid var(--border); background: var(--surface); }
+.sidebar-header h3 { font-size: 1.2rem; font-weight: 800; color: var(--text); text-transform: uppercase;}
+.map-grid { flex: 1; overflow-y: auto; padding: 20px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-content: start; }
+.map-btn { 
+    aspect-ratio: 1; border-radius: var(--r-sm); border: 3px solid var(--border); 
+    background: var(--surface); font-weight: 800; font-size: 0.95rem; color: var(--text); 
+    cursor: pointer; box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: center; 
+}
+.map-btn:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-md); }
+.map-btn.answered { background: var(--text); color: var(--bg); }
+.map-btn.current { background: var(--brand); color: #fff; box-shadow: var(--shadow-md); transform: translate(-2px, -2px);}
+.sidebar-footer-action { padding: 20px; border-top: 3px solid var(--border); background: var(--surface); }
+
+/* =========================================
+   8. CALCULATOR MODAL (BRUTALIST)
+========================================= */
+.calc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.calc-overlay.active { display: flex; }
+.calculator-ui { 
+    background: var(--surface); width: 340px; border-radius: var(--r-md); 
+    border: 4px solid var(--border); box-shadow: var(--shadow-lg); 
+    display: flex; flex-direction: column; 
+}
+.calc-header { display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 3px solid var(--border); font-weight: 800; text-transform: uppercase; }
+.calc-header .icon-btn { background: transparent; border: none; cursor: pointer; color: var(--text); }
+.calc-display { background: var(--bg); border: none; border-bottom: 3px solid var(--border); padding: 20px 16px 4px; font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; color: var(--text); text-align: right; width: 100%; outline: none; font-weight: 700;}
+.calc-result { background: var(--bg); border-bottom: 3px solid var(--border); padding: 0 16px 16px; font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; color: var(--brand); text-align: right; font-weight: 700;}
+.calc-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; background: var(--border); padding: 3px;}
+.calc-btn { 
+    background: var(--surface); border: none; padding: 16px 0; font-size: 1rem; 
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; cursor: pointer; color: var(--text);
+}
+.calc-btn:hover { background: var(--surface-alt); filter: brightness(0.9); }
+.calc-btn:active { transform: scale(0.95); }
+.calc-btn.op { background: var(--surface-alt); color: var(--brand); }
+.calc-btn.act { background: #FF3B30; color: #fff; }
+.calc-btn.equals { background: var(--brand); color: #fff; }
+
+/* =========================================
+   9. RESULTS
+========================================= */
+.score-row { display: flex; justify-content: space-between; padding: 16px; border-bottom: 3px solid var(--border); font-size: 1.1rem; font-weight: 600;}
+.score-row:last-child { border-bottom: none; }
+.score-num { font-family: 'JetBrains Mono', monospace; font-weight: 800; color: var(--brand); }
+
+/* Rules List */
+.rule-list { list-style: none; margin-bottom: 24px; background: var(--surface-alt); padding: 24px; border: 3px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-sm);}
+.rule-list li { display: flex; align-items: flex-start; gap: 12px; font-size: 0.95rem; margin-bottom: 12px; font-weight: 600; line-height: 1.4; }
+
+/* =========================================
+   10. MOBILE RESPONSIVENESS
+========================================= */
+.sidebar-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 90; display: none; opacity: 0; transition: opacity 0.3s ease;
+}
+.sidebar-overlay.active { display: block; opacity: 1; }
+#btn-map-toggle { display: none; } 
+
+@media (max-width: 900px) {
+    /* .cbt-layout { display: block; }  */
+    .cbt-main { height: 100%; }
+    #btn-map-toggle { display: inline-flex; } 
+    
+    .cbt-sidebar {
+        position: fixed; top: 0; right: -100%; 
+        width: 85%; max-width: 320px; height: 100%; 
+        z-index: 100; border-left: 4px solid var(--border);
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
+    .cbt-sidebar.mobile-open { right: 0; }
+    
+    .card { padding: 24px; border-width: 2px; }
+    .quiz-body { padding: 24px 20px; }
+    
+    /* --- NEW HEADER MOBILE FIX --- */
+    .quiz-header { 
+        flex-direction: column-reverse; /* Puts actions on top, tabs on bottom */
+        height: auto; /* Removes the fixed height so it can grow */
+        padding: 16px 12px 0 12px; 
+        align-items: stretch;
+        gap: 16px;
+    }
+    
+    .header-actions { 
+        width: 100%; 
+        padding-bottom: 0; 
+        justify-content: flex-end; /* Groups timer and map to the right */
+        gap: 8px;
+    }
+    
+    /* Pushes the exit button to the far left, keeping the rest on the right */
+    #btn-exit-global { margin-right: auto; }
+    
+    .subject-tabs { 
+        margin-right: 0; 
+        width: 100%; 
+    }
+}

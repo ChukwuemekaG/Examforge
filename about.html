@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About | Examforge - The Mission</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+
+<body>
+
+    <nav id="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <a href="index.html" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+                    <img src="512.png" alt="Examforge Logo" class="logo">
+                    <h1 class="brand-name" style="color: var(--black); font-size: 1.5rem;">EXAMFORGE</h1>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="index.html#features" class="nav-link">Features</a>
+                <a href="index.html#courses" class="nav-link">Courses</a>
+
+                <label class="theme-switch" title="Toggle Dark/Light Mode">
+                    <input type="checkbox" class="theme-toggle-checkbox">
+                    <span class="slider">
+                        <span class="material-icons-round icon-light">light_mode</span>
+                        <span class="material-icons-round icon-dark">dark_mode</span>
+                    </span>
+                </label>
+
+                <button id="loginBtn" class="btn-sharp-outline">LOG IN</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero" style="min-height: 60vh;">
+        <div class="hero-container" style="grid-template-columns: 1fr;">
+            <div class="hero-text-block" style="text-align: center; margin: 0 auto;">
+                <div class="sharp-badge">OUR ORIGIN</div>
+                <h1 style="font-size: clamp(3rem, 8vw, 5rem);">TEMPERED IN<br><span class="text-red">DISCIPLINE.</span></h1>
+                <p style="margin: 0 auto 40px auto; border-left: none; border-bottom: var(--border-thickness) solid var(--brand-red); padding-bottom: 20px;">
+                    Examforge was not built to be another "study app." It was designed as a high-intensity environment for students who demand excellence in JAMB, WAEC, and University assessments.
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <section class="features-section">
+        <div class="section-title-box">
+            <h2>THE THREE PILLARS</h2>
+        </div>
+
+        <div class="sharp-feature-grid">
+            <div class="feature-block">
+                <div class="icon-square">01</div>
+                <h3>DISCIPLINE</h3>
+                <p>We believe preparation is a mechanical process. Our system eliminates fluff and focuses on the repetitive rigor required to master complex topics like Calculus and Microbiology.</p>
+            </div>
+            <div class="feature-block">
+                <div class="icon-square">02</div>
+                <h3>DIRECTION</h3>
+                <p>Success requires a roadmap. We provide the specific past questions and curriculum-aligned quizzes needed to navigate the Nigerian educational landscape with precision.</p>
+            </div>
+            <div class="feature-block">
+                <div class="icon-square">03</div>
+                <h3>DISTINCTION</h3>
+                <p>The goal isn't just to pass; it's to dominate. Our analytics and CBT simulations are engineered to turn average students into top-tier candidates.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="terminal-section">
+        <div class="hero-container">
+            <div class="sharp-card" style="padding: 40px;">
+                <div class="card-header" style="border: none; padding: 0; margin-bottom: 20px; font-size: 1.5rem;">THE FORGE PHILOSOPHY</div>
+                <div class="card-body" style="padding: 0; font-size: 1rem; line-height: 1.8; font-weight: 400;">
+                    <p style="margin-bottom: 20px;">Born in the heart of <strong>Awka, Anambra State</strong>, Examforge understands the unique challenges faced by Nigerian students. From navigating the intricacies of MAT 102 to mastering 200-level Microbiology, we’ve built a platform that speaks the language of local excellence.</p>
+                    <p>We don't provide shortcuts. We provide the hammer and the anvil. You provide the effort. Together, we forge a future that cannot be denied.</p>
+                </div>
+            </div>
+            <div class="hero-grid-visual" style="display: flex; justify-content: center; align-items: center;">
+                 <div class="sharp-card bg-red text-white" style="width: 100%; max-width: 400px;">
+                    <div class="card-header text-white" style="border-color: white;">SYSTEM DATA</div>
+                    <div class="card-body">
+                        <ul style="list-style: none; font-family: monospace; font-size: 0.9rem;">
+                            <li>> LOC: AWKA_NG</li>
+                            <li>> TARGET: WAEC/JAMB/UNI</li>
+                            <li>> STATUS: OPERATIONAL</li>
+                            <li>> UPTIME: 99.9%</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="pact-section">
+        <div class="pact-container">
+            <h2 class="pact-title">READY TO<br><span class="text-outline">BEGIN?</span></h2>
+            <p class="pact-text">The forge is hot. Your materials are ready. Step inside and claim your distinction.</p>
+            <button class="btn-sharp-solid pact-btn" onclick="window.location.href='login.html'">ENTER EXAMFORGE</button>
+        </div>
+    </section>
+
+    <footer class="sharp-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>EXAMFORGE</h3>
+                <p class="brand-motto">DISCIPLINE. DIRECTION. DISTINCTION.</p>
+                <p class="footer-desc">The ultimate preparation forge for JAMB, WAEC, and University-level excellence. No distractions, just results.</p>
+            </div>
+
+            <div class="footer-links">
+                <h4>EXPLORE</h4>
+                <a href="index.html">Home</a>
+                <a href="#features">Features</a>
+                <a href="index.html#leaderboard">Live Ranks</a>
+            </div>
+
+            <div class="footer-links">
+                <h4>LEGAL & SUPPORT</h4>
+                <a href="#faq">F.A.Q</a>
+                <a href="#terms">Terms of Execution</a>
+                <a href="#privacy">Privacy Protocol</a>
+                <a href="#contact">Support Desk</a>
+            </div>
+
+            <div class="footer-contact">
+                <h4>COMMS</h4>
+                <a href="mailto:examforgeacademy@gmail.com">EMAIL: examforgeacademy@gmail.com</a>
+                <a href="tel:+2347086227208">TEL: +234 (0) 7086227208</a>
+                <p>HQ: Awka, Anambra State, NG</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>EXAMFORGE &copy; 2026. ALL RIGHTS RESERVED. SYSTEM SECURED.</p>
+        </div>
+    </footer>
+
+    <script src="index.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,605 @@
+{
+    "timeLimit": 30,
+    "questions": [
+        {
+            "id": 1,
+            "question": "Dummy Question 1 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 2,
+            "question": "Dummy Question 2 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 3,
+            "question": "Dummy Question 3 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 4,
+            "question": "Dummy Question 4 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 5,
+            "question": "Dummy Question 5 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 6,
+            "question": "Dummy Question 6 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 7,
+            "question": "Dummy Question 7 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 8,
+            "question": "Dummy Question 8 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 9,
+            "question": "Dummy Question 9 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 10,
+            "question": "Dummy Question 10 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 11,
+            "question": "Dummy Question 11 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 12,
+            "question": "Dummy Question 12 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 13,
+            "question": "Dummy Question 13 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 14,
+            "question": "Dummy Question 14 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 15,
+            "question": "Dummy Question 15 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 16,
+            "question": "Dummy Question 16 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 17,
+            "question": "Dummy Question 17 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 18,
+            "question": "Dummy Question 18 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 19,
+            "question": "Dummy Question 19 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 20,
+            "question": "Dummy Question 20 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 21,
+            "question": "Dummy Question 21 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 22,
+            "question": "Dummy Question 22 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 23,
+            "question": "Dummy Question 23 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 24,
+            "question": "Dummy Question 24 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 25,
+            "question": "Dummy Question 25 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 26,
+            "question": "Dummy Question 26 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 27,
+            "question": "Dummy Question 27 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 28,
+            "question": "Dummy Question 28 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 29,
+            "question": "Dummy Question 29 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 30,
+            "question": "Dummy Question 30 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 31,
+            "question": "Dummy Question 31 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 32,
+            "question": "Dummy Question 32 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 33,
+            "question": "Dummy Question 33 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 34,
+            "question": "Dummy Question 34 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 35,
+            "question": "Dummy Question 35 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 36,
+            "question": "Dummy Question 36 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 37,
+            "question": "Dummy Question 37 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 38,
+            "question": "Dummy Question 38 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 39,
+            "question": "Dummy Question 39 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 40,
+            "question": "Dummy Question 40 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 41,
+            "question": "Dummy Question 41 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 42,
+            "question": "Dummy Question 42 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 43,
+            "question": "Dummy Question 43 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 44,
+            "question": "Dummy Question 44 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 45,
+            "question": "Dummy Question 45 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 46,
+            "question": "Dummy Question 46 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 47,
+            "question": "Dummy Question 47 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 48,
+            "question": "Dummy Question 48 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 49,
+            "question": "Dummy Question 49 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        },
+        {
+            "id": 50,
+            "question": "Dummy Question 50 for Special Functions: Which of the following is correct?",
+            "options": [
+                "Option A for Special Functions",
+                "Option B for Special Functions (Correct)",
+                "Option C for Special Functions",
+                "Option D for Special Functions"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Special Functions."
+        }
+    ]
+}

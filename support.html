@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Desk | Examforge - System Assistance</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+        (function() {
+            // Initialize with your Public Key
+            emailjs.init("YOUR_PUBLIC_KEY");
+        })();
+    </script>
+
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+<style>
+
+    /* --- 1. Top Support Channel Grid --- */
+    .support-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 30px;
+        margin-bottom: 60px;
+    }
+
+    .support-channel {
+        background: var(--white);
+        border: var(--border-thickness) solid var(--black);
+        padding: 30px;
+        box-shadow: 6px 6px 0px var(--black);
+        transition: var(--sharp-transition);
+    }
+
+    .support-channel:hover {
+        transform: translate(-4px, -4px);
+        box-shadow: 10px 10px 0px var(--brand-red);
+    }
+
+    .channel-icon {
+        font-size: 2.5rem;
+        color: var(--brand-red);
+        margin-bottom: 15px;
+        display: block;
+    }
+
+    .channel-title {
+        font-size: 1.2rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    /* --- 2. Contact Terminal Grid Fix --- */
+    .contact-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 60px;
+        align-items: start;
+        margin-top: 40px;
+    }
+
+    /* Operational Status Card */
+    .status-terminal {
+        max-width: 400px;
+        border: var(--border-thickness) solid var(--black);
+        box-shadow: 6px 6px 0px var(--black);
+        background: var(--white);
+    }
+
+    /* --- 3. The Form "Hard-Reset" (Fixes image_069bfe.png) --- */
+    .support-form {
+        max-width: 600px;
+        background: var(--black);
+        color: var(--white);
+        padding: 40px;
+        border: var(--border-thickness) solid var(--black);
+        box-shadow: 8px 8px 0px var(--brand-red);
+        text-align: left; /* Counteracts global centering */
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+        width: 100%;
+        display: flex;
+        flex-direction: column; /* Forces labels above inputs */
+        align-items: flex-start;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 700;
+        font-size: 0.8rem;
+        letter-spacing: 1.5px;
+        color: var(--white);
+        text-transform: uppercase;
+    }
+
+    .form-group input, 
+    .form-group select, 
+    .form-group textarea {
+        width: 100% !important; /* Forces full width in the black box */
+        padding: 15px;
+        border: 2px solid var(--gray-light);
+        background: #1a1a1a; /* Dark industrial background */
+        color: white;
+        font-family: inherit;
+        outline: none;
+        border-radius: 0;
+        display: block;
+    }
+
+    .form-group input:focus, 
+    .form-group textarea:focus {
+        border-color: var(--brand-red);
+    }
+
+    /* --- 4. Responsive Safeguards --- */
+    @media screen and (max-width: 1080px) {
+        .contact-grid {
+            grid-template-columns: 1fr;
+            text-align: center;
+        }
+
+        .hero-text-block, 
+        .support-form, 
+        .status-terminal {
+            margin: 0 auto;
+        }
+
+        .hero-text-block p {
+            border-left: none;
+            border-bottom: 2px solid var(--brand-red);
+            padding-left: 0;
+            padding-bottom: 20px;
+        }
+        
+        .section-title-box {
+            margin: 0 auto 30px auto;
+        }
+    }
+    
+    @media screen and (max-width: 600px) {
+        .support-form {
+            padding: 25px 15px;
+        }
+        .support-grid {
+            gap: 20px;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+    <nav id="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <a href="index.html" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+                    <img src="512.png" alt="Examforge Logo" class="logo">
+                    <h1 class="brand-name" style="color: var(--black); font-size: 1.5rem;">EXAMFORGE</h1>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="about.html" class="nav-link">About</a>
+                <a href="faq.html" class="nav-link">FAQ</a>
+                <label class="theme-switch">
+                    <input type="checkbox" class="theme-toggle-checkbox">
+                    <span class="slider">
+                        <span class="material-icons-round">light_mode</span>
+                    </span>
+                </label>
+                <button class="btn-sharp-outline" onclick="window.location.href='login.html'">LOG IN</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero" style="min-height: auto; padding-top: 140px; padding-bottom: 60px;">
+        <div class="hero-container" style="grid-template-columns: 1fr;">
+            <div class="hero-text-block">
+                <div class="sharp-badge">COMMUNICATIONS CENTER</div>
+                <h1>SUPPORT<br><span class="text-red">TERMINAL.</span></h1>
+                <p>Encountered a glitch in the matrix? Need academic clarification on MAT 102 or Microbiology? Transmit your inquiry directly to our support desk.</p>
+            </div>
+        </div>
+    </header>
+
+    <section class="features-section" style="padding-top: 0;">
+        <div class="hero-container">
+            <div class="support-grid">
+                <div class="support-channel">
+                    <span class="material-icons-round channel-icon">alternate_email</span>
+                    <h3 class="channel-title">Email Comms</h3>
+                    <p style="font-size: 0.9rem;">Direct transmission for complex queries and documentation.</p>
+                    <p style="font-weight: 700; margin-top: 10px;">examforgeacademy@gmail.com</p>
+                </div>
+
+                <div class="support-channel">
+                    <span class="material-icons-round channel-icon">phone_iphone</span>
+                    <h3 class="channel-title">Direct Line</h3>
+                    <p style="font-size: 0.9rem;">Voice support for urgent system access issues.</p>
+                    <p style="font-weight: 700; margin-top: 10px;">+234 (0) 7086227208</p>
+                </div>
+
+                <div class="support-channel">
+                    <span class="material-icons-round channel-icon">location_on</span>
+                    <h3 class="channel-title">Headquarters</h3>
+                    <p style="font-size: 0.9rem;">Operating from the heart of the educational sector.</p>
+                    <p style="font-weight: 700; margin-top: 10px;">Awka, Anambra State, NG</p>
+                </div>
+            </div>
+
+            <div class="contact-grid">
+                <div class="hero-text-block">
+                    <div class="section-title-box"><h2>TRANSMIT INQUIRY</h2></div>
+                    <p style="border-left: none; padding-left: 0;">Use this terminal to report technical errors, request syllabus updates for WAEC/JAMB, or seek guidance on University course modules.</p>
+                    
+                    <div class="sharp-card" style="margin-top: 30px;">
+                        <div class="card-header bg-red text-white">OPERATIONAL STATUS</div>
+                        <div class="card-body" style="font-size: 0.85rem; font-family: monospace;">
+                            > SUPPORT_LEVEL: 100%<br>
+                            > RESPONSE_ETA: 12-24H<br>
+                            > ENCRYPTION: ACTIVE
+                        </div>
+                    </div>
+                </div>
+
+                <div class="support-form">
+                    <form id="support-terminal">
+                        <div class="form-group">
+                            <label>FULL NAME</label>
+                            <input type="text" name="user_name" required placeholder="IDENTIFY YOURSELF">
+                        </div>
+                        <div class="form-group">
+                            <label>EMAIL ADDRESS</label>
+                            <input type="email" name="user_email" required placeholder="RETURN_PATH@EMAIL.COM">
+                        </div>
+                        <div class="form-group">
+                            <label>INQUIRY CATEGORY</label>
+                            <select name="category" required style="background: #1a1a1a; color: white; border: 2px solid var(--gray-light);">
+                                <option value="technical">TECHNICAL GLITCH</option>
+                                <option value="academic">ACADEMIC (JAMB/WAEC/UNI)</option>
+                                <option value="access">ACCOUNT ACCESS</option>
+                                <option value="billing">BILLING/PAYMENT</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>MESSAGE</label>
+                            <textarea name="message" rows="5" required placeholder="DESCRIBE THE ISSUE..."></textarea>
+                        </div>
+                        <button type="submit" id="submit-btn" class="btn-sharp-solid" style="width: 100%; border-color: white;">SEND TRANSMISSION</button>
+                        <p id="status" class="status-msg"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="sharp-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>EXAMFORGE</h3>
+                <p class="brand-motto">DISCIPLINE. DIRECTION. DISTINCTION.</p>
+            </div>
+            <div class="footer-links">
+                <h4>QUICK NAV</h4>
+                <a href="index.html">Home</a>
+                <a href="about.html">About</a>
+                <a href="faq.html">FAQ</a>
+            </div>
+            <div class="footer-contact">
+                <h4>LEGAL</h4>
+                <a href="terms.html">Terms of Execution</a>
+                <a href="privacy.html">Privacy Protocol</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>EXAMFORGE &copy; 2026. SYSTEM SECURED.</p>
+        </div>
+    </footer>
+
+    <script src="index.js"></script>
+    <script>
+        const btn = document.getElementById('submit-btn');
+        const statusMsg = document.getElementById('status');
+
+        document.getElementById('support-terminal').addEventListener('submit', function(event) {
+            event.preventDefault();
+            btn.textContent = 'TRANSMITTING...';
+            btn.disabled = true;
+
+            emailjs.sendForm('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', this)
+                .then(() => {
+                    btn.textContent = 'TRANSMITTED';
+                    statusMsg.style.display = 'block';
+                    statusMsg.style.color = '#00E676';
+                    statusMsg.textContent = '> SUCCESS: MESSAGE RECEIVED BY THE SUPPORT DESK.';
+                    this.reset();
+                }, (error) => {
+                    btn.textContent = 'RETRY';
+                    btn.disabled = false;
+                    statusMsg.style.display = 'block';
+                    statusMsg.style.color = '#c22b27';
+                    statusMsg.textContent = '> ERROR: TRANSMISSION FAILED. CHECK LINK.';
+                    console.error('FAILED...', error);
+                });
+        });
+    </script>
+</body>
+
+</html>

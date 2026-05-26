@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email | Examforge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="login.css">
+    
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    <link rel="apple-touch-icon" href="logo-examforge.png">
+    
+    <style>
+        /* Specific layout tweaks for the verification card */
+        .verify-content {
+            text-align: center;
+        }
+
+        .verify-icon-container {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--white);
+            border: var(--border-thickness) solid var(--black);
+            border-radius: 50%;
+            box-shadow: 6px 6px 0px var(--black);
+        }
+
+        .verify-icon-container svg {
+            width: 45px;
+            height: 45px;
+            fill: none;
+            stroke: var(--brand-red); /* Uses your brand red from login.css */
+            stroke-width: 3;
+            stroke-linecap: square;
+            stroke-linejoin: miter;
+        }
+
+        .verify-description {
+            font-size: 1rem;
+            font-weight: 600;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: var(--black);
+        }
+
+        .help-text {
+            margin-top: 35px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border-top: var(--border-thickness) dashed var(--black);
+            padding-top: 25px;
+            color: var(--black);
+            opacity: 0.8;
+        }
+
+        /* Ensure the a-tag button behaves correctly as a block element */
+        .btn-link {
+            display: block;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="auth-wrapper">
+        <main class="auth-panel" style="width: 100%;">
+            <div class="form-container verify-content">
+                
+                <div class="verify-icon-container">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M2 6h20v12H2z"></path>
+                        <path d="M2 6l10 7 10-7"></path>
+                    </svg>
+                </div>
+                
+                <div class="form-header">
+                    <h3>CHECK INBOX</h3>
+                </div>
+
+                <p class="verify-description">
+                    We've sent a verification link to your email address. Click the link to activate your Examforge profile.
+                </p>
+                
+                <div class="form-actions">
+                    <a href="/" class="btn-sharp-solid full-width btn-link">BACK TO LOGIN</a>
+                </div>
+                
+                <div class="help-text">
+                    DIDN'T RECEIVE THE EMAIL? CHECK YOUR SPAM FOLDER OR REGISTER AGAIN.
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,605 @@
+{
+    "timeLimit": 30,
+    "questions": [
+        {
+            "id": 1,
+            "question": "Dummy Question 1 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 2,
+            "question": "Dummy Question 2 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 3,
+            "question": "Dummy Question 3 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 4,
+            "question": "Dummy Question 4 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 5,
+            "question": "Dummy Question 5 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 6,
+            "question": "Dummy Question 6 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 7,
+            "question": "Dummy Question 7 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 8,
+            "question": "Dummy Question 8 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 9,
+            "question": "Dummy Question 9 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 10,
+            "question": "Dummy Question 10 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 11,
+            "question": "Dummy Question 11 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 12,
+            "question": "Dummy Question 12 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 13,
+            "question": "Dummy Question 13 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 14,
+            "question": "Dummy Question 14 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 15,
+            "question": "Dummy Question 15 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 16,
+            "question": "Dummy Question 16 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 17,
+            "question": "Dummy Question 17 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 18,
+            "question": "Dummy Question 18 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 19,
+            "question": "Dummy Question 19 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 20,
+            "question": "Dummy Question 20 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 21,
+            "question": "Dummy Question 21 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 22,
+            "question": "Dummy Question 22 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 23,
+            "question": "Dummy Question 23 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 24,
+            "question": "Dummy Question 24 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 25,
+            "question": "Dummy Question 25 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 26,
+            "question": "Dummy Question 26 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 27,
+            "question": "Dummy Question 27 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 28,
+            "question": "Dummy Question 28 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 29,
+            "question": "Dummy Question 29 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 30,
+            "question": "Dummy Question 30 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 31,
+            "question": "Dummy Question 31 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 32,
+            "question": "Dummy Question 32 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 33,
+            "question": "Dummy Question 33 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 34,
+            "question": "Dummy Question 34 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 35,
+            "question": "Dummy Question 35 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 36,
+            "question": "Dummy Question 36 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 37,
+            "question": "Dummy Question 37 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 38,
+            "question": "Dummy Question 38 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 39,
+            "question": "Dummy Question 39 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 40,
+            "question": "Dummy Question 40 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 41,
+            "question": "Dummy Question 41 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 42,
+            "question": "Dummy Question 42 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 43,
+            "question": "Dummy Question 43 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 44,
+            "question": "Dummy Question 44 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 45,
+            "question": "Dummy Question 45 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 46,
+            "question": "Dummy Question 46 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 47,
+            "question": "Dummy Question 47 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 48,
+            "question": "Dummy Question 48 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 49,
+            "question": "Dummy Question 49 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        },
+        {
+            "id": 50,
+            "question": "Dummy Question 50 for Sequences Series: Which of the following is correct?",
+            "options": [
+                "Option A for Sequences Series",
+                "Option B for Sequences Series (Correct)",
+                "Option C for Sequences Series",
+                "Option D for Sequences Series"
+            ],
+            "correctIndex": 1,
+            "explanation": "This is an auto-generated dummy explanation for Sequences Series."
+        }
+    ]
+}

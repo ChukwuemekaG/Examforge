@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Verification | Examforge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="login.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    
+    <style>
+        :root {
+            --brand-cyan: #00ffff;
+            --brand-green: #00e676;
+            --brand-error: #ff5252;
+            --black: #000000;
+        }
+
+        /* ─── Perfect Centering ─── */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0; /* Or your grid pattern background */
+        }
+
+        .auth-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .auth-panel {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        .verify-content { 
+            text-align: center; 
+            padding: 40px 30px !important;
+        }
+
+        .status-container {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--brand-cyan);
+            border: 3px solid var(--black);
+            border-radius: 50%;
+            box-shadow: 6px 6px 0px var(--black);
+        }
+
+        .status-container svg {
+            width: 45px;
+            height: 45px;
+            fill: none;
+            stroke: var(--black);
+            stroke-width: 4;
+            stroke-linecap: square;
+        }
+
+        .verify-description {
+            font-size: 0.95rem;
+            font-weight: 600;
+            line-height: 1.5;
+            margin-bottom: 24px;
+            color: var(--black);
+        }
+
+        /* ─── Password Field with Eye Icon ─── */
+        .password-field-group {
+            position: relative;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .input-sharp {
+            width: 100%;
+            padding: 14px 45px 14px 14px; /* Right padding for the icon */
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            border: 3px solid var(--black);
+            box-sizing: border-box;
+            background: #fff;
+            outline: none;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--black);
+            user-select: none;
+            background: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reset-form-wrap {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 3px solid var(--black);
+            text-align: left;
+            display: none;
+        }
+
+        .form-label {
+            font-weight: 800;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        #errorDisplay {
+            color: var(--brand-error);
+            font-size: 0.72rem;
+            font-weight: 800;
+            margin-top: 8px;
+            text-transform: uppercase;
+        }
+
+        .btn-link { display: none; text-decoration: none; }
+        
+        /* Pulse for loading state */
+        .is-loading .status-container { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+
+<body class="is-loading">
+
+    <div class="auth-wrapper">
+        <main class="auth-panel">
+            <div class="form-container verify-content">
+                
+                <div class="status-container" id="statusVisual">
+                    <svg id="statusIcon" viewBox="0 0 24 24">
+                        <path id="iconPath" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-dasharray="2" />
+                    </svg>
+                </div>
+                
+                <div class="form-header">
+                    <h2 id="verifyHeader" style="margin-bottom: 10px;">VERIFYING...</h2>
+                </div>
+
+                <p class="verify-description" id="verifyMessage">
+                    Connecting to Examforge database...
+                </p>
+
+                <div id="resetArea" class="reset-form-wrap">
+                    <div class="form-group">
+                        <label class="form-label">New Password</label>
+                        <div class="password-field-group">
+                            <input type="password" id="newPass" class="input-sharp" placeholder="••••••••">
+                            <button type="button" class="toggle-password" id="togglePass">
+                                <span class="material-icons-round" id="eyeIcon">visibility_off</span>
+                            </button>
+                        </div>
+                        <p id="errorDisplay"></p>
+                    </div>
+                    <button id="btnConfirmReset" class="btn-sharp-solid full-width" style="background: var(--brand-green); margin-top: 20px;">
+                        UPDATE PASSWORD
+                    </button>
+                </div>
+                
+                <div class="form-actions">
+                    <a href="/login.html" id="actionBtn" class="btn-sharp-solid full-width btn-link" style="background: var(--brand-cyan);">
+                        PROCEED TO LOGIN
+                    </a>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { auth } from './firebase-config.js';
+        import { applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        const actionCode = urlParams.get('oobCode');
+
+        const body = document.body;
+        const header = document.getElementById('verifyHeader');
+        const message = document.getElementById('verifyMessage');
+        const actionBtn = document.getElementById('actionBtn');
+        const statusVisual = document.getElementById('statusVisual');
+        const iconPath = document.getElementById('iconPath');
+        const resetArea = document.getElementById('resetArea');
+
+        // ─── Password Toggle Logic ───
+        const togglePassBtn = document.getElementById('togglePass');
+        const passInput = document.getElementById('newPass');
+        const eyeIcon = document.getElementById('eyeIcon');
+
+        togglePassBtn.onclick = () => {
+            const isPass = passInput.type === 'password';
+            passInput.type = isPass ? 'text' : 'password';
+            eyeIcon.innerText = isPass ? 'visibility' : 'visibility_off';
+        };
+
+        const setUIState = (type, h, msg) => {
+            body.classList.remove('is-loading');
+            header.innerText = h;
+            message.innerText = msg;
+            
+            if (type === 'success') {
+                statusVisual.style.backgroundColor = 'var(--brand-green)';
+                iconPath.setAttribute('d', 'M20 6L9 17L4 12');
+                actionBtn.style.display = "block";
+            } else if (type === 'error') {
+                statusVisual.style.backgroundColor = 'var(--brand-error)';
+                iconPath.setAttribute('d', 'M18 6L6 18M6 6l12 12');
+                actionBtn.innerText = "RETURN TO HOME";
+                actionBtn.href = "/";
+                actionBtn.style.display = "block";
+            }
+        };
+
+        const handleVerification = async () => {
+            if (!actionCode) {
+                setUIState('error', 'INVALID REQUEST', 'No code found. Please use the link sent to your email.');
+                return;
+            }
+
+            if (mode === 'verifyEmail') {
+                try {
+                    await applyActionCode(auth, actionCode);
+                    setUIState('success', 'EMAIL VERIFIED!', 'Success! Your account is active.');
+                } catch (e) {
+                    setUIState('error', 'LINK EXPIRED', 'This link is no longer valid.');
+                }
+            } 
+            else if (mode === 'resetPassword') {
+                try {
+                    const email = await verifyPasswordResetCode(auth, actionCode);
+                    body.classList.remove('is-loading');
+                    header.innerText = "RESET PASSWORD";
+                    message.innerText = `Set a new password for ${email}`;
+                    resetArea.style.display = "block";
+
+                    document.getElementById('btnConfirmReset').onclick = async () => {
+                        const newPass = passInput.value;
+                        const errDisplay = document.getElementById('errorDisplay');
+                        
+                        if (newPass.length < 6) {
+                            errDisplay.innerText = "Password must be at least 6 characters.";
+                            return;
+                        }
+
+                        try {
+                            await confirmPasswordReset(auth, actionCode, newPass);
+                            resetArea.style.display = "none";
+                            setUIState('success', 'PASSWORD UPDATED', 'Your new credentials are now active.');
+                        } catch (err) {
+                            errDisplay.innerText = "Error: " + err.message;
+                        }
+                    };
+                } catch (e) {
+                    setUIState('error', 'INVALID LINK', 'This reset link has expired.');
+                }
+            }
+        };
+
+        handleVerification();
+    </script>
+</body>
+</html>

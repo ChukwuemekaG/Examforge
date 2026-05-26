@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamForge | Advanced Examination Engine</title>
+    <!--
+    ══════════════════════════════════════════════════════════════════
+    EXAMFORGE — quiz.html <head> OG META TAGS
+    Paste everything below into quiz.html's <head>, then add the
+    <script> block just before </body> or at the bottom of quiz.js
+    ══════════════════════════════════════════════════════════════════
+-->
+
+<!-- Primary -->
+<meta name="description" content="Take a quiz and test your knowledge on ExamForge.">
+
+<!-- Open Graph (WhatsApp, Facebook, LinkedIn, Telegram) -->
+<meta property="og:title"        content="ExamForge Quiz">
+<meta property="og:description"  content="Take a quiz and test your knowledge on ExamForge.">
+<meta property="og:image"        content="/examforge.jpeg">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url"          content="">
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="ExamForge">
+
+<!-- Twitter / X -->
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="ExamForge Quiz">
+<meta name="twitter:description" content="Take a quiz and test your knowledge on ExamForge.">
+<meta name="twitter:image"       content="/examforge.jpeg">
+
+<!--
+    ── Dynamic OG updater ────────────────────────────────────────────
+    Add this script at the BOTTOM of quiz.html (or call efUpdateOGTags()
+    from quiz.js once the title/course is known).
+    It runs immediately so meta tags are updated before any crawler
+    that executes JS can read them.
+-->
+<script>
+(function efUpdateOGTags() {
+    const p     = new URLSearchParams(location.search);
+    const title = p.get('title') ? decodeURIComponent(p.get('title')) : null;
+    const course= p.get('course') || (p.get('courses') || '').split(',')[0];
+    const mode  = p.get('mode');
+
+    let displayTitle = title
+        || (mode === 'jamb' ? 'JAMB Mock Exam'
+            : course ? course.toUpperCase() + ' Quiz'
+            : 'ExamForge Quiz');
+
+    const ogTitle = displayTitle + ' — ExamForge';
+    const ogDesc  = `Ready to test yourself? Take the ${displayTitle} quiz now on ExamForge. Time-limited, scored and competitive.`;
+
+    document.title = ogTitle;
+
+    const set = (sel, val) => {
+        document.querySelectorAll(sel).forEach(el => el.setAttribute('content', val));
+    };
+
+    set('meta[property="og:title"]',        ogTitle);
+    set('meta[property="og:description"]',  ogDesc);
+    set('meta[property="og:url"]',          location.href);
+    set('meta[name="twitter:title"]',       ogTitle);
+    set('meta[name="twitter:description"]', ogDesc);
+    set('meta[name="description"]',         ogDesc);
+})();
+</script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="quiz.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    <link rel="apple-touch-icon" href="logo-examforge.png">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/ios/180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/ios/152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/ios/180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/icons/ios/167.png">
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+
+<body>
+
+    <div id="loading-view" class="view active">
+        <span class="material-icons-round spinner">autorenew</span>
+        <h2>Initializing Exam Engine...</h2>
+        <p id="loading-text" class="text-muted">Fetching test banks</p>
+    </div>
+
+    <div id="config-view" class="view">
+        <div class="top-nav">
+            <div class="logo-text">ExamForge.</div>
+            <label class="theme-switch" title="Toggle Dark/Light Mode">
+                <input type="checkbox" class="theme-toggle-checkbox">
+                <span class="slider">
+                    <span class="material-icons-round icon-light">light_mode</span>
+                    <span class="material-icons-round icon-dark">dark_mode</span>
+                </span>
+            </label>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Configure Session</h2>
+            <p class="card-desc">Select your parameters for this test bank.</p>
+            <div class="form-group">
+                <label class="form-label">Mode</label>
+                <div class="radio-group">
+                    <label class="radio-card">
+                        <input type="radio" name="quiz-mode" value="practice" checked>
+                        <div class="radio-content">
+                            <span class="material-icons-round">edit_note</span>
+                            <div class="radio-text">
+                                <span class="radio-title">Practice</span>
+                                <small>Untimed. Immediate feedback.</small>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="radio-card">
+                        <input type="radio" name="quiz-mode" value="exam">
+                        <div class="radio-content">
+                            <span class="material-icons-round">timer</span>
+                            <div class="radio-text">
+                                <span class="radio-title">Exam</span>
+                                <small>Timed. Strict environment.</small>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-block" id="btn-to-warning">Continue</button>
+        </div>
+    </div>
+
+    <div id="warning-view" class="view">
+        <div class="card warning-card">
+            <div class="warning-header">
+                <span class="material-icons-round warning-icon">gavel</span>
+                <h2 class="card-title">Strict Examination Rules</h2>
+            </div>
+            <ul class="rule-list">
+                <li><span class="material-icons-round">fullscreen</span> The exam will launch in Full-Screen Mode.</li>
+                <li><span class="material-icons-round">visibility_off</span> Exiting full-screen will result in immediate submission.</li>
+                <li><span class="material-icons-round">tab_unselected</span> Switching tabs will result in immediate submission.</li>
+                <li id="rule-timer"><span class="material-icons-round">timer</span> The exam is strictly timed.</li>
+            </ul>
+            <p class="card-desc">Ensure you have a stable connection and are ready to begin.</p>
+            <button class="btn btn-primary btn-block" id="btn-start-quiz">I Understand, Start Exam</button>
+        </div>
+    </div>
+
+    <div id="quiz-view" class="view cbt-layout">
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        <div class="cbt-main">
+            <header class="quiz-header">
+                <div class="subject-tabs" id="subject-tabs">
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost" id="btn-exit-global" title="Exit to Dashboard" style="color: var(--brand);">
+                        <span class="material-icons-round">power_settings_new</span>
+                    </button>
+
+                    <label class="theme-switch" title="Toggle Dark/Light Mode">
+                        <input type="checkbox" class="theme-toggle-checkbox">
+                        <span class="slider">
+                            <span class="material-icons-round icon-light">light_mode</span>
+                            <span class="material-icons-round icon-dark">dark_mode</span>
+                        </span>
+                    </label>
+
+                    <button class="btn btn-ghost" id="btn-map-toggle" title="Question Map">
+                        <span class="material-icons-round">map</span>
+                    </button>
+                    <button class="btn btn-ghost" id="btn-calc-toggle" title="Scientific Calculator">
+                        <span class="material-icons-round">calculate</span>
+                    </button>
+                    <div class="timer" id="timer-display">--:--</div>
+                </div>
+            </header>
+
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-bar"></div>
+            </div>
+
+            <main class="quiz-body">
+                <div class="question-meta">
+                    <span id="q-progress">Question 1</span>
+                    <span id="mode-badge" class="badge">Exam Mode</span>
+                </div>
+                <h2 id="question-text" class="question-text">Loading question...</h2>
+                <div id="options-container" class="options-grid">
+                </div>
+                <div id="explanation-box" class="explanation-box hidden">
+                    <h4>Explanation</h4>
+                    <p id="explanation-text"></p>
+                </div>
+            </main>
+
+            <footer class="quiz-footer">
+                <button class="btn btn-outline" id="btn-prev" disabled>Previous</button>
+                <button class="btn btn-primary" id="btn-next">Next</button>
+            </footer>
+        </div>
+
+        <aside class="cbt-sidebar">
+            <div class="sidebar-header">
+                <h3>Question Map</h3>
+                <span id="map-subject-title">Subject</span>
+            </div>
+            <div class="map-grid" id="question-map">
+            </div>
+            <div class="sidebar-footer-action">
+                <button class="btn btn-danger btn-block" id="btn-submit-early">Submit Entire Exam</button>
+            </div>
+        </aside>
+
+    </div>
+
+    <div class="calc-overlay" id="calc-modal">
+        <div class="calculator-ui">
+            <div class="calc-header">
+                <span>Scientific Calculator</span>
+                <button class="icon-btn" id="btn-calc-close"><span class="material-icons-round">close</span></button>
+            </div>
+            <input type="text" class="calc-display" id="calc-input" placeholder="0" autocomplete="off" inputmode="none">
+            <div class="calc-result" id="calc-result">= 0</div>
+            <div class="calc-grid">
+                <button class="calc-btn fn" data-val="sin(">sin</button>
+                <button class="calc-btn fn" data-val="cos(">cos</button>
+                <button class="calc-btn fn" data-val="tan(">tan</button>
+                <button class="calc-btn act" data-val="C">C</button>
+                <button class="calc-btn act" data-val="DEL">DEL</button>
+                <button class="calc-btn fn" data-val="log(">log</button>
+                <button class="calc-btn fn" data-val="sqrt(">√</button>
+                <button class="calc-btn fn" data-val="^">xʸ</button>
+                <button class="calc-btn fn" data-val="(">(</button>
+                <button class="calc-btn fn" data-val=")">)</button>
+                <button class="calc-btn num" data-val="7">7</button>
+                <button class="calc-btn num" data-val="8">8</button>
+                <button class="calc-btn num" data-val="9">9</button>
+                <button class="calc-btn op" data-val="/">÷</button>
+                <button class="calc-btn fn" data-val="pi">π</button>
+                <button class="calc-btn num" data-val="4">4</button>
+                <button class="calc-btn num" data-val="5">5</button>
+                <button class="calc-btn num" data-val="6">6</button>
+                <button class="calc-btn op" data-val="*">×</button>
+                <button class="calc-btn fn" data-val="E">E</button>
+                <button class="calc-btn num" data-val="1">1</button>
+                <button class="calc-btn num" data-val="2">2</button>
+                <button class="calc-btn num" data-val="3">3</button>
+                <button class="calc-btn op" data-val="-">−</button>
+                <button class="calc-btn act equals" style="grid-row: span 2;" data-val="=">=</button>
+                <button class="calc-btn num" data-val="0" style="grid-column: span 2;">0</button>
+                <button class="calc-btn num" data-val=".">.</button>
+                <button class="calc-btn op" data-val="+">+</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-view" class="view">
+        <div class="card results-card" style="max-width: 600px;">
+            <span class="material-icons-round result-icon" id="result-icon">emoji_events</span>
+            <h2 class="card-title" id="result-title">Exam Complete</h2>
+
+            <div id="subject-scores-container" style="margin: 24px 0; text-align: left;">
+            </div>
+
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-outline btn-block"
+                    onclick="window.close() || (window.location.href='app.html')">Return to Dashboard</button>
+                <button class="btn btn-primary btn-block" id="btn-review-corrections">Review Corrections</button>
+            </div>
+        </div>
+    </div>
+    <div class="calc-overlay" id="exit-modal">
+        <div class="card" style="margin: auto; max-width: 420px; text-align: center;">
+            <span class="material-icons-round warning-icon" style="font-size: 56px;">warning</span>
+            <h2 class="card-title">Exit Session?</h2>
+            <p class="card-desc">Are you sure you want to leave? If you are currently taking an exam, your progress will be lost.</p>
+            <div style="display: flex; gap: 12px; margin-top: 32px;">
+                <button class="btn btn-outline btn-block" id="btn-exit-cancel">Cancel</button>
+                <button class="btn btn-danger btn-block" onclick="window.location.href='app.html'">Exit to Dashboard</button>
+            </div>
+        </div>
+    </div>
+    <div id="submit-modal" class="calc-overlay"> 
+    <div class="card" style="max-width: 420px; text-align: center;">
+        <div class="material-icons-round" style="font-size: 48px; color: var(--brand); margin-bottom: 16px;">task_alt</div>
+        <h3 class="card-title">Finish Exam?</h3>
+        <p class="card-desc">You have answered the questions. Are you sure you want to submit? You cannot change your answers after this.</p>
+        
+        <div style="display: flex; gap: 12px; margin-top: 20px;">
+            <button id="btn-submit-confirm" class="btn btn-danger btn-block">Yes, Submit</button>
+            <button id="btn-submit-cancel" class="btn btn-outline btn-block">Cancel</button>
+        </div>
+    </div>
+</div>
+    <script>
+        const themeCheckboxes = document.querySelectorAll('.theme-toggle-checkbox');
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        themeCheckboxes.forEach(cb => cb.checked = isDark);
+    </script>
+    
+    <script src="quiz.js" type="module"></script>
+    <script>
+        // Register the Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Make sure the path matches where you save your sw.js file
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered successfully with scope:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+
+</html>

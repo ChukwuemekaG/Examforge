@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Execution | Examforge - The Protocol</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+    <style>
+        .terms-container { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
+        .terms-card {
+            background: var(--white);
+            border: var(--border-thickness) solid var(--black);
+            box-shadow: 12px 12px 0px var(--black);
+            padding: 40px;
+        }
+        .protocol-section { margin-bottom: 40px; }
+        .protocol-section h3 {
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            border-bottom: var(--border-thickness) solid var(--brand-red);
+            display: inline-block;
+            margin-bottom: 15px;
+            color: var(--black);
+        }
+        .protocol-section p, .protocol-section ul {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: var(--text-muted);
+        }
+        .protocol-section ul { padding-left: 20px; list-style-type: square; }
+        .last-updated { font-family: monospace; font-size: 0.8rem; opacity: 0.6; margin-bottom: 40px; display: block; }
+        
+        @media (max-width: 600px) {
+            .terms-card { padding: 25px 15px; }
+            .protocol-section h3 { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav id="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <a href="index.html" style="text-decoration: none; display: flex; align-items: center; gap: 10px;">
+                    <img src="512.png" alt="Examforge Logo" class="logo">
+                    <h1 class="brand-name" style="color: var(--black); font-size: 1.5rem;">EXAMFORGE</h1>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="about.html" class="nav-link">About</a>
+                <a href="faq.html" class="nav-link">FAQ</a>
+                <label class="theme-switch">
+                    <input type="checkbox" class="theme-toggle-checkbox">
+                    <span class="slider">
+                        <span class="material-icons-round">light_mode</span>
+                    </span>
+                </label>
+                <button class="btn-sharp-outline" onclick="window.location.href='login.html'">LOG IN</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero" style="min-height: auto; padding-top: 140px; padding-bottom: 40px;">
+        <div class="hero-container" style="grid-template-columns: 1fr;">
+            <div class="hero-text-block">
+                <div class="sharp-badge">LEGAL CORE</div>
+                <h1>TERMS OF<br><span class="text-red">EXECUTION.</span></h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="terms-container">
+        <span class="last-updated">PROTOCOL_REF: 2026.05.10 // STATUS: BINDING</span>
+        
+        <div class="terms-card">
+            <section class="protocol-section">
+                <h3>01 // ACCEPTANCE</h3>
+                <p>By entering the Examforge network, you acknowledge that you are here to build discipline and achieve academic distinction. Continued use of this system constitutes your absolute agreement to these Terms of Execution. If you cannot maintain the required discipline, you are advised to disconnect immediately.</p>
+            </section>
+
+            <section class="protocol-section">
+                <h3>02 // ELIGIBILITY</h3>
+                <p>The system is engineered for secondary and university-level students focused on excellence in JAMB, WAEC, and higher education curricula. Users must provide accurate identification to ensure performance analytics are attributed to the correct candidate.</p>
+            </section>
+
+            <section class="protocol-section">
+                <h3>03 // USER DISCIPLINE</h3>
+                <p>Examforge is a "No Distraction" environment. You are strictly prohibited from:</p>
+                <ul>
+                    <li>Attempting to reverse-engineer the "Forge" question matrix.</li>
+                    <li>Using automated bots to inflate study session scores.</li>
+                    <li>Sharing access credentials with third parties.</li>
+                </ul>
+            </section>
+
+            <section class="protocol-section">
+                <h3>04 // CONTENT & INTELLECTUAL PROPERTY</h3>
+                <p>All specialized study materials, including proprietary modules are the sole property of Examforge. These assets are for individual academic consumption only. Redistribution is a breach of the protocol.</p>
+            </section>
+
+            <section class="protocol-section">
+                <h3>05 // SYSTEM UPTIME</h3>
+                <p>While the Forge is designed for maximum resilience across Nigeria, including optimized caching for offline use in Awka and environs, we do not guarantee 100% uptime. Scheduled maintenance is necessary to keep the system burning at optimal temperature.</p>
+            </section>
+
+            <section class="protocol-section">
+                <h3>06 // LIABILITY LIMITATION</h3>
+                <p>Examforge provides the anvil and the hammer; you provide the effort. We are not liable for examination outcomes if the user fails to apply the necessary discipline. Results are a direct product of the user's execution of the tools provided.</p>
+            </section>
+
+            <section class="protocol-section">
+                <h3>07 // GOVERNING LAW</h3>
+                <p>These terms are governed by the laws of the Federal Republic of Nigeria, with specific jurisdiction in Awka, Anambra State.</p>
+            </section>
+
+            <div class="sharp-badge bg-red text-white" style="width: 100%; text-align: center; margin-top: 20px;">
+                END OF PROTOCOL
+            </div>
+        </div>
+    </main>
+
+    <footer class="sharp-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>EXAMFORGE</h3>
+                <p class="brand-motto">DISCIPLINE. DIRECTION. DISTINCTION.</p>
+            </div>
+            <div class="footer-links">
+                <h4>QUICK LINKS</h4>
+                <a href="index.html">Home</a>
+                <a href="about.html">About</a>
+                <a href="faq.html">Support Desk</a>
+            </div>
+            <div class="footer-contact">
+                <h4>COMMS</h4>
+                <p>EMAIL: examforgeacademy@gmail.com</p>
+                <p>HQ: Awka, Anambra, NG</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>EXAMFORGE &copy; 2026. ALL RIGHTS RESERVED. SYSTEM SECURED.</p>
+        </div>
+    </footer>
+
+    <script src="index.js"></script>
+</body>
+
+</html>

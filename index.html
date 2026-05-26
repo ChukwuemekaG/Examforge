@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examforge | Discipline. Direction. Distinction.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="logo-examforge.png">
+    <link rel="apple-touch-icon" href="/icons/ios/180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/ios/152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/ios/180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/icons/ios/167.png">
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+    <script>
+    // 1. Check if the "hint" exists
+    if (localStorage.getItem('ef_logged_in') === 'true') {
+        // 2. Immediately hide the body content to prevent the flash
+        document.documentElement.style.display = 'none';
+        // 3. Redirect to the app
+        window.location.href = '/app.html';
+    }
+</script>
+</head>
+
+<body>
+
+    <nav id="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <img src="512.png" alt="Examforge Logo" class="logo">
+                <h1 class="brand-name">EXAMFORGE</h1>
+            </div>
+            <div class="nav-links">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="/about.html" class="nav-link">About</a>
+
+                <label class="theme-switch" title="Toggle Dark/Light Mode">
+                    <input type="checkbox" class="theme-toggle-checkbox">
+                    <span class="slider">
+                        <span class="material-icons-round icon-light">light_mode</span>
+                        <span class="material-icons-round icon-dark">dark_mode</span>
+                    </span>
+                </label>
+
+                <button id="loginBtn" class="btn-sharp-outline">LOG IN</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-container">
+            <div class="hero-text-block">
+                <div class="sharp-badge">SYSTEM IS READY</div>
+                <h1>MASTER YOUR<br><span class="text-red">NEXT EXAM.</span></h1>
+                <p>Discipline. Direction. Distinction. The smartest, fastest way to conquer JAMB, WAEC, and your
+                    toughest University courses. No distractions, just results.</p>
+
+                <div class="hero-actions">
+                    <button id="getStartedBtn" class="btn-sharp-solid">START PRACTICING</button>
+                    <a href="#courses" class="sharp-link">EXPLORE COURSES <span>&#8594;</span></a>
+                </div>
+            </div>
+
+            <div class="hero-grid-visual">
+                <div class="sharp-card">
+                    <div class="card-header">MAT 102</div>
+                    <div class="card-body">Calculus & Limits</div>
+                </div>
+                <div class="sharp-card offset-card">
+                    <div class="card-header bg-red text-white">UTME</div>
+                    <div class="card-body">Physics Past Questions</div>
+                </div>
+                <div class="sharp-card">
+                    <div class="card-header">MCB 201</div>
+                    <div class="card-body">Microbiology Quiz</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="features" class="features-section">
+        <div class="section-title-box">
+            <h2>WHY EXAMFORGE?</h2>
+        </div>
+
+        <div class="sharp-feature-grid">
+            <div class="feature-block">
+                <div class="icon-square">01</div>
+                <h3>MASSIVE BANK</h3>
+                <p>Access thousands of verified past questions and customized university assessments.</p>
+            </div>
+            <div class="feature-block">
+                <div class="icon-square">02</div>
+                <h3>REAL CBT</h3>
+                <p>Experience the exact interface of standard computer-based tests. Build unbreakable confidence.</p>
+            </div>
+            <div class="feature-block">
+                <div class="icon-square">03</div>
+                <h3>ANALYTICS</h3>
+                <p>Instantly review performance, identify weak topics, and optimize your study timetable.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="pact-section">
+        <div class="pact-container">
+            <hr class="pact-line">
+            <h2 class="pact-title">NO DISTRACTIONS.<br><span class="text-outline">NO EXCUSES.</span><br>JUST EXECUTION.
+            </h2>
+            <p class="pact-text">Step into Examforge and temper your knowledge. We provide the tools. You provide the
+                discipline.</p>
+            <button class="btn-sharp-solid pact-btn">ENTER EXAMFORGE</button>
+            <hr class="pact-line bottom-line">
+        </div>
+    </section>
+
+    <section id="live-forge" class="terminal-section">
+        <div class="terminal-container">
+            <div class="terminal-header">
+                <span class="dot red-dot"></span><span class="dot yellow-dot"></span><span class="dot green-dot"></span>
+                <span class="terminal-title">EXAMFORGE_NETWORK_LOG</span>
+            </div>
+            <div class="terminal-body" id="terminalFeed">
+                <p class="terminal-line"><span class="terminal-prompt">&gt;</span> [SYSTEM]: INITIALIZING FORGE
+                    PROTOCOLS...</p>
+                <p class="terminal-line"><span class="terminal-prompt">&gt;</span> [SYSTEM]: CONNECTING TO QUESTION
+                    ARCHIVES...</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="sharp-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>EXAMFORGE</h3>
+                <p class="brand-motto">DISCIPLINE. DIRECTION. DISTINCTION.</p>
+                <p class="footer-desc">The ultimate preparation forge for JAMB, WAEC, and University-level excellence.
+                    No distractions, just results.</p>
+            </div>
+
+            <div class="footer-links">
+                <h4>EXPLORE</h4>
+                <a href="/about.html">About Examforge</a>
+                <a href="#features">Platform Features</a>
+                <a href="#leaderboard">Live Ranks</a>
+            </div>
+
+            <div class="footer-links">
+                <h4>LEGAL & SUPPORT</h4>
+                <a href="/faq.html">F.A.Q</a>
+                <a href="/terms.html">Terms of Execution</a>
+                <a href="/privacy.html">Privacy Protocol</a>
+                <a href="/support.html">Support Desk</a>
+            </div>
+
+            <div class="footer-contact">
+                <h4>COMMS</h4>
+                <a href="mailto:examforgeacademy@gmail.com">EMAIL: examforgeacademy@gmail.com</a>
+                <a href="tel:+2347086227208">TEL: +234 (0) 7086227208</a>
+                <p>HQ: Awka, Anambra State, NG</p>
+            </div>
+        </div>
+        <img src="/flag.gif" style="width: 100px; margin: auto;margin-top: -2rem;" alt="Nigerian Flag">
+        <div class="footer-bottom">
+            <p>EXAMFORGE &copy; 2026. ALL RIGHTS RESERVED. SYSTEM SECURED.</p>
+        </div>
+    </footer>
+
+    <script src="index.js"></script>
+    <script>
+        // Register the Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Make sure the path matches where you save your sw.js file
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered successfully with scope:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+<script src="/install.js"></script>
+</html>
