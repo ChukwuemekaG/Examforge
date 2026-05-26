@@ -6764,7 +6764,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         let subjectHTML = normalizedSubjects.map(s => {
             const safeName = s.name.replace(/'/g, "\\'");
             return `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-inset);border:2px solid var(--text);border-radius:8px;margin-bottom:8px;">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px;background:var(--bg-inset);border:2px solid var(--text);border-radius:8px;margin-bottom:8px;">
                 <div>
                     <div style="font-weight:800;font-size:0.85rem;display:flex;align-items:center;gap:8px;">
                         ${s.name}
@@ -6778,8 +6778,10 @@ window.mcViewSubEventDetails = async function(eventId) {
                         <span id="cu-display-${safeName.replace(/\s+/g,'-')}">${s.creditUnit}</span> Credit Unit${s.creditUnit !== 1 ? 's' : ''}
                     </div>
                 </div>
-                <div style="font-size:0.8rem;color:var(--text-muted);"><strong>${subjectCounts[s.name]}</strong> students</div>
-                <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);">CREATE/EDIT MOCK</button>
+                <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;">
+                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong>${subjectCounts[s.name]}</strong> students</div>
+                    <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);white-space:nowrap;">CREATE/EDIT MOCK</button>
+                </div>
             </div>`;
         }).join('');
 
