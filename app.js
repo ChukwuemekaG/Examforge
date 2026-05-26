@@ -1350,7 +1350,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
 
 // ── DAILY QUIZ TAB ────────────────────────────────────────────
 
-var currentBuilderQuestions = [];
+window.currentBuilderQuestions = [];
 
 async function mcRenderDailyQuizTab() {
     const panel = document.getElementById('mc-tab-content');
@@ -1870,7 +1870,7 @@ window.mcRenderDailyAdviceTab = mcRenderDailyAdviceTab;
 window.mcLoadDailyAdvices = mcLoadDailyAdvices;
 
 window.mcOpenCreateDailyQuizModal = function() {
-    currentBuilderQuestions = [
+    window.currentBuilderQuestions = [
         { question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true }
     ];
     
@@ -2057,16 +2057,16 @@ window.mcProcessDQBulkImport = function() {
         expanded: false
     }));
     
-    if (currentBuilderQuestions.length > 0 && (currentBuilderQuestions.length > 1 || currentBuilderQuestions[0].question.trim())) {
+    if (window.currentBuilderQuestions.length > 0 && (window.currentBuilderQuestions.length > 1 || window.currentBuilderQuestions[0].question.trim())) {
         window.showEFModal(
             "Import Mode",
             `Successfully parsed ${parsed.length} questions. Choose whether to APPEND these to your current list or REPLACE the entire list.`,
             "APPEND",
             () => {
-                currentBuilderQuestions.push(...newQuestions);
+                window.currentBuilderQuestions.push(...newQuestions);
                 // Collapse previous ones, expand newly imported
-                currentBuilderQuestions.forEach((q, idx) => {
-                    q.expanded = idx >= currentBuilderQuestions.length - newQuestions.length;
+                window.currentBuilderQuestions.forEach((q, idx) => {
+                    q.expanded = idx >= window.currentBuilderQuestions.length - newQuestions.length;
                 });
                 textarea.value = '';
                 document.getElementById('dq-bulk-import-panel').style.display = 'none';
@@ -2076,8 +2076,8 @@ window.mcProcessDQBulkImport = function() {
             true,
             "REPLACE ALL",
             () => {
-                currentBuilderQuestions = newQuestions;
-                currentBuilderQuestions.forEach((q, idx) => {
+                window.currentBuilderQuestions = newQuestions;
+                window.currentBuilderQuestions.forEach((q, idx) => {
                     q.expanded = idx === 0;
                 });
                 textarea.value = '';
@@ -2087,8 +2087,8 @@ window.mcProcessDQBulkImport = function() {
             }
         );
     } else {
-        currentBuilderQuestions = newQuestions;
-        currentBuilderQuestions.forEach((q, idx) => {
+            window.currentBuilderQuestions = newQuestions;
+            window.currentBuilderQuestions.forEach((q, idx) => {
             q.expanded = idx === 0;
         });
         textarea.value = '';
@@ -2100,13 +2100,13 @@ window.mcProcessDQBulkImport = function() {
 
 window.mcCollapseAllBuilderQuestions = function() {
     window.mcSyncBuilderStateFromDOM();
-    currentBuilderQuestions.forEach(q => q.expanded = false);
+    window.currentBuilderQuestions.forEach(q => q.expanded = false);
     window.mcRenderBuilderQuestions();
 };
 
 window.mcExpandAllBuilderQuestions = function() {
     window.mcSyncBuilderStateFromDOM();
-    currentBuilderQuestions.forEach(q => q.expanded = true);
+    window.currentBuilderQuestions.forEach(q => q.expanded = true);
     window.mcRenderBuilderQuestions();
 };
 
@@ -2117,14 +2117,14 @@ window.mcToggleBuilderAccordion = function(qIdx) {
         const isCollapsed = body.style.display === 'none';
         body.style.display = isCollapsed ? 'flex' : 'none';
         icon.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(-90deg)';
-        if (currentBuilderQuestions[qIdx]) {
-            currentBuilderQuestions[qIdx].expanded = isCollapsed;
+        if (window.currentBuilderQuestions[qIdx]) {
+            window.currentBuilderQuestions[qIdx].expanded = isCollapsed;
         }
     }
 };
 
 window.mcSyncBuilderStateFromDOM = function() {
-    currentBuilderQuestions.forEach((q, qIdx) => {
+    window.currentBuilderQuestions.forEach((q, qIdx) => {
         const qTextEl = document.querySelector(`.dq-question-text-${qIdx}`);
         const explTextEl = document.querySelector(`.dq-explanation-text-${qIdx}`);
         const correctSelectEl = document.querySelector(`.dq-correct-select-${qIdx}`);
@@ -2146,7 +2146,7 @@ window.mcRenderBuilderQuestions = function() {
     
     window.mcSyncBuilderStateFromDOM();
     
-    if (currentBuilderQuestions.length === 0) {
+    if (window.currentBuilderQuestions.length === 0) {
         container.innerHTML = `
             <div style="text-align:center; padding:32px; border:3px dashed var(--border); border-radius:12px; color:var(--text-muted); font-size:0.75rem;">
                 No questions added yet. Click "+ Add Question" or "Bulk Import" to start building your quiz.
@@ -2155,7 +2155,7 @@ window.mcRenderBuilderQuestions = function() {
         return;
     }
     
-    container.innerHTML = currentBuilderQuestions.map((q, qIdx) => {
+    container.innerHTML = window.currentBuilderQuestions.map((q, qIdx) => {
         const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
         const isExpanded = q.expanded !== false;
         
@@ -2240,7 +2240,7 @@ window.mcRenderBuilderQuestions = function() {
 
 window.mcAddBuilderQuestion = function() {
     window.mcSyncBuilderStateFromDOM();
-    currentBuilderQuestions.push({ question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true });
+    window.currentBuilderQuestions.push({ question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true });
     window.mcRenderBuilderQuestions();
     
     // Smooth scroll new question into view
@@ -2254,21 +2254,21 @@ window.mcAddBuilderQuestion = function() {
 
 window.mcRemoveBuilderQuestion = function(qIdx) {
     window.mcSyncBuilderStateFromDOM();
-    currentBuilderQuestions.splice(qIdx, 1);
+    window.currentBuilderQuestions.splice(qIdx, 1);
     window.mcRenderBuilderQuestions();
 };
 
 window.mcAddBuilderOption = function(qIdx) {
     window.mcSyncBuilderStateFromDOM();
-    if (currentBuilderQuestions[qIdx].options.length < 6) {
-        currentBuilderQuestions[qIdx].options.push('');
+    if (window.currentBuilderQuestions[qIdx].options.length < 6) {
+        window.currentBuilderQuestions[qIdx].options.push('');
     }
     window.mcRenderBuilderQuestions();
 };
 
 window.mcRemoveBuilderOption = function(qIdx, optIdx) {
     window.mcSyncBuilderStateFromDOM();
-    const q = currentBuilderQuestions[qIdx];
+    const q = window.currentBuilderQuestions[qIdx];
     if (q.options.length > 2) {
         q.options.splice(optIdx, 1);
         if (q.correctIndex >= q.options.length) {
@@ -2292,13 +2292,13 @@ window.mcSaveCreatedDailyQuiz = async function() {
         window.showEFModal("Invalid Time", "Please enter a valid time limit (between 1 and 180 minutes).", "OKAY", null, true);
         return;
     }
-    if (currentBuilderQuestions.length === 0) {
+    if (window.currentBuilderQuestions.length === 0) {
         window.showEFModal("Empty Quiz", "Please add at least one question to the quiz.", "OKAY", null, true);
         return;
     }
     
-    for (let i = 0; i < currentBuilderQuestions.length; i++) {
-        const q = currentBuilderQuestions[i];
+    for (let i = 0; i < window.currentBuilderQuestions.length; i++) {
+        const q = window.currentBuilderQuestions[i];
         if (!q.question.trim()) {
             window.showEFModal("Missing Content", `Question #${i + 1} has no statement text.`, "OKAY", null, true);
             return;
@@ -2323,7 +2323,7 @@ window.mcSaveCreatedDailyQuiz = async function() {
         await setDoc(qDocRef, {
             id: dqid,
             title,
-            questions: currentBuilderQuestions,
+            questions: window.currentBuilderQuestions,
             timeLimit: time,
             createdAt: serverTimestamp()
         });
@@ -6426,7 +6426,7 @@ window.mcViewSubEventDetails = window.mcViewSubEventDetails;
 // ─── SUBEVENT MOCK EXAMS ────────────────────────────────────────────────
 
 window.mcOpenCreateEventMockModal = function(eventId, subject) {
-    currentBuilderQuestions = [
+    window.currentBuilderQuestions = [
         { question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true }
     ];
     
@@ -6574,10 +6574,10 @@ window.mcPreloadEventMock = async function(eventId, subject) {
             const m = snap.docs[0].data();
             document.getElementById('dq-builder-title').value = m.title;
             document.getElementById('dq-builder-time').value = m.timeLimit;
-            currentBuilderQuestions = m.questions || [];
-            if(currentBuilderQuestions.length === 0) currentBuilderQuestions = [{ question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true }];
-            currentBuilderQuestions.forEach(q => q.expanded = false);
-            if(currentBuilderQuestions[0]) currentBuilderQuestions[0].expanded = true;
+            window.currentBuilderQuestions = m.questions || [];
+            if(window.currentBuilderQuestions.length === 0) window.currentBuilderQuestions = [{ question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true }];
+            window.currentBuilderQuestions.forEach(q => q.expanded = false);
+            if(window.currentBuilderQuestions[0]) window.currentBuilderQuestions[0].expanded = true;
             window.mcRenderBuilderQuestions();
             
             // Restore toggle states from loaded mock
@@ -6613,7 +6613,7 @@ window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=fal
     const time = parseInt(document.getElementById('dq-builder-time')?.value) || 45;
     
     window.mcSyncBuilderStateFromDOM();
-    if (!title || currentBuilderQuestions.length === 0) return window.showEFModal("Error", "Invalid title or empty questions", "OK", null, true);
+    if (!title || window.currentBuilderQuestions.length === 0) return window.showEFModal("Error", "Invalid title or empty questions", "OK", null, true);
     
     const saveBtn = document.querySelector('#ef-dq-builder-modal .btn-primary');
     saveBtn.textContent = 'SAVING...';
@@ -6635,7 +6635,7 @@ window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=fal
             eventId,
             subject,
             title,
-            questions: currentBuilderQuestions,
+            questions: window.currentBuilderQuestions,
             timeLimit: time,
             isStrict:     document.getElementById('mc-tog-strict')?.checked ?? true,
             isMock:       document.getElementById('mc-tog-mock')?.checked ?? true,
