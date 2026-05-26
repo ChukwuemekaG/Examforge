@@ -6281,12 +6281,11 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                 let totalNotifs = 0;
                 const subjectsBroadcasted = new Set();
                 
-                // 3. For each mock, notify the relevant students
+                // 3. For each mock, notify + schedule the relevant students
                 for (const mock of mocks) {
                     const subject = mock.subject;
                     subjectsBroadcasted.add(subject);
                     
-                    // Find UIDs registered for this subject
                     const uids = Object.entries(regData)
                         .filter(([uid, subs]) => subs.includes(subject))
                         .map(([uid]) => uid);
@@ -6294,26 +6293,44 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                     if (uids.length === 0) continue;
                     
                     for (const uid of uids) {
+                        // Notification
                         const notifRef = doc(collection(db, 'users', uid, 'notifications'));
                         await setDoc(notifRef, {
                             id: notifRef.id,
-                            type: 'system',
+                            type: 'broadcast',
                             title: 'Mock Exam Ready!',
                             message: `Your ${subject} mock exam for "${evTitle}" is now available. Tap to take it.`,
                             actionLabel: 'TAKE EXAM',
-                            actionPath: `/exam.html?mockId=${mock.id}`,
+                            actionPath: `/quiz.html?mockid=${mock.id}`,
                             createdAt: serverTimestamp(),
                             read: false,
                             brandColor: '#10b981',
                             brandIcon: 'library_books'
                         });
+                        
+                        // Schedule item
+                        const schedRef = doc(collection(db, 'users', uid, 'schedule'));
+                        await setDoc(schedRef, {
+                            id: schedRef.id,
+                            type: 'mock_exam',
+                            title: `${subject} Mock - ${evTitle}`,
+                            course: subject,
+                            mockId: mock.id,
+                            eventId: eventId,
+                            timeLimit: mock.timeLimit || 45,
+                            quizUrl: `/quiz.html?mockid=${mock.id}`,
+                            message: `Complete your ${subject} mock exam for "${evTitle}".`,
+                            timestamp: serverTimestamp(),
+                            read: false
+                        });
+                        
                         totalNotifs++;
                     }
                 }
                 
                 window.showEFModal(
                     "Broadcast Complete",
-                    `Mocks broadcasted for ${subjectsBroadcasted.size} subject(s). ${totalNotifs} notification(s) sent to students.`,
+                    `Mocks broadcasted for ${subjectsBroadcasted.size} subject(s). ${totalNotifs} notification(s) and schedule items sent.`,
                     "OK",
                     null,
                     true
@@ -6406,14 +6423,153 @@ window.mcViewSubEventDetails = async function(eventId) {
                 ${subjectHTML}
             </div>
 
+            <div>
+                <h3 style="font-weight:900;font-size:1.05rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;margin-top:24px;border-top:3px solid var(--text);padding-top:20px;">
+                    Registered Students
+                    <span style="font-size:0.7rem;color:var(--text-muted);font-weight:700;">(${totalRegistrations} total)</span>
+                </h3>
+                <div id="mc-reg-students-table" style="overflow-x:auto;border:2px solid var(--text);border-radius:10px;">
+                    <div style="text-align:center;padding:32px;color:var(--text-muted);font-size:0.8rem;">
+                        <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.2rem;vertical-align:middle;margin-right:6px;">autorenew</span>
+                        Loading student data...
+                    </div>
+                </div>
+            </div>
+
             <div style="margin-top:24px;">
                 ${broadcastBtn}
             </div>
         `;
         
+        // Fetch and render student details table
+        window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || []);
+        
     } catch (e) {
         console.error(e);
         document.getElementById('ef-se-det-body').innerHTML = `<div style="text-align:center;padding:32px;color:var(--brand);font-weight:900;">Error: ${e.message}</div>`;
+    }
+};
+
+window.mcRenderRegStudentsTable = async function(eventId, subjects) {
+    const container = document.getElementById('mc-reg-students-table');
+    if (!container) return;
+    
+    try {
+        const { getDocs, collection, getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        
+        // 1. Fetch all registrations
+        const regSnap = await getDocs(collection(db, 'subscription_events', eventId, 'registrations'));
+        const registrations = [];
+        regSnap.forEach(d => {
+            registrations.push({ uid: d.id, ...d.data() });
+        });
+        
+        if (registrations.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:0.8rem;">No students registered yet.</div>';
+            return;
+        }
+        
+        // 2. Fetch user profiles and mock attempts in parallel
+        const studentData = await Promise.all(registrations.map(async (reg) => {
+            let user = { displayName: 'Unknown', email: '', username: '' };
+            try {
+                const userSnap = await getDoc(doc(db, 'users', reg.uid));
+                if (userSnap.exists()) user = userSnap.data();
+            } catch(e) {}
+            
+            // Check mock attempts for each subject the student registered for
+            const subjectScores = {};
+            for (const sub of (reg.subjects || [])) {
+                // Find mock for this event+subject
+                const mockQuery = await getDocs(
+                    (await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")).query(
+                        (await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")).collection(db, 'mock_exams'),
+                        (await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")).where('eventId', '==', eventId),
+                        (await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")).where('subject', '==', sub)
+                    )
+                );
+                
+                if (!mockQuery.empty) {
+                    const mockId = mockQuery.docs[0].id;
+                    // Check for attempt
+                    const attemptSnap = await getDoc(doc(db, 'mock_exams', mockId, 'attempts', reg.uid));
+                    if (attemptSnap.exists()) {
+                        const att = attemptSnap.data();
+                        subjectScores[sub] = `${att.score || 0}%`;
+                    } else {
+                        subjectScores[sub] = '—';
+                    }
+                } else {
+                    subjectScores[sub] = '—';
+                }
+            }
+            
+            return { uid: reg.uid, user, subjects: reg.subjects || [], scores: subjectScores };
+        }));
+        
+        // 3. Render table
+        const name = u => u.displayName || u.email?.split('@')[0] || 'Unknown';
+        const initials = u => {
+            const n = name(u);
+            const p = n.trim().split(' ');
+            return p.length > 1 ? (p[0][0]+p[p.length-1][0]).toUpperCase() : n.substring(0,2).toUpperCase();
+        };
+        
+        // Build score columns based on subjects
+        const subjectCols = subjects;
+        
+        container.innerHTML = `
+            <style>
+                .reg-table { width:100%; border-collapse:collapse; min-width:600px; font-size:0.75rem; }
+                .reg-table th { background:var(--bg-inset); font-size:0.6rem; font-weight:900; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); padding:10px 12px; border-bottom:2px solid var(--text); text-align:left; white-space:nowrap; }
+                .reg-table td { padding:8px 12px; border-bottom:1px solid var(--border); color:var(--text-sub); font-weight:500; }
+                .reg-table tr:hover td { background:var(--bg-inset); }
+                .reg-table td:first-child { font-weight:700; color:var(--text); }
+                .score-taken { color:#16a34a; font-weight:800; }
+                .score-empty { color:var(--text-muted); font-weight:400; }
+                @media(max-width:600px){
+                    .reg-table { font-size:0.65rem; min-width:0; }
+                    .reg-table th, .reg-table td { padding:6px 8px; }
+                }
+            </style>
+            <table class="reg-table">
+                <thead>
+                    <tr>
+                        <th style="width:36px;"></th>
+                        <th>Student</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Registered Subjects</th>
+                        ${subjectCols.map(s => `<th style="text-align:center;">${s}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${studentData.map(sd => `
+                        <tr>
+                            <td>
+                                <div style="width:28px;height:28px;border-radius:6px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.6rem;border:1.5px solid var(--text);">${initials(sd.user)}</div>
+                            </td>
+                            <td>${name(sd.user)}</td>
+                            <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.65rem;">${sd.user.username || '—'}</td>
+                            <td style="color:var(--text-muted);font-size:0.65rem;">${sd.user.email || '—'}</td>
+                            <td style="font-weight:600;">${sd.subjects.join(', ')}</td>
+                            ${subjectCols.map(s => `
+                                <td style="text-align:center;${sd.scores[s] && sd.scores[s] !== '—' ? 'font-weight:800;color:#16a34a;' : 'color:var(--text-muted);'}>
+                                    ${sd.scores[s] || '—'}
+                                </td>
+                            `).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div style="padding:8px 12px;background:var(--bg-inset);border-top:2px solid var(--text);font-size:0.6rem;color:var(--text-muted);font-weight:700;text-align:right;">
+                ${studentData.length} student${studentData.length !== 1 ? 's' : ''} · Updated in real-time
+            </div>
+        `;
+        
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--brand);font-size:0.8rem;">Error loading students: ${e.message}</div>`;
     }
 };
 
@@ -6679,28 +6835,50 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
                 return window.showEFModal("Notice", "No students registered for this subject.", "OK", null, true);
             }
 
-            // 2. Send notification to these students
+            // 2. Get event and mock details
             const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
             const evTitle = evDoc.exists() ? evDoc.data().title : 'Mock Exam';
+            
+            const mockDoc = await getDoc(doc(db, 'mock_exams', mockId));
+            const mockData = mockDoc.exists() ? mockDoc.data() : {};
+            const timeLimit = mockData.timeLimit || 45;
 
+            // 3. Send notification + schedule item to each student
             for (const uid of uids) {
+                // Notification
                 const notifRef = doc(collection(db, 'users', uid, 'notifications'));
                 await setDoc(notifRef, {
                     id: notifRef.id,
-                    type: 'system',
-                    title: 'New Exam Released',
-                    message: `Your ${subject} mock exam for "${evTitle}" is ready. Tap to take it now.`,
+                    type: 'broadcast',
+                    title: 'Mock Exam Released!',
+                    message: `Your ${subject} mock exam for "${evTitle}" is ready. Tap to start.`,
                     actionLabel: 'TAKE EXAM',
-                    actionPath: `/exam.html?mockId=${mockId}`,
+                    actionPath: `/quiz.html?mockid=${mockId}`,
                     createdAt: serverTimestamp(),
                     read: false,
                     brandColor: '#10b981',
                     brandIcon: 'library_books'
                 });
+
+                // Schedule item
+                const schedRef = doc(collection(db, 'users', uid, 'schedule'));
+                await setDoc(schedRef, {
+                    id: schedRef.id,
+                    type: 'mock_exam',
+                    title: `${subject} Mock - ${evTitle}`,
+                    course: subject,
+                    mockId: mockId,
+                    eventId: eventId,
+                    timeLimit: timeLimit,
+                    quizUrl: `/quiz.html?mockid=${mockId}`,
+                    message: `Complete your ${subject} mock exam for "${evTitle}".`,
+                    timestamp: serverTimestamp(),
+                    read: false
+                });
             }
             
             document.getElementById('ef-dq-builder-modal')?.remove();
-            window.showEFModal("Success", `Mock released and notifications sent to ${uids.length} students.`, "AWESOME", null, true);
+            window.showEFModal("Success", `Mock released. ${uids.length} students notified and scheduled.`, "AWESOME", null, true);
 
         } catch (e) {
             console.error(e);
@@ -6752,7 +6930,7 @@ window.mcBroadcastEventResults = async function(eventId) {
                 const notifRef = doc(collection(db, 'users', uid, 'notifications'));
                 await setDoc(notifRef, {
                     id: notifRef.id,
-                    type: 'system',
+                    type: 'broadcast',
                     title: 'Results Released!',
                     message: `Results for ${evTitle} have been published. View your scorecard now.`,
                     actionLabel: 'VIEW SCORECARD',
