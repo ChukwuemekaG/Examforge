@@ -852,6 +852,18 @@ function renderMaster() {
             
             /* ── DQ History ── */
             @media(max-width:500px){ #mc-dq-history > div { flex-direction:column !important; align-items:flex-start !important; gap:8px !important; } }
+
+            /* ── Tab dual labels ── */
+            .mc-tab-label-short { display:none; }
+            @media(max-width:600px){
+                .mc-tab-label { display:none; }
+                .mc-tab-label-short { display:inline; }
+            }
+            @media(max-width:400px){
+                .mc-tab-label-short { display:none; }
+                .mc-tab .material-icons-round { margin-right:0 !important; }
+                .mc-tab { padding:6px 10px; }
+            }
         </style>
 
         <div class="page-header">
@@ -872,19 +884,29 @@ function renderMaster() {
 
         <div class="mc-tab-bar">
             <button class="mc-tab ${masterTab==='users'?'active':''}" onclick="window.mcSwitchTab('users')">
-                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">group</span>Users
+                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">group</span>
+                <span class="mc-tab-label">Users</span>
+                <span class="mc-tab-label-short">Users</span>
             </button>
             <button class="mc-tab ${masterTab==='courses'?'active':''}" onclick="window.mcSwitchTab('courses')">
-                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">library_books</span>Courses
+                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">library_books</span>
+                <span class="mc-tab-label">Courses</span>
+                <span class="mc-tab-label-short">Courses</span>
             </button>
             <button class="mc-tab ${masterTab==='dailyquiz'?'active':''}" onclick="window.mcSwitchTab('dailyquiz')">
-                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">today</span>Daily Quiz
+                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">today</span>
+                <span class="mc-tab-label">Daily Quiz</span>
+                <span class="mc-tab-label-short">Quiz</span>
             </button>
             <button class="mc-tab ${masterTab==='dailyadvice'?'active':''}" onclick="window.mcSwitchTab('dailyadvice')">
-                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">tips_and_updates</span>Daily Advice
+                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">tips_and_updates</span>
+                <span class="mc-tab-label">Daily Advice</span>
+                <span class="mc-tab-label-short">Advice</span>
             </button>
             <button class="mc-tab ${masterTab==='subevents'?'active':''}" onclick="window.mcSwitchTab('subevents')">
-                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">event_available</span>Subscription Events
+                <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">event_available</span>
+                <span class="mc-tab-label">Subscription Events</span>
+                <span class="mc-tab-label-short">Events</span>
             </button>
         </div>
  
