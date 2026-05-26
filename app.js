@@ -5866,50 +5866,67 @@ window.adminPromptNotification = function(userId) {
                             </div>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 24px;border-top:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
-                        <button class="btn btn-outline" id="btn-download-advice-png" style="font-weight:900;border:2px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;">
+                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:2px solid var(--border);background:var(--bg-card);flex-shrink:0;flex-wrap:wrap;">
+                        <button class="btn btn-outline" id="btn-download-advice-png" style="font-weight:900;border:2px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;flex:1;min-width:140px;justify-content:center;">
                             <span class="material-icons-round" style="font-size:1rem;">image</span> SAVE AS IMAGE
                         </button>
-                        <button class="btn btn-primary" id="btn-download-advice-pdf" style="font-weight:900;border:2px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;">
+                        <button class="btn btn-primary" id="btn-download-advice-pdf" style="font-weight:900;border:2px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;flex:1;min-width:140px;justify-content:center;">
                             <span class="material-icons-round" style="font-size:1rem;">picture_as_pdf</span> SAVE AS PDF
                         </button>
-                        <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:2px solid var(--border);font-weight:900;padding:10px 20px;">CLOSE</button>
                     </div>`;
                 document.body.appendChild(overlay);
                 overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
                 
-                // Attach download handlers
-                setTimeout(() => {
-                    const contentEl = document.getElementById('advice-reader-content');
-                    
-                    document.getElementById('btn-download-advice-png')?.addEventListener('click', async () => {
-                        try {
-                            const html2canvas = (await import('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')).default;
-                            const canvas = await html2canvas(contentEl, { scale: 2, backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#fbfcff', useCORS: true });
-                            const link = document.createElement('a');
-                            link.download = 'ExamForge_Advice.png';
-                            link.href = canvas.toDataURL('image/png');
-                            link.click();
-                        } catch(e) {
-                            alert('Could not generate image. Try the PDF option instead.');
-                        }
-                    });
-                    
-                    document.getElementById('btn-download-advice-pdf')?.addEventListener('click', async () => {
-                        try {
-                            const html2pdf = (await import('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js')).default;
-                            html2pdf().set({
-                                margin: [10, 10, 10, 10],
-                                filename: 'ExamForge_Advice.pdf',
-                                image: { type: 'jpeg', quality: 0.98 },
-                                html2canvas: { scale: 2, useCORS: true, backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#fbfcff' },
-                                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                            }).from(contentEl).save();
-                        } catch(e) {
-                            alert('Could not generate PDF.');
-                        }
-                    });
-                }, 100);
+            // Helper to dynamically load a script
+            function loadScript(src) {
+                return new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = resolve;
+                    s.onerror = () => reject(new Error('Failed to load ' + src));
+                    document.head.appendChild(s);
+                });
+            }
+            
+            // Attach download handlers
+            setTimeout(() => {
+                const contentEl = document.getElementById('advice-reader-content');
+                
+                document.getElementById('btn-download-advice-png')?.addEventListener('click', async () => {
+                    try {
+                        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+                        const canvas = await window.html2canvas(contentEl, { 
+                            scale: 2, 
+                            backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#fbfcff', 
+                            useCORS: true,
+                            logging: false
+                        });
+                        const link = document.createElement('a');
+                        link.download = 'ExamForge_Advice.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    } catch(e) {
+                        console.error(e);
+                        alert('Could not generate image. Error: ' + e.message);
+                    }
+                });
+                
+                document.getElementById('btn-download-advice-pdf')?.addEventListener('click', async () => {
+                    try {
+                        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+                        window.html2pdf().set({
+                            margin: [10, 10, 10, 10],
+                            filename: 'ExamForge_Advice.pdf',
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#fbfcff' },
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        }).from(contentEl).save();
+                    } catch(e) {
+                        console.error(e);
+                        alert('Could not generate PDF. Error: ' + e.message);
+                    }
+                });
+            }, 100);
                 
                 return;
             }
