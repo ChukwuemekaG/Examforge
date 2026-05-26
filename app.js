@@ -5791,29 +5791,107 @@ window.adminPromptNotification = function(userId) {
                 const overlay = document.createElement('div');
                 overlay.id = 'ef-student-notif-overlay';
                 overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:2500;animation:fadeIn 0.2s ease;';
+                
+                // Build subjects table rows
+                const subjRows = (rd.subjects || []).map(s => {
+                    const isAttempted = s.score !== null && s.score !== undefined && s.grade !== null;
+                    let gradeDisplay = '—';
+                    let gpDisplay = '—';
+                    let qpDisplay = '—';
+                    let scoreDisplay = '—';
+                    let remarkDisplay = '—';
+                    let gradeClass = '';
+                    if (isAttempted) {
+                        const g = s.grade;
+                        gradeDisplay = g.grade;
+                        gpDisplay = g.points.toFixed(1);
+                        qpDisplay = (g.points * s.creditUnit).toFixed(1);
+                        scoreDisplay = s.score + '%';
+                        remarkDisplay = g.remark;
+                        gradeClass = `style="font-weight:900;color:${g.grade === 'F' ? '#dc2626' : '#16a34a'};"`;
+                    }
+                    return `
+                    <tr>
+                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text);">${s.name}</td>
+                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;">${s.creditUnit}</td>
+                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:${isAttempted ? '700' : '500'};color:${isAttempted ? 'var(--text)' : 'var(--text-muted)'};">${isAttempted ? `${s.correct}/${s.total}` : '—'}</td>
+                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;color:${isAttempted ? '#16a34a' : 'var(--text-muted)'};">${scoreDisplay}</td>
+                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;" ${gradeClass}>${gradeDisplay}</td>
+                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;">${gpDisplay}</td>
+                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;">${qpDisplay}</td>
+                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);font-weight:600;font-size:0.7rem;color:var(--text-muted);">${remarkDisplay}</td>
+                    </tr>`;
+                }).join('');
+                
                 overlay.innerHTML = `
                     <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
                         <button onclick="document.getElementById('ef-student-notif-overlay').remove()"
                             style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                             <span class="material-icons-round">arrow_back</span>
                         </button>
-                        <div style="width:40px;height:40px;border-radius:8px;background:rgba(124,58,237,0.08);border:2px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <span class="material-icons-round" style="color:#7c3aed;">gavel</span>
+                        <div style="font-weight:900;font-size:1rem;color:var(--text);text-transform:uppercase;flex:1;display:flex;align-items:center;gap:10px;">
+                            <span style="width:36px;height:36px;border-radius:8px;background:rgba(124,58,237,0.08);border:2px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <span class="material-icons-round" style="color:#7c3aed;font-size:1rem;">gavel</span>
+                            </span>
+                            ${rd.eventTitle} — Results
                         </div>
-                        <div style="font-weight:900;font-size:1rem;color:var(--text);text-transform:uppercase;flex:1;">${rd.eventTitle} — Results</div>
                         <button onclick="document.getElementById('ef-student-notif-overlay').remove()"
                             style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                             <span class="material-icons-round">close</span>
                         </button>
                     </div>
-                    <div style="flex:1;overflow-y:auto;padding:20px;background:var(--bg);">
-                        ${rd.resultHTML || '<div style="text-align:center;padding:48px;color:var(--text-muted);">Result sheet not available.</div>'}
+                    <div style="flex:1;overflow-y:auto;padding:24px;background:var(--bg);">
+                        <div style="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:20px;">
+                            <!-- Student Info -->
+                            <div style="background:var(--bg-card);border:2px solid var(--border);border-radius:10px;padding:16px 20px;">
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div>
+                                        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:2px;">Student</div>
+                                        <div style="font-weight:800;font-size:1rem;color:var(--text);">${rd.eventTitle}</div>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:2px;">GPA</div>
+                                        <div style="font-weight:900;font-size:1.8rem;color:var(--brand);line-height:1;">${rd.gpa ? rd.gpa.toFixed(2) : '—'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Subjects Table -->
+                            <div style="background:var(--bg-card);border:2px solid var(--border);border-radius:10px;overflow:hidden;">
+                                <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:12px 14px;border-bottom:2px solid var(--border);background:var(--bg-inset);">Course Breakdown</div>
+                                <div style="overflow-x:auto;">
+                                    <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
+                                        <thead>
+                                            <tr style="background:var(--bg-inset);">
+                                                <th style="padding:8px 6px;text-align:left;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">Course</th>
+                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">CU</th>
+                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">Score</th>
+                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">%</th>
+                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">Grade</th>
+                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">GP</th>
+                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">QP</th>
+                                                <th style="padding:8px 6px;text-align:left;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">Remark</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${subjRows}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- Comment -->
+                            <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:16px 20px;">
+                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:6px;">Academic Comment</div>
+                                <div style="font-weight:800;font-size:1.1rem;color:var(--text);">${rd.gpaComment || '—'}</div>
+                            </div>
+                        </div>
                     </div>
                     <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 20px;border-top:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
-                        <button class="btn btn-primary" id="btn-download-result-pdf" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 24px;display:flex;align-items:center;gap:6px;">
+                        <button class="btn btn-primary" id="btn-download-result-pdf" style="font-weight:900;border:2px solid var(--text);padding:10px 24px;display:flex;align-items:center;gap:6px;">
                             <span class="material-icons-round" style="font-size:1.1rem;">download</span> DOWNLOAD PDF
                         </button>
-                        <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:3px solid var(--border);font-weight:900;padding:10px 20px;">CLOSE</button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:2px solid var(--border);font-weight:900;padding:10px 20px;">CLOSE</button>
                     </div>`;
                 document.body.appendChild(overlay);
                 overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
@@ -6202,8 +6280,7 @@ window.printResultSheet = function(html) {
                 gap: 16px;
                 padding: 20px 24px;
                 background: #FFFFFF;
-                border: 3px solid #6d6d6d;
-                box-shadow: 5px 5px 0px #6d6d6d;
+                border: 2px solid #6d6d6d;
                 margin-bottom: 28px;
             }
             .top-bar img {
@@ -6215,7 +6292,7 @@ window.printResultSheet = function(html) {
             }
             .top-bar .title-area h1 {
                 font-family: 'Space Grotesk', sans-serif;
-                font-size: 20px;
+                font-size: 22px;
                 font-weight: 800;
                 text-transform: uppercase;
                 letter-spacing: -0.03em;
@@ -6235,12 +6312,11 @@ window.printResultSheet = function(html) {
                 background: #fe6961;
                 color: #FFFFFF;
                 padding: 14px 20px;
-                font-size: 16px;
-                font-weight: 800;
+                font-size: 18px;
+                font-weight: 900;
                 text-transform: uppercase;
                 letter-spacing: 0.04em;
-                border: 3px solid #6d6d6d;
-                box-shadow: 4px 4px 0px #6d6d6d;
+                border: 2px solid #6d6d6d;
                 margin-bottom: 20px;
             }
             .info-grid {
@@ -6251,8 +6327,7 @@ window.printResultSheet = function(html) {
             }
             .info-card {
                 background: #FFFFFF;
-                border: 2px solid #6d6d6d;
-                box-shadow: 3px 3px 0px #6d6d6d;
+                border: 1px solid #6d6d6d;
                 padding: 12px 16px;
             }
             .info-card .label {
@@ -6263,8 +6338,8 @@ window.printResultSheet = function(html) {
                 letter-spacing: 0.08em;
             }
             .info-card .value {
-                font-size: 14px;
-                font-weight: 800;
+                font-size: 15px;
+                font-weight: 900;
                 color: #18160F;
                 margin-top: 2px;
             }
@@ -6273,8 +6348,7 @@ window.printResultSheet = function(html) {
                 border-collapse: collapse;
                 margin-bottom: 24px;
                 background: #FFFFFF;
-                border: 3px solid #6d6d6d;
-                box-shadow: 5px 5px 0px #6d6d6d;
+                border: 2px solid #6d6d6d;
             }
             table th {
                 background: #18160F;
@@ -6292,8 +6366,8 @@ window.printResultSheet = function(html) {
                 padding: 10px 8px;
                 border: 2px solid #666;
                 text-align: center;
-                font-size: 12px;
-                font-weight: 600;
+                font-size: 13px;
+                font-weight: 700;
                 color: #353637;
             }
             table td:first-child {
@@ -6319,8 +6393,7 @@ window.printResultSheet = function(html) {
             }
             .summary-card {
                 background: #FFFFFF;
-                border: 3px solid #6d6d6d;
-                box-shadow: 4px 4px 0px #6d6d6d;
+                border: 2px solid #6d6d6d;
                 padding: 16px;
                 text-align: center;
             }
@@ -6328,7 +6401,6 @@ window.printResultSheet = function(html) {
                 background: #fe6961;
                 color: #FFFFFF;
                 border-color: #18160F;
-                box-shadow: 5px 5px 0px #18160F;
             }
             .summary-card .s-label {
                 font-size: 9px;
@@ -6339,7 +6411,7 @@ window.printResultSheet = function(html) {
             }
             .summary-card.gpa-card .s-label { color: rgba(255,255,255,0.85); }
             .summary-card .s-value {
-                font-size: 24px;
+                font-size: 28px;
                 font-weight: 900;
                 color: #18160F;
                 line-height: 1.1;
@@ -6349,8 +6421,7 @@ window.printResultSheet = function(html) {
             .summary-card.gpa-card .s-value { color: #FFFFFF; }
             .comment-box {
                 background: #FFFFFF;
-                border: 3px solid #18160F;
-                box-shadow: 5px 5px 0px #18160F;
+                border: 2px solid #18160F;
                 padding: 16px 20px;
                 margin-bottom: 24px;
             }
@@ -6363,8 +6434,8 @@ window.printResultSheet = function(html) {
                 margin-bottom: 4px;
             }
             .comment-box .c-text {
-                font-size: 15px;
-                font-weight: 700;
+                font-size: 16px;
+                font-weight: 800;
                 color: #18160F;
             }
             .grade-ref {
@@ -6374,8 +6445,7 @@ window.printResultSheet = function(html) {
                 margin-bottom: 24px;
                 padding: 12px 16px;
                 background: #FFFFFF;
-                border: 2px solid #666;
-                box-shadow: 3px 3px 0px #666;
+                border: 1px solid #666;
             }
             .grade-ref-item {
                 font-size: 10px;
