@@ -5788,81 +5788,11 @@ window.adminPromptNotification = function(userId) {
             if (!docSnap.exists()) return;
             const n = docSnap.data();
             
-            // If notification has result data, render a result sheet view instead
+            // If notification has result data, open the PDF result sheet directly
             if (n.resultData) {
                 const rd = n.resultData;
-                const overlay = document.createElement('div');
-                overlay.id = 'ef-student-notif-overlay';
-                overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:2500;animation:fadeIn 0.2s ease;';
-                
-                // Build subjects table rows
-                const subjRows = (rd.subjects || []).map(s => {
-                    const isAttempted = s.score !== null && s.score !== undefined && s.grade !== null;
-                    let gradeDisplay = '—';
-                    let gpDisplay = '—';
-                    let qpDisplay = '—';
-                    let scoreDisplay = '—';
-                    let remarkDisplay = '—';
-                    let gradeClass = '';
-                    if (isAttempted) {
-                        const g = s.grade;
-                        gradeDisplay = g.grade;
-                        gpDisplay = g.points.toFixed(1);
-                        qpDisplay = (g.points * s.creditUnit).toFixed(1);
-                        scoreDisplay = s.score + '%';
-                        remarkDisplay = g.remark;
-                        gradeClass = `style="font-weight:900;color:${g.grade === 'F' ? '#dc2626' : '#16a34a'};"`;
-                    }
-                    return `
-                    <tr>
-                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text);">${s.name}</td>
-                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;">${s.creditUnit}</td>
-                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:${isAttempted ? '700' : '500'};color:${isAttempted ? 'var(--text)' : 'var(--text-muted)'};">${isAttempted ? `${s.correct}/${s.total}` : '—'}</td>
-                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;color:${isAttempted ? '#16a34a' : 'var(--text-muted)'};">${scoreDisplay}</td>
-                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;" ${gradeClass}>${gradeDisplay}</td>
-                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;">${gpDisplay}</td>
-                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);text-align:center;font-weight:700;">${qpDisplay}</td>
-                        <td style="padding:8px 6px;border-bottom:1px solid var(--border);font-weight:600;font-size:0.7rem;color:var(--text-muted);">${remarkDisplay}</td>
-                    </tr>`;
-                }).join('');
-                
-                overlay.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
-                        <button onclick="document.getElementById('ef-student-notif-overlay').remove()"
-                            style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-                            <span class="material-icons-round">arrow_back</span>
-                        </button>
-                        <div style="font-weight:900;font-size:1rem;color:var(--text);text-transform:uppercase;flex:1;display:flex;align-items:center;gap:10px;">
-                            <span style="width:36px;height:36px;border-radius:8px;background:rgba(124,58,237,0.08);border:2px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <span class="material-icons-round" style="color:#7c3aed;font-size:1rem;">gavel</span>
-                            </span>
-                            ${rd.eventTitle} — Results
-                        </div>
-                        <button onclick="document.getElementById('ef-student-notif-overlay').remove()"
-                            style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-                            <span class="material-icons-round">close</span>
-                        </button>
-                    </div>
-                    <div style="flex:1;overflow-y:auto;background:#fbfcff;padding:20px;">
-                        <div style="max-width:800px;margin:0 auto;font-family:'Space Grotesk',sans-serif;color:#18160F;font-size:13px;line-height:1.6;">
-                            ${rd.resultHTML || '<div style="text-align:center;padding:48px;color:#999;">Result sheet not available.</div>'}
-                        </div>
-                    </div>
-                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 20px;border-top:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
-                        <button class="btn btn-primary" id="btn-download-result-pdf" style="font-weight:900;border:2px solid var(--text);padding:10px 24px;display:flex;align-items:center;gap:6px;">
-                            <span class="material-icons-round" style="font-size:1.1rem;">download</span> DOWNLOAD PDF
-                        </button>
-                        <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:2px solid var(--border);font-weight:900;padding:10px 20px;">CLOSE</button>
-                    </div>`;
-                document.body.appendChild(overlay);
-                overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
-                // Attach PDF download listener
-                setTimeout(() => {
-                    const pdfBtn = document.getElementById('btn-download-result-pdf');
-                    if (pdfBtn) {
-                        pdfBtn.onclick = () => window.printResultSheet(rd.resultHTML || '');
-                    }
-                }, 50);
+                // Open the result sheet in a new tab (same as PDF generation)
+                window.printResultSheet(rd.resultHTML || '');
                 return; // Skip normal notification rendering
             }
             
@@ -7374,7 +7304,7 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
 window.mcBroadcastEventResults = async function(eventId) {
     window.showEFModal("Broadcast Results", "This will calculate GPA, generate result sheets, and send them to all students who took the exams.", "BROADCAST NOW", async () => {
         try {
-            const { getDocs, query, collection, where, doc, updateDoc, getDoc, setDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const { getDocs, query, collection, where, doc, updateDoc, getDoc, setDoc, deleteDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             
             // Mark event as broadcasted
             await updateDoc(doc(db, 'subscription_events', eventId), { resultsReleased: true });
@@ -7478,7 +7408,16 @@ window.mcBroadcastEventResults = async function(eventId) {
                     releasedAt: serverTimestamp()
                 });
                 
-                // Send notification with result sheet
+                // Delete any existing result notifications for this event
+                try {
+                    const oldNotifs = await getDocs(
+                        query(collection(db, 'users', uid, 'notifications'), where('resultData.eventId', '==', eventId))
+                    );
+                    const delPromises = oldNotifs.docs.map(d => deleteDoc(d.ref));
+                    await Promise.all(delPromises);
+                } catch (e) { /* ignore cleanup errors */ }
+                
+                // Send new notification with result sheet (no spoilers)
                 const notifRef = doc(collection(db, 'users', uid, 'notifications'));
                 await setDoc(notifRef, {
                     id: notifRef.id,
