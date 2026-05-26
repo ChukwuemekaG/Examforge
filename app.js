@@ -4637,8 +4637,8 @@ window.adminPromptNotification = function(userId) {
                     <div class="feed-item">
                         <div class="feed-icon"><span class="material-icons-round">calendar_today</span></div>
                         <div class="feed-body">
-                            <div class="feed-title" style="font-weight:700; font-size:0.85rem;">${s.course}</div>
-                            <div class="feed-meta">${s.date} · ${s.time}</div>
+                            <div class="feed-title" style="font-weight:700; font-size:0.85rem;">${s.course || s.title || 'Mock Exam'}</div>
+                            <div class="feed-meta">${s.date ? s.date + (s.time ? ' · ' + s.time : '') : (s.time ? s.time : 'Available now')}</div>
                         </div>
                     </div>
                     `).join('')}
@@ -6426,6 +6426,8 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                             timeLimit: mock.timeLimit || 45,
                             quizUrl: `/quiz.html?mockid=${mock.id}`,
                             message: `Complete your ${subject} mock exam for "${evTitle}".`,
+                            date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                            time: 'All day',
                             timestamp: serverTimestamp(),
                             read: false
                         });
@@ -7031,6 +7033,8 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
                     timeLimit: timeLimit,
                     quizUrl: `/quiz.html?mockid=${mockId}`,
                     message: `Complete your ${subject} mock exam for "${evTitle}".`,
+                    date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                    time: 'All day',
                     timestamp: serverTimestamp(),
                     read: false
                 });
@@ -7145,7 +7149,7 @@ window.mcBroadcastEventResults = async function(eventId) {
                     message: `Your results for ${evTitle} are ready.\n\nGPA: ${gpa.toFixed(2)} - ${gpaComment}\nSubjects: ${data.subjects.length}\nTotal Credit Units: ${totalCU}\n\nTap to view your full result sheet.`,
                     actionLabel: 'VIEW RESULT',
                     actionPath: `/quiz.html?resultId=${resultId}&eventId=${eventId}`,
-                    createdAt: serverTimestamp(),
+                    timestamp: serverTimestamp(),
                     read: false,
                     brandColor: '#7c3aed',
                     brandIcon: 'gavel',
