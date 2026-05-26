@@ -6157,18 +6157,22 @@ window.printResultSheet = function(html) {
         <html>
         <head>
         <meta charset="UTF-8">
-        <title>ExamForge Official Result Sheet</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ExamForge - Result Sheet</title>
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
-            @page { margin: 12mm 15mm; size: A4 portrait; }
+            @page { margin: 10mm; size: A4 portrait; }
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
-                font-family: 'Times New Roman', Times, serif;
-                color: #1a1a1a;
-                font-size: 11pt;
-                line-height: 1.5;
+                font-family: 'Space Grotesk', sans-serif;
+                color: #18160F;
+                font-size: 13px;
+                line-height: 1.6;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
                 position: relative;
+                background: #fbfcff;
+                padding: 20px;
             }
             body::before {
                 content: '';
@@ -6176,166 +6180,244 @@ window.printResultSheet = function(html) {
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                width: 500px;
-                height: 500px;
-                background-image: url('/examforge-logo.png');
+                width: 600px;
+                height: 600px;
+                background-image: url('/examforge.jpeg');
                 background-size: contain;
                 background-repeat: no-repeat;
                 background-position: center;
-                opacity: 0.06;
+                opacity: 0.04;
                 pointer-events: none;
                 z-index: -1;
             }
             .result-container {
-                max-width: 190mm;
+                max-width: 210mm;
                 margin: 0 auto;
-                padding: 10px 0;
                 position: relative;
                 z-index: 1;
             }
-            .header {
-                text-align: center;
-                border-bottom: 3px double #1a1a1a;
-                padding-bottom: 18px;
+            .top-bar {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                padding: 20px 24px;
+                background: #FFFFFF;
+                border: 3px solid #6d6d6d;
+                box-shadow: 5px 5px 0px #6d6d6d;
+                margin-bottom: 28px;
+            }
+            .top-bar img {
+                height: 48px;
+                width: auto;
+            }
+            .top-bar .title-area {
+                flex: 1;
+            }
+            .top-bar .title-area h1 {
+                font-family: 'Space Grotesk', sans-serif;
+                font-size: 20px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: -0.03em;
+                color: #18160F;
+                line-height: 1;
+            }
+            .top-bar .title-area h1 span { color: #fe6961; }
+            .top-bar .title-area .sub {
+                font-size: 11px;
+                font-weight: 600;
+                color: #3a3b3d;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                margin-top: 4px;
+            }
+            .event-banner {
+                background: #fe6961;
+                color: #FFFFFF;
+                padding: 14px 20px;
+                font-size: 16px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                border: 3px solid #6d6d6d;
+                box-shadow: 4px 4px 0px #6d6d6d;
+                margin-bottom: 20px;
+            }
+            .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
                 margin-bottom: 24px;
             }
-            .header h1 {
-                font-size: 18pt;
-                font-weight: 900;
-                letter-spacing: 2px;
-                text-transform: uppercase;
-                margin-bottom: 4px;
+            .info-card {
+                background: #FFFFFF;
+                border: 2px solid #6d6d6d;
+                box-shadow: 3px 3px 0px #6d6d6d;
+                padding: 12px 16px;
             }
-            .header .subtitle {
-                font-size: 10pt;
-                color: #555;
-                margin-top: 2px;
-            }
-            .header .motto {
-                font-size: 9pt;
-                font-style: italic;
-                color: #888;
-                margin-top: 2px;
-            }
-            .header .official-stamp {
-                display: inline-block;
-                border: 2px solid #1a1a1a;
-                border-radius: 50%;
-                width: 70px;
-                height: 70px;
-                line-height: 70px;
-                text-align: center;
-                font-size: 7pt;
+            .info-card .label {
+                font-size: 10px;
                 font-weight: 700;
+                color: #3a3b3d;
                 text-transform: uppercase;
-                margin-bottom: 10px;
-                color: #1a1a1a;
+                letter-spacing: 0.08em;
             }
-            .event-title {
-                font-size: 13pt;
-                font-weight: 700;
-                text-align: center;
-                margin-bottom: 16px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-            .info-row {
-                display: flex;
-                justify-content: space-between;
-                font-size: 10pt;
-                margin-bottom: 4px;
-                padding: 0 4px;
+            .info-card .value {
+                font-size: 14px;
+                font-weight: 800;
+                color: #18160F;
+                margin-top: 2px;
             }
             table {
                 width: 100%;
                 border-collapse: collapse;
-                margin: 16px 0;
-                font-size: 10pt;
+                margin-bottom: 24px;
+                background: #FFFFFF;
+                border: 3px solid #6d6d6d;
+                box-shadow: 5px 5px 0px #6d6d6d;
             }
             table th {
-                background: #1a1a1a;
-                color: #ffffff;
-                padding: 8px 6px;
-                font-size: 8pt;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                border: 1px solid #1a1a1a;
-                text-align: center;
+                background: #18160F;
+                color: #FFFFFF;
+                padding: 10px 8px;
+                font-size: 10px;
                 font-weight: 700;
-            }
-            table td {
-                padding: 7px 6px;
-                border: 1px solid #333;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                border: 2px solid #18160F;
                 text-align: center;
+            }
+            table th:first-child { text-align: left; }
+            table td {
+                padding: 10px 8px;
+                border: 2px solid #666;
+                text-align: center;
+                font-size: 12px;
+                font-weight: 600;
+                color: #353637;
             }
             table td:first-child {
                 text-align: left;
-                font-weight: 600;
+                font-weight: 700;
+                color: #18160F;
             }
             table tr:nth-child(even) td {
-                background: #f7f7f7;
+                background: #f4f4f0;
             }
-            .grade-A { color: #1a7a1a; font-weight: 700; }
-            .grade-B { color: #2d6a2d; font-weight: 700; }
-            .grade-C { color: #6a6a1a; font-weight: 700; }
-            .grade-D { color: #9a6a0a; font-weight: 700; }
-            .grade-E { color: #b06030; font-weight: 700; }
-            .grade-F { color: #cc2222; font-weight: 700; }
-            .na-subject { color: #999; font-style: italic; }
-            .summary-box {
-                border: 2px solid #1a1a1a;
-                padding: 14px 18px;
-                margin: 16px 0;
-                background: #fafafa;
+            .grade-A { color: #16a34a; font-weight: 800; }
+            .grade-B { color: #2563eb; font-weight: 800; }
+            .grade-C { color: #ca8a04; font-weight: 800; }
+            .grade-D { color: #d97706; font-weight: 800; }
+            .grade-E { color: #b06030; font-weight: 800; }
+            .grade-F { color: #dc2626; font-weight: 800; }
+            .na-subject { color: #999; font-style: italic; font-weight: 500; }
+            .summary-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 12px;
+                margin-bottom: 24px;
             }
-            .summary-row {
-                display: flex;
-                justify-content: space-between;
-                font-size: 11pt;
-                padding: 3px 0;
-            }
-            .summary-row.total {
-                border-top: 2px solid #1a1a1a;
-                margin-top: 6px;
-                padding-top: 8px;
-                font-weight: 700;
-                font-size: 12pt;
-            }
-            .comment-box {
-                border: 1px solid #1a1a1a;
-                padding: 12px 16px;
-                margin: 16px 0;
-                font-size: 10pt;
-                font-style: italic;
-                background: #f5f5f5;
-            }
-            .footer {
-                margin-top: 24px;
-                padding-top: 12px;
-                border-top: 1px solid #999;
-                font-size: 8pt;
-                color: #888;
+            .summary-card {
+                background: #FFFFFF;
+                border: 3px solid #6d6d6d;
+                box-shadow: 4px 4px 0px #6d6d6d;
+                padding: 16px;
                 text-align: center;
             }
-            .footer p { margin: 2px 0; }
+            .summary-card.gpa-card {
+                background: #fe6961;
+                color: #FFFFFF;
+                border-color: #18160F;
+                box-shadow: 5px 5px 0px #18160F;
+            }
+            .summary-card .s-label {
+                font-size: 9px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #3a3b3d;
+            }
+            .summary-card.gpa-card .s-label { color: rgba(255,255,255,0.85); }
+            .summary-card .s-value {
+                font-size: 24px;
+                font-weight: 900;
+                color: #18160F;
+                line-height: 1.1;
+                margin-top: 4px;
+                letter-spacing: -0.03em;
+            }
+            .summary-card.gpa-card .s-value { color: #FFFFFF; }
+            .comment-box {
+                background: #FFFFFF;
+                border: 3px solid #18160F;
+                box-shadow: 5px 5px 0px #18160F;
+                padding: 16px 20px;
+                margin-bottom: 24px;
+            }
+            .comment-box .c-label {
+                font-size: 10px;
+                font-weight: 700;
+                color: #3a3b3d;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                margin-bottom: 4px;
+            }
+            .comment-box .c-text {
+                font-size: 15px;
+                font-weight: 700;
+                color: #18160F;
+            }
+            .grade-ref {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-bottom: 24px;
+                padding: 12px 16px;
+                background: #FFFFFF;
+                border: 2px solid #666;
+                box-shadow: 3px 3px 0px #666;
+            }
+            .grade-ref-item {
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2px 8px;
+                border: 1px solid #666;
+            }
             .signature-row {
                 display: flex;
                 justify-content: space-between;
-                margin-top: 28px;
-                padding: 0 20px;
+                margin-top: 32px;
+                padding: 0 10px;
             }
-            .signature-line {
+            .signature-box {
                 text-align: center;
-                font-size: 9pt;
+                font-size: 11px;
+                font-weight: 600;
+                color: #3a3b3d;
             }
-            .signature-line .line {
-                width: 160px;
-                border-top: 1px solid #1a1a1a;
-                margin: 28px auto 4px;
+            .signature-box .line {
+                width: 180px;
+                border-top: 2px solid #18160F;
+                margin: 32px auto 6px;
             }
-            .no-print { display: none; }
+            .footer {
+                margin-top: 32px;
+                padding-top: 16px;
+                border-top: 2px solid #666;
+                font-size: 9px;
+                color: #3a3b3d;
+                font-weight: 600;
+                text-align: center;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            .footer p { margin: 2px 0; }
             @media print {
                 body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+            @media (max-width: 600px) {
+                .info-grid, .summary-grid { grid-template-columns: 1fr; }
+                .signature-row { flex-direction: column; gap: 16px; }
             }
         </style>
         </head>
@@ -7376,7 +7458,7 @@ window.mcBroadcastEventResults = async function(eventId) {
     });
 };
 
-// ── Build official result sheet HTML ──
+// ── Build neo-brutalist result sheet HTML ──
 function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -7384,7 +7466,6 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
     const studentEmail = studentData.email || '';
     
     const rows = studentData.subjects.map(s => {
-        // Handle unattempted subjects (score will be null/undefined)
         if (s.score === null || s.score === undefined || s.grade === null) {
             return `
             <tr>
@@ -7406,7 +7487,7 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
             <td class="grade-${g.grade}">${g.grade}</td>
             <td>${g.points.toFixed(1)}</td>
             <td>${(g.points * s.creditUnit).toFixed(1)}</td>
-            <td style="font-size:9pt;">${g.remark}</td>
+            <td style="font-size:11px;">${g.remark}</td>
         </tr>`;
     }).join('');
     
@@ -7414,34 +7495,45 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
     const totalCU = studentData.subjects.reduce((sum, s) => sum + s.creditUnit, 0);
     
     return `
-        <div class="header">
-            <div class="official-stamp">EF</div>
-            <h1>ExamForge</h1>
-            <div class="subtitle">Academic Performance · Official Transcript</div>
-            <div class="motto">"Excellence Through Rigour"</div>
+        <div class="top-bar">
+            <img src="/examforge.jpeg" alt="ExamForge" onerror="this.style.display='none'">
+            <div class="title-area">
+                <h1>Exam<span>Forge</span></h1>
+                <div class="sub">Official Result Sheet</div>
+            </div>
         </div>
         
-        <div class="event-title">${eventTitle}</div>
+        <div class="event-banner">${eventTitle}</div>
         
-        <div class="info-row">
-            <span><strong>Student:</strong> ${studentName}</span>
-            <span><strong>Date:</strong> ${dateStr}</span>
-        </div>
-        <div class="info-row">
-            <span><strong>Email:</strong> ${studentEmail}</span>
-            <span><strong>Transcript ID:</strong> EF-${Date.now().toString(36).toUpperCase()}</span>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="label">Student</div>
+                <div class="value">${studentName}</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Email</div>
+                <div class="value">${studentEmail}</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Date Issued</div>
+                <div class="value">${dateStr}</div>
+            </div>
+            <div class="info-card">
+                <div class="label">Transcript ID</div>
+                <div class="value" style="font-family:'JetBrains Mono',monospace;font-size:12px;">EF-${Date.now().toString(36).toUpperCase()}</div>
+            </div>
         </div>
         
         <table>
             <thead>
                 <tr>
-                    <th style="text-align:left;min-width:100px;">Course</th>
-                    <th style="width:35px;">CU</th>
-                    <th style="width:60px;">Score</th>
-                    <th style="width:45px;">%</th>
-                    <th style="width:40px;">Grade</th>
-                    <th style="width:40px;">GP</th>
-                    <th style="width:50px;">QP</th>
+                    <th style="text-align:left;min-width:110px;">Course</th>
+                    <th style="width:40px;">CU</th>
+                    <th style="width:65px;">Score</th>
+                    <th style="width:50px;">%</th>
+                    <th style="width:45px;">Grade</th>
+                    <th style="width:45px;">GP</th>
+                    <th style="width:55px;">QP</th>
                     <th style="text-align:left;">Remark</th>
                 </tr>
             </thead>
@@ -7450,52 +7542,49 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
             </tbody>
         </table>
         
-        <div class="summary-box">
-            <div class="summary-row">
-                <span><strong>Total Credit Units (CU):</strong></span>
-                <span>${totalCU}</span>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="s-label">Total CU</div>
+                <div class="s-value">${totalCU}</div>
             </div>
-            <div class="summary-row">
-                <span><strong>Total Quality Points (QP):</strong></span>
-                <span>${totalQP.toFixed(1)}</span>
+            <div class="summary-card">
+                <div class="s-label">Total QP</div>
+                <div class="s-value">${totalQP.toFixed(1)}</div>
             </div>
-            <div class="summary-row total">
-                <span><strong>GRADE POINT AVERAGE (GPA):</strong></span>
-                <span>${gpa.toFixed(2)}</span>
+            <div class="summary-card gpa-card">
+                <div class="s-label">GPA</div>
+                <div class="s-value">${gpa.toFixed(2)}</div>
             </div>
         </div>
         
         <div class="comment-box">
-            <strong>Academic Comment:</strong> ${gpaComment}
+            <div class="c-label">Academic Comment</div>
+            <div class="c-text">${gpaComment}</div>
         </div>
         
-        <table style="font-size:8pt;margin-top:8px;">
-            <tr>
-                <th style="padding:4px;">Grade</th>
-                <td style="padding:4px;">A</td><td style="padding:4px;">B</td><td style="padding:4px;">C</td>
-                <td style="padding:4px;">D</td><td style="padding:4px;">E</td><td style="padding:4px;">F</td>
-            </tr>
-            <tr>
-                <th style="padding:4px;">Points</th>
-                <td style="padding:4px;">5.0</td><td style="padding:4px;">4.0</td><td style="padding:4px;">3.0</td>
-                <td style="padding:4px;">2.0</td><td style="padding:4px;">1.0</td><td style="padding:4px;">0.0</td>
-            </tr>
-        </table>
+        <div class="grade-ref">
+            <span class="grade-ref-item">A = 5.0</span>
+            <span class="grade-ref-item">B = 4.0</span>
+            <span class="grade-ref-item">C = 3.0</span>
+            <span class="grade-ref-item">D = 2.0</span>
+            <span class="grade-ref-item">E = 1.0</span>
+            <span class="grade-ref-item">F = 0.0</span>
+        </div>
         
         <div class="signature-row">
-            <div class="signature-line">
+            <div class="signature-box">
                 <div class="line"></div>
                 ExamForge Administrator
             </div>
-            <div class="signature-line">
+            <div class="signature-box">
                 <div class="line"></div>
                 Date Issued
             </div>
         </div>
         
         <div class="footer">
-            <p>This is a computer-generated transcript. All results are final and subject to institutional verification.</p>
-            <p>ExamForge © ${now.getFullYear()} · Official Academic Record</p>
+            <p>This is a computer-generated transcript. All results are final.</p>
+            <p>ExamForge &copy; ${now.getFullYear()} &middot; Official Academic Record</p>
         </div>`;
 }
 
