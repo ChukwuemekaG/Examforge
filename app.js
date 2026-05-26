@@ -6135,6 +6135,9 @@ window.mcLoadSubEvents = async function() {
                     <button class="btn btn-outline" onclick="window.mcViewSubEventDetails('${ev.id}')" style="flex:1;font-size:0.7rem;padding:6px;border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);font-weight:800;">
                         MANAGE EVENT
                     </button>
+                    <button class="btn btn-primary" onclick="window.mcBroadcastEventMocks('${ev.id}','${ev.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);font-weight:800;background:#10b981;display:flex;align-items:center;gap:4px;">
+                        <span class="material-icons-round" style="font-size:0.85rem;">campaign</span>
+                    </button>
                     <button class="btn btn-danger" onclick="window.mcDeleteSubEvent('${ev.id}', '${ev.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);display:flex;align-items:center;justify-content:center;aspect-ratio:1;">
                         <span class="material-icons-round" style="font-size:0.95rem;">delete</span>
                     </button>
@@ -6242,6 +6245,83 @@ window.mcDeleteSubEvent = function(eventId, title) {
             } catch (e) {
                 console.error(e);
                 window.showEFModal("Delete Failed", e.message, "OK", null, true);
+            }
+        }
+    );
+};
+
+window.mcBroadcastEventMocks = function(eventId, title) {
+    window.showEFModal(
+        "Broadcast Mocks",
+        `Release all subject mock exams for "${title}" to registered students?`,
+        "BROADCAST ALL",
+        async () => {
+            try {
+                const { getDocs, collection, query, where, doc, getDoc, setDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                
+                // 1. Find all mocks for this event
+                const mockSnap = await getDocs(query(collection(db, 'mock_exams'), where('eventId', '==', eventId)));
+                const mocks = mockSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                if (mocks.length === 0) {
+                    return window.showEFModal("No Mocks", "No mock exams found for this event. Create them first via MANAGE EVENT.", "OK", null, true);
+                }
+                
+                // 2. Find all registrations for this event
+                const regSnap = await getDocs(collection(db, 'subscription_events', eventId, 'registrations'));
+                const regData = {};
+                regSnap.forEach(d => {
+                    const r = d.data();
+                    regData[d.id] = r.subjects || [];
+                });
+                
+                const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
+                const evTitle = evDoc.exists() ? evDoc.data().title : title;
+                
+                let totalNotifs = 0;
+                const subjectsBroadcasted = new Set();
+                
+                // 3. For each mock, notify the relevant students
+                for (const mock of mocks) {
+                    const subject = mock.subject;
+                    subjectsBroadcasted.add(subject);
+                    
+                    // Find UIDs registered for this subject
+                    const uids = Object.entries(regData)
+                        .filter(([uid, subs]) => subs.includes(subject))
+                        .map(([uid]) => uid);
+                    
+                    if (uids.length === 0) continue;
+                    
+                    for (const uid of uids) {
+                        const notifRef = doc(collection(db, 'users', uid, 'notifications'));
+                        await setDoc(notifRef, {
+                            id: notifRef.id,
+                            type: 'system',
+                            title: 'Mock Exam Ready!',
+                            message: `Your ${subject} mock exam for "${evTitle}" is now available. Tap to take it.`,
+                            actionLabel: 'TAKE EXAM',
+                            actionPath: `/exam.html?mockId=${mock.id}`,
+                            createdAt: serverTimestamp(),
+                            read: false,
+                            brandColor: '#10b981',
+                            brandIcon: 'library_books'
+                        });
+                        totalNotifs++;
+                    }
+                }
+                
+                window.showEFModal(
+                    "Broadcast Complete",
+                    `Mocks broadcasted for ${subjectsBroadcasted.size} subject(s). ${totalNotifs} notification(s) sent to students.`,
+                    "OK",
+                    null,
+                    true
+                );
+                
+            } catch (e) {
+                console.error(e);
+                window.showEFModal("Error", e.message, "OK", null, true);
             }
         }
     );
@@ -6361,6 +6441,7 @@ window.mcOpenCreateEventMockModal = function(eventId, subject) {
             @media (max-width: 600px) {
                 .dq-modal-card { width: 100vw !important; height: 100vh !important; max-height: 100vh !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
                 .dq-meta-grid, .dq-question-grid-split { grid-template-columns: 1fr !important; gap: 12px !important; }
+                .dq-toggle-grid { grid-template-columns: 1fr !important; }
                 .dq-footer-actions { flex-direction: column !important; gap: 10px !important; width: 100%; }
                 .dq-footer-actions button { width: 100% !important; }
             }
@@ -6385,6 +6466,40 @@ window.mcOpenCreateEventMockModal = function(eventId, subject) {
                         <label style="font-weight:800; text-transform:uppercase; font-size:0.7rem; color:var(--text); margin-bottom:6px; display:block;">Time Limit (Minutes)</label>
                         <input type="number" id="dq-builder-time" value="45" min="1" max="180" style="border:3px solid var(--text); border-radius:8px; padding:10px 14px; font-weight:800; font-size:0.85rem; width:100%; box-sizing:border-box; background:var(--bg-card); color:var(--text);">
                     </div>
+                </div>
+                
+                <hr style="border:0; border-top:3px solid var(--text); margin:4px 0;">
+                
+                <!-- Mock Behaviour Flags -->
+                <div class="dq-toggle-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <label style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:2px solid #dc2626;border-radius:8px;cursor:pointer;transition:border-color 0.15s;background:#dc262610;" id="mc-tog-wrap-strict">
+                        <input type="checkbox" id="mc-tog-strict" checked style="width:16px;height:16px;margin-top:1px;accent-color:#dc2626;flex-shrink:0;">
+                        <div>
+                            <div style="font-weight:800;font-size:0.78rem;color:var(--text);">🔒 Exam Mode</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Strict — no practice option</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:2px solid #7c3aed;border-radius:8px;cursor:pointer;transition:border-color 0.15s;background:#7c3aed10;" id="mc-tog-wrap-mock">
+                        <input type="checkbox" id="mc-tog-mock" checked style="width:16px;height:16px;margin-top:1px;accent-color:#7c3aed;flex-shrink:0;">
+                        <div>
+                            <div style="font-weight:800;font-size:0.78rem;color:var(--text);">🎭 Hide Results</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Students won't see score/answers after submission</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:2px solid #d97706;border-radius:8px;cursor:pointer;transition:border-color 0.15s;background:#d9770610;" id="mc-tog-wrap-nocorrection">
+                        <input type="checkbox" id="mc-tog-nocorrection" checked style="width:16px;height:16px;margin-top:1px;accent-color:#d97706;flex-shrink:0;">
+                        <div>
+                            <div style="font-weight:800;font-size:0.78rem;color:var(--text);">🚫 No Review</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Hides correction/review screen after exam</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.15s;background:transparent;" id="mc-tog-wrap-private">
+                        <input type="checkbox" id="mc-tog-private" style="width:16px;height:16px;margin-top:1px;accent-color:#0f766e;flex-shrink:0;">
+                        <div>
+                            <div style="font-weight:800;font-size:0.78rem;color:var(--text);">🔐 Restricted</div>
+                            <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Only accessible via direct link / schedule</div>
+                        </div>
+                    </label>
                 </div>
                 
                 <hr style="border:0; border-top:3px solid var(--text); margin:4px 0;">
@@ -6435,6 +6550,19 @@ window.mcOpenCreateEventMockModal = function(eventId, subject) {
     
     // Attempt to preload existing mock if any
     window.mcPreloadEventMock(eventId, subject);
+
+    // Bind toggle color updates
+    const colorMap = { strict: '#dc2626', mock: '#7c3aed', nocorrection: '#d97706', private: '#0f766e' };
+    ['strict','mock','nocorrection','private'].forEach(id => {
+        const cb = document.getElementById(`mc-tog-${id}`);
+        const wrap = document.getElementById(`mc-tog-wrap-${id}`);
+        if (!cb || !wrap) return;
+        const update = () => {
+            wrap.style.borderColor = cb.checked ? colorMap[id] : 'var(--border)';
+            wrap.style.background  = cb.checked ? `${colorMap[id]}10` : 'transparent';
+        };
+        cb.addEventListener('change', update);
+    });
 };
 
 window.mcPreloadEventMock = async function(eventId, subject) {
@@ -6451,6 +6579,29 @@ window.mcPreloadEventMock = async function(eventId, subject) {
             currentBuilderQuestions.forEach(q => q.expanded = false);
             if(currentBuilderQuestions[0]) currentBuilderQuestions[0].expanded = true;
             window.mcRenderBuilderQuestions();
+            
+            // Restore toggle states from loaded mock
+            const toggleIds = ['mc-tog-strict', 'mc-tog-mock', 'mc-tog-nocorrection', 'mc-tog-private'];
+            const toggleStates = {
+                'mc-tog-strict': m.isStrict,
+                'mc-tog-mock': m.isMock,
+                'mc-tog-nocorrection': m.isCorrection === false,
+                'mc-tog-private': m.isPrivate
+            };
+            const colorMap2 = { strict: '#dc2626', mock: '#7c3aed', nocorrection: '#d97706', private: '#0f766e' };
+            toggleIds.forEach(id => {
+                const cb = document.getElementById(id);
+                if (cb && toggleStates[id] !== undefined) {
+                    cb.checked = toggleStates[id];
+                    // Update the wrap style
+                    const suffix = id.replace('mc-tog-', '');
+                    const wrap = document.getElementById(`mc-tog-wrap-${suffix}`);
+                    if (wrap) {
+                        wrap.style.borderColor = cb.checked ? colorMap2[suffix] : 'var(--border)';
+                        wrap.style.background  = cb.checked ? `${colorMap2[suffix]}10` : 'transparent';
+                    }
+                }
+            });
         }
     } catch(e) {
         console.error("Error preloading mock", e);
@@ -6486,7 +6637,11 @@ window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=fal
             title,
             questions: currentBuilderQuestions,
             timeLimit: time,
-            isStrictMock: true, // Uses the strict layout
+            isStrict:     document.getElementById('mc-tog-strict')?.checked ?? true,
+            isMock:       document.getElementById('mc-tog-mock')?.checked ?? true,
+            isCorrection: !(document.getElementById('mc-tog-nocorrection')?.checked ?? true),
+            isPrivate:    document.getElementById('mc-tog-private')?.checked ?? false,
+            isStrictMock: true,
             createdAt: serverTimestamp()
         });
         
