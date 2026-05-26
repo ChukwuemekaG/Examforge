@@ -6599,7 +6599,7 @@ window.mcDeleteSubEvent = window.mcDeleteSubEvent;
 window.mcViewSubEventDetails = window.mcViewSubEventDetails;
 // ─── SUBEVENT MOCK EXAMS ────────────────────────────────────────────────
 
-window.mcOpenCreateEventMockModal = function(eventId, subject) {
+window.mcOpenCreateEventMockModal = async function(eventId, subject) {
     window.currentBuilderQuestions = [
         { question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true }
     ];
@@ -6725,10 +6725,9 @@ window.mcOpenCreateEventMockModal = function(eventId, subject) {
     `;
     document.body.appendChild(modal);
     modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    // Attempt to preload existing mock if any (await it so questions render with loaded data)
+    await window.mcPreloadEventMock(eventId, subject);
     window.mcRenderBuilderQuestions();
-    
-    // Attempt to preload existing mock if any
-    window.mcPreloadEventMock(eventId, subject);
 
     // Bind toggle color updates
     const colorMap = { strict: '#dc2626', mock: '#7c3aed', nocorrection: '#d97706', private: '#0f766e' };
