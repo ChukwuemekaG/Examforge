@@ -897,6 +897,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     timestamp: serverTimestamp()
                 });
 
+                // ── Clean up notification & schedule after mock submission ──
+                try {
+                    const { getDocs, query, collection, where, deleteDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                    
+                    // Delete notifications for this mock
+                    const notifSnap = await getDocs(
+                        query(collection(db, 'users', currentUser.uid, 'notifications'), where('actionPath', '==', `/quiz.html?mockid=${examState.quizId}`))
+                    );
+                    const delPromises = notifSnap.docs.map(d => deleteDoc(fDoc(db, 'users', currentUser.uid, 'notifications', d.id)));
+                    
+                    // Delete schedule items for this mock
+                    const schedSnap = await getDocs(
+                        query(collection(db, 'users', currentUser.uid, 'schedule'), where('mockId', '==', examState.quizId))
+                    );
+                    schedSnap.docs.forEach(d => delPromises.push(deleteDoc(fDoc(db, 'users', currentUser.uid, 'schedule', d.id))));
+                    
+                    await Promise.all(delPromises);
+                } catch (cleanupErr) {
+                    console.error("Mock cleanup error:", cleanupErr);
+                }
+                // ── End cleanup ──
+
                 const updatePayload = {
                     streak: streakUpdate.streak,
                     highestStreak: streakUpdate.highestStreak,

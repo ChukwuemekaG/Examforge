@@ -6348,28 +6348,30 @@ window.mcViewSubEventDetails = async function(eventId) {
     // Basic Details overlay
     const overlay = document.createElement('div');
     overlay.id = 'ef-se-details-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:stretch;justify-content:flex-end;z-index:2000;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:2000;animation:fadeIn 0.2s ease;';
     overlay.innerHTML = `
-        <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);box-shadow:-8px 0 32px rgba(0,0,0,0.25);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
-            <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:2px solid var(--border);flex-shrink:0;">
-                <div style="width:44px;height:44px;border-radius:10px;background:rgba(124,58,237,0.08);border:1.5px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <span class="material-icons-round" style="color:#7c3aed;">event_note</span>
-                </div>
-                <div style="flex:1;min-width:0;">
-                    <div id="ef-se-det-title" style="font-weight:900;font-size:1.05rem;color:var(--text);">Loading Event details...</div>
-                    <div id="ef-se-det-meta" style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Event ID: <code style="font-family:var(--font-mono);font-size:0.65rem;">${eventId}</code></div>
-                </div>
-                <button onclick="this.closest('#ef-se-details-overlay').remove()"
-                    style="background:var(--bg-inset);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:7px;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;">
-                    <span class="material-icons-round">close</span>
-                </button>
+        <div style="display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+            <button onclick="this.closest('#ef-se-details-overlay').remove()"
+                style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                <span class="material-icons-round">arrow_back</span>
+            </button>
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(124,58,237,0.08);border:1.5px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-icons-round" style="color:#7c3aed;">event_note</span>
             </div>
-            
-            <div id="ef-se-det-body" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:24px;">
-                <div style="text-align:center;padding:56px;color:var(--text-muted);">
-                    <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;">autorenew</span>
-                    <div style="margin-top:12px;font-size:0.8rem;">Fetching data...</div>
-                </div>
+            <div style="flex:1;min-width:0;">
+                <div id="ef-se-det-title" style="font-weight:900;font-size:1.05rem;color:var(--text);">Loading Event details...</div>
+                <div id="ef-se-det-meta" style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Event ID: <code style="font-family:var(--font-mono);font-size:0.65rem;">${eventId}</code></div>
+            </div>
+            <button onclick="this.closest('#ef-se-details-overlay').remove()"
+                style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        
+        <div id="ef-se-det-body" style="flex:1;overflow-y:auto;padding:24px;background:var(--bg);display:flex;flex-direction:column;gap:24px;">
+            <div style="text-align:center;padding:56px;color:var(--text-muted);">
+                <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;">autorenew</span>
+                <div style="margin-top:12px;font-size:0.8rem;">Fetching data...</div>
             </div>
         </div>`;
     document.body.appendChild(overlay);
@@ -6477,30 +6479,29 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects) {
                 if (userSnap.exists()) user = userSnap.data();
             } catch(e) {}
             
-            // Check mock attempts for each subject the student registered for
+            // Check mock attempts for each subject
             const subjectScores = {};
             for (const sub of (reg.subjects || [])) {
-                // Find mock for this event+subject
-                const mockQuery = await getDocs(
-                    (await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")).query(
-                        (await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")).collection(db, 'mock_exams'),
-                        (await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")).where('eventId', '==', eventId),
-                        (await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")).where('subject', '==', sub)
-                    )
+                const { query, where, collection: col, getDocs: gd, doc: d, getDoc: gdoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                const mockQuery = await gd(
+                    query(col(db, 'mock_exams'), where('eventId', '==', eventId), where('subject', '==', sub))
                 );
                 
                 if (!mockQuery.empty) {
                     const mockId = mockQuery.docs[0].id;
-                    // Check for attempt
-                    const attemptSnap = await getDoc(doc(db, 'mock_exams', mockId, 'attempts', reg.uid));
+                    const attemptSnap = await gdoc(d(db, 'mock_exams', mockId, 'attempts', reg.uid));
                     if (attemptSnap.exists()) {
                         const att = attemptSnap.data();
-                        subjectScores[sub] = `${att.score || 0}%`;
+                        subjectScores[sub] = {
+                            correct: att.correct || 0,
+                            total: att.totalQuestions || 0,
+                            percentage: att.score || 0
+                        };
                     } else {
-                        subjectScores[sub] = '—';
+                        subjectScores[sub] = null;
                     }
                 } else {
-                    subjectScores[sub] = '—';
+                    subjectScores[sub] = null;
                 }
             }
             
@@ -6515,55 +6516,75 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects) {
             return p.length > 1 ? (p[0][0]+p[p.length-1][0]).toUpperCase() : n.substring(0,2).toUpperCase();
         };
         
-        // Build score columns based on subjects
         const subjectCols = subjects;
         
         container.innerHTML = `
             <style>
-                .reg-table { width:100%; border-collapse:collapse; min-width:600px; font-size:0.75rem; }
-                .reg-table th { background:var(--bg-inset); font-size:0.6rem; font-weight:900; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); padding:10px 12px; border-bottom:2px solid var(--text); text-align:left; white-space:nowrap; }
-                .reg-table td { padding:8px 12px; border-bottom:1px solid var(--border); color:var(--text-sub); font-weight:500; }
+                .reg-table { width:100%; border-collapse:collapse; min-width:700px; font-size:0.75rem; }
+                .reg-table th { background:var(--bg-inset); font-size:0.6rem; font-weight:900; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); padding:10px 12px; border:1px solid var(--border); text-align:left; white-space:nowrap; }
+                .reg-table td { padding:8px 12px; border:1px solid var(--border); color:var(--text-sub); font-weight:500; }
                 .reg-table tr:hover td { background:var(--bg-inset); }
                 .reg-table td:first-child { font-weight:700; color:var(--text); }
                 .score-taken { color:#16a34a; font-weight:800; }
                 .score-empty { color:var(--text-muted); font-weight:400; }
+                .reg-table th.score-col { text-align:center; background:#16a34a10; }
+                .reg-table th.pct-col { text-align:center; background:#16a34a05; }
                 @media(max-width:600px){
                     .reg-table { font-size:0.65rem; min-width:0; }
-                    .reg-table th, .reg-table td { padding:6px 8px; }
+                    .reg-table th, .reg-table td { padding:5px 6px; }
                 }
             </style>
             <table class="reg-table">
                 <thead>
                     <tr>
-                        <th style="width:36px;"></th>
+                        <th style="width:32px;text-align:center;">#</th>
                         <th>Student</th>
                         <th>Username</th>
                         <th>Email</th>
-                        <th>Registered Subjects</th>
-                        ${subjectCols.map(s => `<th style="text-align:center;">${s}</th>`).join('')}
+                        <th>Subjects</th>
+                        ${subjectCols.map(s => `
+                            <th class="score-col" style="text-align:center;border-left:2px solid var(--text);">${s}<br><span style="font-weight:600;font-size:0.5rem;">Score</span></th>
+                            <th class="pct-col" style="text-align:center;min-width:50px;">${s}<br><span style="font-weight:600;font-size:0.5rem;">%</span></th>
+                        `).join('')}
                     </tr>
                 </thead>
                 <tbody>
-                    ${studentData.map(sd => `
+                    ${studentData.map((sd, idx) => `
                         <tr>
+                            <td style="text-align:center;font-weight:700;color:var(--text-muted);font-size:0.65rem;">${idx + 1}</td>
                             <td>
-                                <div style="width:28px;height:28px;border-radius:6px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.6rem;border:1.5px solid var(--text);">${initials(sd.user)}</div>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <div style="width:28px;height:28px;border-radius:6px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.6rem;border:1.5px solid var(--text);flex-shrink:0;">${initials(sd.user)}</div>
+                                    ${name(sd.user)}
+                                </div>
                             </td>
-                            <td>${name(sd.user)}</td>
                             <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.65rem;">${sd.user.username || '—'}</td>
                             <td style="color:var(--text-muted);font-size:0.65rem;">${sd.user.email || '—'}</td>
-                            <td style="font-weight:600;">${sd.subjects.join(', ')}</td>
-                            ${subjectCols.map(s => `
-                                <td style="text-align:center;${sd.scores[s] && sd.scores[s] !== '—' ? 'font-weight:800;color:#16a34a;' : 'color:var(--text-muted);'}>
-                                    ${sd.scores[s] || '—'}
-                                </td>
-                            `).join('')}
+                            <td style="font-weight:600;font-size:0.68rem;">${sd.subjects.join(', ')}</td>
+                            ${subjectCols.map(s => {
+                                const sc = sd.scores[s];
+                                if (sc) {
+                                    return `
+                                        <td style="text-align:center;font-weight:800;color:#16a34a;border-left:2px solid var(--text);">${sc.correct}/${sc.total}</td>
+                                        <td style="text-align:center;font-weight:800;color:#16a34a;">${sc.percentage}%</td>
+                                    `;
+                                } else {
+                                    return `
+                                        <td style="text-align:center;color:var(--text-muted);border-left:2px solid var(--text);">—</td>
+                                        <td style="text-align:center;color:var(--text-muted);">—</td>
+                                    `;
+                                }
+                            }).join('')}
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
-            <div style="padding:8px 12px;background:var(--bg-inset);border-top:2px solid var(--text);font-size:0.6rem;color:var(--text-muted);font-weight:700;text-align:right;">
-                ${studentData.length} student${studentData.length !== 1 ? 's' : ''} · Updated in real-time
+            <div style="padding:8px 12px;background:var(--bg-inset);border-top:2px solid var(--text);font-size:0.6rem;color:var(--text-muted);font-weight:700;display:flex;justify-content:space-between;align-items:center;">
+                <span>${studentData.length} student${studentData.length !== 1 ? 's' : ''}</span>
+                <span style="display:flex;align-items:center;gap:12px;">
+                    <span><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:2px;vertical-align:middle;margin-right:4px;"></span> Score taken</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;background:var(--border);border-radius:2px;vertical-align:middle;margin-right:4px;"></span> Not taken</span>
+                </span>
             </div>
         `;
         
