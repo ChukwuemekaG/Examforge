@@ -5785,6 +5785,41 @@ window.adminPromptNotification = function(userId) {
             if (!docSnap.exists()) return;
             const n = docSnap.data();
             
+            // If notification has result data, render a result sheet view instead
+            if (n.resultData) {
+                const rd = n.resultData;
+                const overlay = document.createElement('div');
+                overlay.id = 'ef-student-notif-overlay';
+                overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:2500;animation:fadeIn 0.2s ease;';
+                overlay.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+                        <button onclick="document.getElementById('ef-student-notif-overlay').remove()"
+                            style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                            <span class="material-icons-round">arrow_back</span>
+                        </button>
+                        <div style="width:40px;height:40px;border-radius:8px;background:rgba(124,58,237,0.08);border:2px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <span class="material-icons-round" style="color:#7c3aed;">gavel</span>
+                        </div>
+                        <div style="font-weight:900;font-size:1rem;color:var(--text);text-transform:uppercase;flex:1;">${rd.eventTitle} — Results</div>
+                        <button onclick="document.getElementById('ef-student-notif-overlay').remove()"
+                            style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                            <span class="material-icons-round">close</span>
+                        </button>
+                    </div>
+                    <div style="flex:1;overflow-y:auto;padding:20px;background:var(--bg);">
+                        ${rd.resultHTML || '<div style="text-align:center;padding:48px;color:var(--text-muted);">Result sheet not available.</div>'}
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 20px;border-top:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+                        <button class="btn btn-primary" onclick="window.printResultSheet('${encodeURIComponent(rd.resultHTML || '')}')" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 24px;display:flex;align-items:center;gap:6px;">
+                            <span class="material-icons-round" style="font-size:1.1rem;">download</span> DOWNLOAD PDF
+                        </button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:3px solid var(--border);font-weight:900;padding:10px 20px;">CLOSE</button>
+                    </div>`;
+                document.body.appendChild(overlay);
+                overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+                return; // Skip normal notification rendering
+            }
+            
             const typeMap = {
                 warning:       { icon:'report_problem', bg:'rgba(220,38,38,0.08)',  border:'#dc2626', color:'#dc2626', label:'Alert' },
                 broadcast:     { icon:'campaign',        bg:'rgba(37,99,235,0.08)', border:'#2563eb', color:'#2563eb', label:'Broadcast' },
@@ -6063,6 +6098,76 @@ function hidePreloader() {
     }
 }// ─── SUBSCRIPTION EVENTS HUB ──────────────────────────────────────────────
 
+// ── Subject helper: normalize string or object to {name, creditUnit} ──
+function mcNormalizeSubject(sub) {
+    if (typeof sub === 'string') {
+        // Parse "Math (3)" format
+        const match = sub.match(/^(.+?)\s*\((\d+)\)\s*$/);
+        if (match) return { name: match[1].trim(), creditUnit: parseInt(match[2]) || 1 };
+        return { name: sub.trim(), creditUnit: 1 };
+    }
+    if (typeof sub === 'object' && sub !== null) {
+        return { name: sub.name || sub, creditUnit: sub.creditUnit || 1 };
+    }
+    return { name: String(sub), creditUnit: 1 };
+}
+function mcGetSubjectName(sub) {
+    return mcNormalizeSubject(sub).name;
+}
+function mcGetSubjectCU(sub) {
+    return mcNormalizeSubject(sub).creditUnit;
+}
+function mcDisplaySubject(sub) {
+    const n = mcNormalizeSubject(sub);
+    return `${n.name} (${n.creditUnit} CU)`;
+}
+function mcGradeFromScore(score) {
+    if (score >= 70) return { grade: 'A', points: 5.0, remark: 'Excellent' };
+    if (score >= 60) return { grade: 'B', points: 4.0, remark: 'Very Good' };
+    if (score >= 50) return { grade: 'C', points: 3.0, remark: 'Good' };
+    if (score >= 45) return { grade: 'D', points: 2.0, remark: 'Fair' };
+    if (score >= 40) return { grade: 'E', points: 1.0, remark: 'Pass' };
+    return { grade: 'F', points: 0.0, remark: 'Fail' };
+}
+function mcGPAComment(gpa) {
+    if (gpa >= 4.5) return 'Excellent! First Class Honours';
+    if (gpa >= 3.5) return 'Very Good! Second Class Upper (2:1)';
+    if (gpa >= 2.5) return 'Good! Second Class Lower (2:2)';
+    if (gpa >= 1.5) return 'Fair! Third Class';
+    if (gpa >= 1.0) return 'Pass';
+    return 'Fail. Retake required.';
+}
+
+// ── Print result sheet as PDF ──
+window.printResultSheet = function(encodedHTML) {
+    const html = decodeURIComponent(encodedHTML);
+    const win = window.open('', '_blank');
+    if (!win) {
+        alert('Please allow popups to download PDF.');
+        return;
+    }
+    win.document.write(`
+        <!DOCTYPE html>
+        <html><head>
+        <meta charset="UTF-8">
+        <title>ExamForge Result Sheet</title>
+        <style>
+            @page { margin: 15mm; size: A4 portrait; }
+            body { font-family: 'Space Grotesk', Arial, sans-serif; margin: 0; padding: 0; }
+            @media print {
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+        </style>
+        </head><body>
+        ${html}
+        <script>
+            window.onload = function() { setTimeout(function() { window.print(); }, 500); };
+        <\/script>
+        </body></html>
+    `);
+    win.document.close();
+};
+
 window.mcRenderSubEventsTab = async function() {
     const panel = document.getElementById('mc-tab-content');
     if (!panel) return;
@@ -6113,7 +6218,7 @@ window.mcLoadSubEvents = async function() {
 
         grid.innerHTML = events.map(ev => {
             const dateStr = ev.createdAt?.toDate ? ev.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : 'Recently';
-            const subsList = Array.isArray(ev.availableSubjects) ? ev.availableSubjects.join(', ') : '';
+            const subsList = Array.isArray(ev.availableSubjects) ? ev.availableSubjects.map(s => mcDisplaySubject(s)).join(', ') : '';
             return `
             <div class="card" style="padding:20px;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:var(--bg-card);transition:transform 0.2s,box-shadow 0.2s;">
                 <div>
@@ -6175,7 +6280,7 @@ window.mcOpenCreateSubEventModal = function() {
                 </div>
                 <div class="mc-field" style="margin-bottom:0;">
                     <label style="font-weight:800; text-transform:uppercase; font-size:0.7rem; color:var(--text); margin-bottom:6px; display:block;">Available Subjects (comma separated)</label>
-                    <input type="text" id="se-subjects" placeholder="Math, English, Physics, Chemistry, Biology" style="border:3px solid var(--text); border-radius:8px; padding:10px 14px; font-weight:800; font-size:0.85rem; width:100%; box-sizing:border-box;">
+                    <input type="text" id="se-subjects" placeholder="Math (3), English (2), Physics (4), Chemistry (3), Biology (3)" style="border:3px solid var(--text); border-radius:8px; padding:10px 14px; font-weight:800; font-size:0.85rem; width:100%; box-sizing:border-box;">
                 </div>
                 <div class="mc-field" style="margin-bottom:0;">
                     <label style="font-weight:800; text-transform:uppercase; font-size:0.7rem; color:var(--text); margin-bottom:6px; display:block;">Max Subjects Allowed</label>
@@ -6204,11 +6309,15 @@ window.mcSaveSubEvent = async function() {
         return;
     }
 
-    const availableSubjects = subjectsStr.split(',').map(s => s.trim()).filter(Boolean);
-    if (availableSubjects.length === 0) {
+    const rawSubjects = subjectsStr.split(',').map(s => s.trim()).filter(Boolean);
+    if (rawSubjects.length === 0) {
         window.showEFModal("Validation Error", "Please provide at least one subject.", "OK", null, true);
         return;
     }
+    const availableSubjects = rawSubjects.map(s => {
+        const n = mcNormalizeSubject(s);
+        return { name: n.name, creditUnit: n.creditUnit };
+    });
 
     try {
         const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
@@ -6387,21 +6496,26 @@ window.mcViewSubEventDetails = async function(eventId) {
         const totalRegistrations = regSnap.size;
         
         // Subject breakdown
+        const normalizedSubjects = (ev.availableSubjects || []).map(s => mcNormalizeSubject(s));
         const subjectCounts = {};
-        ev.availableSubjects.forEach(s => subjectCounts[s] = 0);
+        normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
         regSnap.forEach(d => {
             const r = d.data();
             if (r.subjects) r.subjects.forEach(s => {
-                if (subjectCounts[s] !== undefined) subjectCounts[s]++;
+                const sn = typeof s === 'string' ? s : (s.name || s);
+                if (subjectCounts[sn] !== undefined) subjectCounts[sn]++;
             });
         });
         
         // Render UI
-        let subjectHTML = ev.availableSubjects.map(s => `
+        let subjectHTML = normalizedSubjects.map(s => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-inset);border:2px solid var(--text);border-radius:8px;margin-bottom:8px;">
-                <div style="font-weight:800;font-size:0.85rem;">${s}</div>
-                <div style="font-size:0.8rem;color:var(--text-muted);"><strong>${subjectCounts[s]}</strong> students</div>
-                <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${s}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);">CREATE/EDIT MOCK</button>
+                <div>
+                    <div style="font-weight:800;font-size:0.85rem;">${s.name}</div>
+                    <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${s.creditUnit} Credit Unit${s.creditUnit !== 1 ? 's' : ''}</div>
+                </div>
+                <div style="font-size:0.8rem;color:var(--text-muted);"><strong>${subjectCounts[s.name]}</strong> students</div>
+                <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${s.name}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);">CREATE/EDIT MOCK</button>
             </div>
         `).join('');
 
@@ -6441,7 +6555,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         `;
         
         // Fetch and render student details table
-        window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || []);
+        window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
         
     } catch (e) {
         console.error(e);
@@ -6449,7 +6563,8 @@ window.mcViewSubEventDetails = async function(eventId) {
     }
 };
 
-window.mcRenderRegStudentsTable = async function(eventId, subjects) {
+window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSubjects) {
+    if (!normalizedSubjects) normalizedSubjects = (subjects || []).map(s => mcNormalizeSubject(s));
     const container = document.getElementById('mc-reg-students-table');
     if (!container) return;
     
@@ -6539,10 +6654,14 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects) {
                         <th>Username</th>
                         <th>Email</th>
                         <th>Subjects</th>
-                        ${subjectCols.map(s => `
-                            <th class="score-col" style="text-align:center;border-left:2px solid var(--text);">${s}<br><span style="font-weight:600;font-size:0.5rem;">Score</span></th>
+                        ${subjectCols.map(s => {
+                            const ns = normalizedSubjects.find(n => n.name === s);
+                            const cu = ns ? ns.creditUnit : 1;
+                            return `
+                            <th class="score-col" style="text-align:center;border-left:2px solid var(--text);">${s}<br><span style="font-weight:600;font-size:0.5rem;">${cu} CU</span></th>
                             <th class="pct-col" style="text-align:center;min-width:50px;">${s}<br><span style="font-weight:600;font-size:0.5rem;">%</span></th>
-                        `).join('')}
+                            <th class="pct-col" style="text-align:center;min-width:40px;">${s}<br><span style="font-weight:600;font-size:0.5rem;">Grade</span></th>`;
+                        }).join('')}
                     </tr>
                 </thead>
                 <tbody>
@@ -6561,13 +6680,16 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects) {
                             ${subjectCols.map(s => {
                                 const sc = sd.scores[s];
                                 if (sc) {
+                                    const g = mcGradeFromScore(sc.percentage);
                                     return `
                                         <td style="text-align:center;font-weight:800;color:#16a34a;border-left:2px solid var(--text);">${sc.correct}/${sc.total}</td>
                                         <td style="text-align:center;font-weight:800;color:#16a34a;">${sc.percentage}%</td>
+                                        <td style="text-align:center;font-weight:800;color:${g.grade === 'F' ? '#dc2626' : '#16a34a'};">${g.grade}</td>
                                     `;
                                 } else {
                                     return `
                                         <td style="text-align:center;color:var(--text-muted);border-left:2px solid var(--text);">—</td>
+                                        <td style="text-align:center;color:var(--text-muted);">—</td>
                                         <td style="text-align:center;color:var(--text-muted);">—</td>
                                     `;
                                 }
@@ -6910,62 +7032,124 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
 };
 
 window.mcBroadcastEventResults = async function(eventId) {
-    window.showEFModal("Broadcast Results", "Are you sure you want to broadcast results? This will unlock scores and send notifications to all participants.", "BROADCAST NOW", async () => {
+    window.showEFModal("Broadcast Results", "This will calculate GPA, generate result sheets, and send them to all students who took the exams.", "BROADCAST NOW", async () => {
         try {
-            const { getDocs, query, collection, where, doc, updateDoc, writeBatch, getDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const { getDocs, query, collection, where, doc, updateDoc, getDoc, setDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             
             // Mark event as broadcasted
             await updateDoc(doc(db, 'subscription_events', eventId), { resultsReleased: true });
             const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
-            const evTitle = evDoc.exists() ? evDoc.data().title : 'Mock Exam';
+            const evData = evDoc.exists() ? evDoc.data() : {};
+            const evTitle = evData.title || 'Mock Exam';
+            
+            // Normalize subjects with CUs
+            const subjects = (evData.availableSubjects || []).map(s => mcNormalizeSubject(s));
             
             // Find all mocks linked to this event
             const mocksSnap = await getDocs(query(collection(db, 'mock_exams'), where('eventId', '==', eventId)));
-            const mockIds = mocksSnap.docs.map(d => d.id);
+            const mocks = mocksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             
-            const uidsToNotify = new Set();
+            // Group students by UID across all mocks
+            const studentResults = {};
             
-            // Process all attempts for these mocks
-            for (const mid of mockIds) {
-                const attemptsSnap = await getDocs(collection(db, 'mock_exams', mid, 'attempts'));
-                const batch = writeBatch(db);
+            for (const mock of mocks) {
+                const subject = mock.subject;
+                const subjNorm = subjects.find(s => s.name === subject);
+                const creditUnit = subjNorm ? subjNorm.creditUnit : 1;
+                
+                const attemptsSnap = await getDocs(collection(db, 'mock_exams', mock.id, 'attempts'));
                 
                 attemptsSnap.forEach(aDoc => {
                     const attempt = aDoc.data();
-                    uidsToNotify.add(attempt.uid);
+                    const uid = attempt.uid;
                     
-                    // Copy to student's results
-                    const resRef = doc(db, 'users', attempt.uid, 'results', attempt.id);
-                    batch.set(resRef, {
-                        ...attempt,
-                        isMock: true,
-                        eventId: eventId,
-                        releasedAt: serverTimestamp()
+                    if (!studentResults[uid]) {
+                        studentResults[uid] = {
+                            uid,
+                            displayName: attempt.displayName || 'Unknown',
+                            email: attempt.email || '',
+                            subjects: []
+                        };
+                    }
+                    
+                    studentResults[uid].subjects.push({
+                        name: subject,
+                        creditUnit,
+                        score: attempt.score || 0,
+                        correct: attempt.correct || 0,
+                        total: attempt.totalQuestions || 0,
+                        grade: mcGradeFromScore(attempt.score || 0)
                     });
                 });
-                
-                await batch.commit();
             }
             
-            // Send notifications
-            for (const uid of Array.from(uidsToNotify)) {
+            if (Object.keys(studentResults).length === 0) {
+                return window.showEFModal("No Data", "No student attempts found. Students need to take the exams first.", "OK", null, true);
+            }
+            
+            let totalSent = 0;
+            
+            // Process each student
+            for (const [uid, data] of Object.entries(studentResults)) {
+                // Calculate GPA
+                let totalPoints = 0, totalCU = 0;
+                data.subjects.forEach(s => {
+                    totalPoints += s.grade.points * s.creditUnit;
+                    totalCU += s.creditUnit;
+                });
+                const gpa = totalCU > 0 ? Math.round((totalPoints / totalCU) * 100) / 100 : 0;
+                const gpaComment = mcGPAComment(gpa);
+                
+                // Build result sheet HTML
+                const resultHTML = buildResultSheetHTML(evTitle, data, gpa, gpaComment);
+                
+                // Save to user's results
+                const resultId = `event_${eventId}_${Date.now()}`;
+                const resRef = doc(db, 'users', uid, 'results', resultId);
+                await setDoc(resRef, {
+                    id: resultId,
+                    eventId,
+                    eventTitle: evTitle,
+                    subjects: data.subjects,
+                    gpa,
+                    gpaComment,
+                    totalCU,
+                    totalPoints,
+                    resultSheet: resultHTML,
+                    timestamp: serverTimestamp(),
+                    isMock: true,
+                    releasedAt: serverTimestamp()
+                });
+                
+                // Send notification with result sheet
                 const notifRef = doc(collection(db, 'users', uid, 'notifications'));
                 await setDoc(notifRef, {
                     id: notifRef.id,
                     type: 'broadcast',
-                    title: 'Results Released!',
-                    message: `Results for ${evTitle} have been published. View your scorecard now.`,
-                    actionLabel: 'VIEW SCORECARD',
-                    actionPath: '/#profile',
+                    title: `📊 ${evTitle} - Results Released`,
+                    message: `Your results for ${evTitle} are ready.\n\nGPA: ${gpa.toFixed(2)} - ${gpaComment}\nSubjects: ${data.subjects.length}\nTotal Credit Units: ${totalCU}\n\nTap to view your full result sheet.`,
+                    actionLabel: 'VIEW RESULT',
+                    actionPath: `/quiz.html?resultId=${resultId}&eventId=${eventId}`,
                     createdAt: serverTimestamp(),
                     read: false,
                     brandColor: '#7c3aed',
-                    brandIcon: 'gavel'
+                    brandIcon: 'gavel',
+                    resultData: {
+                        eventId,
+                        eventTitle: evTitle,
+                        gpa,
+                        gpaComment,
+                        totalCU,
+                        subjects: data.subjects,
+                        resultHTML: resultHTML
+                    }
                 });
+                
+                totalSent++;
             }
             
             document.getElementById('ef-se-details-overlay')?.remove();
-            window.showEFModal("Broadcast Complete", `Results published to ${uidsToNotify.size} students.`, "OK", null, true);
+            window.showEFModal("Broadcast Complete", `Result sheets sent to ${totalSent} student(s). GPA calculated and comments generated.`, "OK", null, true);
             window.mcLoadSubEvents();
             
         } catch (e) {
@@ -6974,6 +7158,66 @@ window.mcBroadcastEventResults = async function(eventId) {
         }
     });
 };
+
+// Result Sheet HTML Builder
+function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
+    const rows = studentData.subjects.map(s => {
+        const g = s.grade;
+        return `
+        <tr>
+            <td style="padding:10px 12px;border:1px solid #333;font-weight:700;">${s.name}</td>
+            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${s.creditUnit}</td>
+            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${s.correct}/${s.total}</td>
+            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${s.score}%</td>
+            <td style="padding:10px 12px;border:1px solid #333;text-align:center;font-weight:800;color:${g.grade === 'F' ? '#dc2626' : '#16a34a'};">${g.grade}</td>
+            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${g.points.toFixed(1)}</td>
+            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${(g.points * s.creditUnit).toFixed(1)}</td>
+            <td style="padding:10px 12px;border:1px solid #333;">${g.remark}</td>
+        </tr>`;
+    }).join('');
+    
+    const totalQP = studentData.subjects.reduce((sum, s) => sum + (s.grade.points * s.creditUnit), 0);
+    const totalCU = studentData.subjects.reduce((sum, s) => sum + s.creditUnit, 0);
+    
+    return `
+    <div style="font-family:'Space Grotesk',sans-serif;max-width:800px;margin:0 auto;background:#fff;color:#000;padding:20px;">
+        <div style="text-align:center;border-bottom:3px solid #fe6961;padding-bottom:16px;margin-bottom:20px;">
+            <h1 style="font-size:1.4rem;font-weight:900;margin:0;text-transform:uppercase;color:#18160F;">ExamForge</h1>
+            <h2 style="font-size:1.1rem;font-weight:700;margin:8px 0 0 0;color:#353637;">${eventTitle}</h2>
+            <p style="font-size:0.75rem;color:#3a3b3d;margin:4px 0 0 0;">Official Transcript — Result Sheet</p>
+        </div>
+        
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:0.78rem;">
+            <thead>
+                <tr style="background:#f0f0f0;">
+                    <th style="padding:10px 12px;border:1px solid #333;text-align:left;font-size:0.65rem;text-transform:uppercase;">Course</th>
+                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">CU</th>
+                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">Score</th>
+                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">%</th>
+                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">Grade</th>
+                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">GP</th>
+                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">QP</th>
+                    <th style="padding:10px 12px;border:1px solid #333;text-align:left;font-size:0.65rem;text-transform:uppercase;">Remark</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+            <tfoot>
+                <tr style="background:#f9f9f9;font-weight:900;">
+                    <td style="padding:10px 12px;border:1px solid #333;" colspan="2">Total CU: ${totalCU}</td>
+                    <td style="padding:10px 12px;border:1px solid #333;" colspan="3">GPA: ${gpa.toFixed(2)}</td>
+                    <td style="padding:10px 12px;border:1px solid #333;" colspan="3">${gpaComment}</td>
+                </tr>
+            </tfoot>
+        </table>
+        
+        <div style="font-size:0.7rem;color:#3a3b3d;text-align:center;border-top:2px solid #333;padding-top:12px;">
+            <p style="margin:2px 0;">Grade: A(5.0) B(4.0) C(3.0) D(2.0) E(1.0) F(0.0)</p>
+            <p style="margin:2px 0;">Generated by ExamForge · ${new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}</p>
+        </div>
+    </div>`;
+}
 
 // Global Modal Scroll Preventer
 const _modalObserver = new MutationObserver(() => {
