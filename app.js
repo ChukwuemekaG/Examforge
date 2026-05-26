@@ -6508,20 +6508,35 @@ window.mcViewSubEventDetails = async function(eventId) {
         });
         
         // Render UI
-        let subjectHTML = normalizedSubjects.map(s => `
+        let subjectHTML = normalizedSubjects.map(s => {
+            const safeName = s.name.replace(/'/g, "\\'");
+            return `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-inset);border:2px solid var(--text);border-radius:8px;margin-bottom:8px;">
                 <div>
-                    <div style="font-weight:800;font-size:0.85rem;">${s.name}</div>
-                    <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${s.creditUnit} Credit Unit${s.creditUnit !== 1 ? 's' : ''}</div>
+                    <div style="font-weight:800;font-size:0.85rem;display:flex;align-items:center;gap:8px;">
+                        ${s.name}
+                        <button onclick="window.mcEditSubjectCU('${eventId}', '${safeName}', ${s.creditUnit})" 
+                            style="background:transparent;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 6px;font-size:0.6rem;color:var(--text-muted);display:flex;align-items:center;gap:3px;"
+                            title="Edit credit unit">
+                            <span class="material-icons-round" style="font-size:0.8rem;">edit</span>
+                        </button>
+                    </div>
+                    <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">
+                        <span id="cu-display-${safeName.replace(/\s+/g,'-')}">${s.creditUnit}</span> Credit Unit${s.creditUnit !== 1 ? 's' : ''}
+                    </div>
                 </div>
                 <div style="font-size:0.8rem;color:var(--text-muted);"><strong>${subjectCounts[s.name]}</strong> students</div>
-                <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${s.name}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);">CREATE/EDIT MOCK</button>
-            </div>
-        `).join('');
+                <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);">CREATE/EDIT MOCK</button>
+            </div>`;
+        }).join('');
 
-        const broadcastBtn = ev.resultsReleased ? 
-            `<button class="btn btn-outline" disabled style="width:100%;font-weight:900;border:3px solid var(--text);padding:10px;text-align:center;">RESULTS BROADCASTED</button>` :
-            `<button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="width:100%;font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px;text-align:center;background:#7c3aed;">BROADCAST ALL RESULTS</button>`;
+        const broadcastBtn = `
+            <div style="display:flex;gap:8px;width:100%;">
+                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px;text-align:center;background:#7c3aed;">
+                    ${ev.resultsReleased ? 'RE-BROADCAST RESULTS' : 'BROADCAST ALL RESULTS'}
+                </button>
+                ${ev.resultsReleased ? `<span style="font-size:0.65rem;color:var(--text-muted);font-weight:700;display:flex;align-items:center;gap:4px;"><span class="material-icons-round" style="font-size:0.85rem;">info</span> Already broadcasted</span>` : ''}
+            </div>`;
 
         document.getElementById('ef-se-det-body').innerHTML = `
             <div style="display:grid;grid-template-columns:1fr;gap:16px;">
@@ -7218,6 +7233,46 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
         </div>
     </div>`;
 }
+
+// ── Edit credit unit for a subject in an event ──
+window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
+    const newCU = prompt(`Edit credit unit for "${subjectName}":`, currentCU);
+    if (newCU === null) return; // cancelled
+    const cu = parseInt(newCU);
+    if (isNaN(cu) || cu < 1 || cu > 20) {
+        window.showEFModal("Invalid Input", "Please enter a number between 1 and 20.", "OK", null, true);
+        return;
+    }
+    try {
+        const { getDoc, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const evRef = doc(db, 'subscription_events', eventId);
+        const evDoc = await getDoc(evRef);
+        if (!evDoc.exists()) throw new Error("Event not found");
+        const ev = evDoc.data();
+        const subjects = (ev.availableSubjects || []).map(s => {
+            const n = mcNormalizeSubject(s);
+            if (n.name === subjectName) n.creditUnit = cu;
+            return n;
+        });
+        await updateDoc(evRef, { availableSubjects: subjects });
+        
+        // Update the display in real-time
+        const displayEl = document.getElementById(`cu-display-${subjectName.replace(/\s+/g,'-')}`);
+        if (displayEl) {
+            displayEl.textContent = cu;
+            // Also update the parent text
+            const parent = displayEl.closest('div');
+            if (parent) {
+                parent.innerHTML = `<span id="cu-display-${subjectName.replace(/\s+/g,'-')}">${cu}</span> Credit Unit${cu !== 1 ? 's' : ''}`;
+            }
+        }
+        
+        window.showEFModal("Updated", `"${subjectName}" credit unit changed to ${cu}.`, "OK", null, true);
+    } catch (e) {
+        console.error(e);
+        window.showEFModal("Error", e.message, "OK", null, true);
+    }
+};
 
 // Global Modal Scroll Preventer
 const _modalObserver = new MutationObserver(() => {
