@@ -4851,6 +4851,19 @@ window.adminPromptNotification = function(userId) {
             btn.disabled = true; btn.textContent = 'SAVING...';
             
             try {
+                // Check if user is allowed to register
+                const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                const evRef2 = fDoc(db, 'subscription_events', eventId);
+                const evDoc2 = await getDoc(evRef2);
+                if (evDoc2.exists()) {
+                    const evData = evDoc2.data();
+                    const allowed = evData.allowedParticipants || [];
+                    if (allowed.length > 0 && !allowed.includes(auth.currentUser.uid)) {
+                        btn.disabled = false; btn.textContent = 'CONFIRM REGISTRATION';
+                        return window.showEFModal("Access Denied", "You are not on the allowed participants list for this event. Contact your admin.", "OK", null, true);
+                    }
+                }
+                
                 const uid = auth.currentUser.uid;
                 const { setDoc, doc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                 await setDoc(doc(db, 'subscription_events', eventId, 'registrations', uid), {
@@ -5793,6 +5806,114 @@ window.adminPromptNotification = function(userId) {
                 return; // Skip normal notification rendering
             }
             
+            // If notification is a Daily Advice, render a beautiful full-page reader
+            if (n.type === 'advice') {
+                const overlay = document.createElement('div');
+                overlay.id = 'ef-student-notif-overlay';
+                overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:2500;animation:fadeIn 0.2s ease;';
+                
+                const time = n.timestamp?.toDate ? n.timestamp.toDate().toLocaleString('en-NG', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'Just now';
+                const categoryColors = {
+                    motivation: { bg: '#fef3c7', color: '#b45309', label: 'Motivation & Mindset' },
+                    exam_tips:  { bg: '#fee2e2', color: '#b91c1c', label: 'Exam Strategy' },
+                    study_hacks:{ bg: '#e0f2fe', color: '#0369a1', label: 'Study Hacks' },
+                    general:    { bg: '#f3f4f6', color: '#374151', label: 'General Advice' }
+                };
+                const cat = categoryColors[n.category] || categoryColors.general;
+                
+                overlay.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+                        <button onclick="document.getElementById('ef-student-notif-overlay').remove()"
+                            style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                            <span class="material-icons-round">arrow_back</span>
+                        </button>
+                        <div style="font-weight:900;font-size:1rem;color:var(--text);text-transform:uppercase;flex:1;display:flex;align-items:center;gap:10px;">
+                            <span style="width:36px;height:36px;border-radius:8px;background:${cat.bg};border:2px solid ${cat.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <span class="material-icons-round" style="color:${cat.color};font-size:1rem;">tips_and_updates</span>
+                            </span>
+                            Daily Advice
+                        </div>
+                        <button onclick="document.getElementById('ef-student-notif-overlay').remove()"
+                            style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                            <span class="material-icons-round">close</span>
+                        </button>
+                    </div>
+                    <div id="advice-reader-content" style="flex:1;overflow-y:auto;background:var(--bg);">
+                        <div style="max-width:680px;margin:0 auto;padding:40px 24px 80px;">
+                            <!-- Category Badge -->
+                            <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;border:2px solid ${cat.color};background:${cat.bg};color:${cat.color};margin-bottom:20px;">
+                                <span class="material-icons-round" style="font-size:0.9rem;">tips_and_updates</span>
+                                ${cat.label}
+                            </div>
+                            
+                            <!-- Title -->
+                            <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:900;color:var(--text);line-height:1.2;margin:0 0 12px 0;letter-spacing:-0.02em;">
+                                ${(n.title || 'Daily Advice').replace(/</g,'<').replace(/>/g,'>')}
+                            </h1>
+                            
+                            <!-- Date -->
+                            <div style="font-size:0.72rem;font-weight:600;color:var(--text-muted);margin-bottom:32px;display:flex;align-items:center;gap:6px;">
+                                <span class="material-icons-round" style="font-size:0.85rem;">schedule</span>
+                                ${time}
+                            </div>
+                            
+                            <!-- Divider -->
+                            <div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:32px;"></div>
+                            
+                            <!-- Content -->
+                            <div style="font-size:1.05rem;line-height:1.8;color:var(--text);font-weight:500;white-space:pre-wrap;word-break:break-word;font-family:'Space Grotesk',sans-serif;">
+                                ${(n.message || '').replace(/</g,'<').replace(/>/g,'>')}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 24px;border-top:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+                        <button class="btn btn-outline" id="btn-download-advice-png" style="font-weight:900;border:2px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;">
+                            <span class="material-icons-round" style="font-size:1rem;">image</span> SAVE AS IMAGE
+                        </button>
+                        <button class="btn btn-primary" id="btn-download-advice-pdf" style="font-weight:900;border:2px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;">
+                            <span class="material-icons-round" style="font-size:1rem;">picture_as_pdf</span> SAVE AS PDF
+                        </button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:2px solid var(--border);font-weight:900;padding:10px 20px;">CLOSE</button>
+                    </div>`;
+                document.body.appendChild(overlay);
+                overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+                
+                // Attach download handlers
+                setTimeout(() => {
+                    const contentEl = document.getElementById('advice-reader-content');
+                    
+                    document.getElementById('btn-download-advice-png')?.addEventListener('click', async () => {
+                        try {
+                            const html2canvas = (await import('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')).default;
+                            const canvas = await html2canvas(contentEl, { scale: 2, backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#fbfcff', useCORS: true });
+                            const link = document.createElement('a');
+                            link.download = 'ExamForge_Advice.png';
+                            link.href = canvas.toDataURL('image/png');
+                            link.click();
+                        } catch(e) {
+                            alert('Could not generate image. Try the PDF option instead.');
+                        }
+                    });
+                    
+                    document.getElementById('btn-download-advice-pdf')?.addEventListener('click', async () => {
+                        try {
+                            const html2pdf = (await import('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js')).default;
+                            html2pdf().set({
+                                margin: [10, 10, 10, 10],
+                                filename: 'ExamForge_Advice.pdf',
+                                image: { type: 'jpeg', quality: 0.98 },
+                                html2canvas: { scale: 2, useCORS: true, backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#fbfcff' },
+                                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                            }).from(contentEl).save();
+                        } catch(e) {
+                            alert('Could not generate PDF.');
+                        }
+                    });
+                }, 100);
+                
+                return;
+            }
+            
             const typeMap = {
                 warning:       { icon:'report_problem', bg:'rgba(220,38,38,0.08)',  border:'#dc2626', color:'#dc2626', label:'Alert' },
                 broadcast:     { icon:'campaign',        bg:'rgba(37,99,235,0.08)', border:'#2563eb', color:'#2563eb', label:'Broadcast' },
@@ -6575,6 +6696,7 @@ window.mcSaveSubEvent = async function() {
             availableSubjects,
             maxSubjects: maxSubs,
             resultsReleased: false,
+            allowedParticipants: [],
             createdAt: serverTimestamp()
         });
         document.getElementById('ef-subevent-modal')?.remove();
@@ -6602,6 +6724,161 @@ window.mcDeleteSubEvent = function(eventId, title) {
             }
         }
     );
+};
+
+// ── Allowed Participants Functions ──
+
+window.mcLoadAllowedParticipants = async function(eventId) {
+    const list = document.getElementById('ap-current-list');
+    if (!list) return;
+    try {
+        const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
+        if (!evDoc.exists()) return;
+        const ev = evDoc.data();
+        const allowed = ev.allowedParticipants || [];
+        
+        const badge = document.getElementById('ap-status-badge');
+        if (badge) {
+            badge.textContent = allowed.length === 0 ? '(All students allowed)' : `(${allowed.length} student${allowed.length !== 1 ? 's' : ''} allowed)`;
+        }
+        
+        if (allowed.length === 0) {
+            list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.78rem;border:2px dashed var(--border);border-radius:8px;">All students are allowed to participate. Use the search above to restrict access.</div>';
+            return;
+        }
+        
+        // Fetch user details for each allowed UID
+        const users = await Promise.all(allowed.map(async uid => {
+            try {
+                const uSnap = await getDoc(doc(db, 'users', uid));
+                if (uSnap.exists()) return { uid, ...uSnap.data() };
+                return { uid, displayName: uid, email: '', username: '' };
+            } catch(e) { return { uid, displayName: uid, email: '', username: '' }; }
+        }));
+        
+        const name = u => u.displayName || u.email?.split('@')[0] || u.uid;
+        
+        list.innerHTML = users.map(u => `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-card);border:2px solid var(--border);border-radius:8px;">
+                <div style="width:32px;height:32px;border-radius:6px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.6rem;border:1.5px solid var(--text);flex-shrink:0;">
+                    ${name(u).split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:0.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name(u)}</div>
+                    <div style="font-size:0.65rem;color:var(--text-muted);">${u.username || ''}${u.email ? ' \u00b7 ' + u.email : ''}</div>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="window.mcRemoveAllowedUser('${eventId}','${u.uid}')" style="font-size:0.65rem;padding:4px 10px;border:2px solid var(--text);display:flex;align-items:center;gap:4px;">
+                    <span class="material-icons-round" style="font-size:0.8rem;">remove</span> REMOVE
+                </button>
+            </div>
+        `).join('');
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.mcSearchAllowedUser = async function(eventId) {
+    const query_str = document.getElementById('ap-search-input')?.value.trim().toLowerCase();
+    if (!query_str) return;
+    
+    const resultsDiv = document.getElementById('ap-search-results');
+    if (!resultsDiv) return;
+    
+    resultsDiv.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.8rem;"><span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.2rem;vertical-align:middle;margin-right:6px;">autorenew</span> Searching...</div>';
+    
+    try {
+        const { getDocs, collection, query, where } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        
+        // Search by username or email
+        const [usernameSnap, emailSnap] = await Promise.all([
+            getDocs(query(collection(db, 'users'), where('username', '==', query_str))),
+            getDocs(query(collection(db, 'users'), where('email', '==', query_str)))
+        ]);
+        
+        const foundUsers = [];
+        usernameSnap.forEach(d => { if (!foundUsers.find(u => u.uid === d.id)) foundUsers.push({ uid: d.id, ...d.data() }); });
+        emailSnap.forEach(d => { if (!foundUsers.find(u => u.uid === d.id)) foundUsers.push({ uid: d.id, ...d.data() }); });
+        
+        if (foundUsers.length === 0) {
+            resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.78rem;border:2px dashed var(--border);border-radius:8px;">No user found with that username or email.</div>';
+            return;
+        }
+        
+        const name = u => u.displayName || u.email?.split('@')[0] || u.uid;
+        
+        resultsDiv.innerHTML = foundUsers.map(u => {
+            const initials = name(u).split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+            return `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-card);border:2px solid var(--border);border-radius:8px;margin-bottom:6px;">
+                <div style="width:36px;height:36px;border-radius:6px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.65rem;border:1.5px solid var(--text);flex-shrink:0;">${initials}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:0.85rem;color:var(--text);">${name(u)}</div>
+                    <div style="font-size:0.68rem;color:var(--text-muted);">@${u.username || '\u2014'} \u00b7 ${u.email || ''}</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="window.mcAddAllowedUser('${eventId}','${u.uid}')" style="font-size:0.65rem;padding:4px 12px;border:2px solid var(--text);display:flex;align-items:center;gap:4px;">
+                    <span class="material-icons-round" style="font-size:0.8rem;">add</span> ALLOW
+                </button>
+            </div>`;
+        }).join('');
+        
+    } catch(e) {
+        console.error(e);
+        resultsDiv.innerHTML = `<div style="text-align:center;padding:12px;color:var(--brand);font-size:0.78rem;">Error: ${e.message}</div>`;
+    }
+};
+
+window.mcAddAllowedUser = async function(eventId, uid) {
+    try {
+        const { getDoc, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const evRef = doc(db, 'subscription_events', eventId);
+        const evDoc = await getDoc(evRef);
+        if (!evDoc.exists()) throw new Error("Event not found");
+        const ev = evDoc.data();
+        let allowed = ev.allowedParticipants || [];
+        if (allowed.includes(uid)) {
+            window.showEFModal("Already Added", "This user is already in the allowed list.", "OK", null, true);
+            return;
+        }
+        allowed.push(uid);
+        await updateDoc(evRef, { allowedParticipants: allowed });
+        document.getElementById('ap-search-results').innerHTML = '';
+        document.getElementById('ap-search-input').value = '';
+        window.mcLoadAllowedParticipants(eventId);
+    } catch(e) {
+        console.error(e);
+        window.showEFModal("Error", e.message, "OK", null, true);
+    }
+};
+
+window.mcRemoveAllowedUser = async function(eventId, uid) {
+    try {
+        const { getDoc, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const evRef = doc(db, 'subscription_events', eventId);
+        const evDoc = await getDoc(evRef);
+        if (!evDoc.exists()) throw new Error("Event not found");
+        const ev = evDoc.data();
+        let allowed = (ev.allowedParticipants || []).filter(id => id !== uid);
+        await updateDoc(evRef, { allowedParticipants: allowed });
+        window.mcLoadAllowedParticipants(eventId);
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.mcAllowAllStudents = async function(eventId) {
+    window.showEFModal("Allow All Students", "This will clear the allowed participants list and let all students register.", "ALLOW ALL", async () => {
+        try {
+            const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: [] });
+            document.getElementById('ap-search-results').innerHTML = '';
+            document.getElementById('ap-search-input').value = '';
+            window.mcLoadAllowedParticipants(eventId);
+        } catch(e) {
+            console.error(e);
+            window.showEFModal("Error", e.message, "OK", null, true);
+        }
+    });
 };
 
 window.mcBroadcastEventMocks = function(eventId, title) {
@@ -6803,6 +7080,28 @@ window.mcViewSubEventDetails = async function(eventId) {
                 ${subjectHTML}
             </div>
 
+            <!-- Allowed Participants -->
+            <div>
+                <h3 style="font-weight:900;font-size:1.05rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;margin-top:24px;border-top:3px solid var(--text);padding-top:20px;">
+                    Allowed Participants
+                    <span id="ap-status-badge" style="font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-left:8px;"></span>
+                </h3>
+                <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                    <input type="text" id="ap-search-input" placeholder="Search by username or email..." 
+                        style="flex:1;min-width:200px;padding:8px 12px;border:2px solid var(--border);border-radius:8px;background:var(--bg-inset);color:var(--text);font-size:0.78rem;font-weight:600;outline:none;font-family:inherit;"
+                        onkeydown="if(event.key==='Enter')window.mcSearchAllowedUser('${eventId}')">
+                    <button class="btn btn-outline btn-sm" onclick="window.mcSearchAllowedUser('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;border:2px solid var(--text);">SEARCH</button>
+                    <button class="btn btn-primary btn-sm" onclick="window.mcAllowAllStudents('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;background:#16a34a;border:2px solid var(--text);">ALLOW ALL STUDENTS</button>
+                </div>
+                <div id="ap-search-results" style="margin-bottom:8px;"></div>
+                <div id="ap-current-list" style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:0.8rem;">
+                        <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.2rem;vertical-align:middle;margin-right:6px;">autorenew</span>
+                        Loading participants...
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <h3 style="font-weight:900;font-size:1.05rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;margin-top:24px;border-top:3px solid var(--text);padding-top:20px;">
                     Registered Students
@@ -6823,6 +7122,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         
         // Fetch and render student details table
         window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
+        window.mcLoadAllowedParticipants(eventId);
         
     } catch (e) {
         console.error(e);
