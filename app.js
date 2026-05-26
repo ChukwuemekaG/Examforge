@@ -5810,13 +5810,20 @@ window.adminPromptNotification = function(userId) {
                         ${rd.resultHTML || '<div style="text-align:center;padding:48px;color:var(--text-muted);">Result sheet not available.</div>'}
                     </div>
                     <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 20px;border-top:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
-                        <button class="btn btn-primary" onclick="window.printResultSheet('${encodeURIComponent(rd.resultHTML || '')}')" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 24px;display:flex;align-items:center;gap:6px;">
+                        <button class="btn btn-primary" id="btn-download-result-pdf" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 24px;display:flex;align-items:center;gap:6px;">
                             <span class="material-icons-round" style="font-size:1.1rem;">download</span> DOWNLOAD PDF
                         </button>
                         <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:3px solid var(--border);font-weight:900;padding:10px 20px;">CLOSE</button>
                     </div>`;
                 document.body.appendChild(overlay);
                 overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+                // Attach PDF download listener
+                setTimeout(() => {
+                    const pdfBtn = document.getElementById('btn-download-result-pdf');
+                    if (pdfBtn) {
+                        pdfBtn.onclick = () => window.printResultSheet(rd.resultHTML || '');
+                    }
+                }, 50);
                 return; // Skip normal notification rendering
             }
             
@@ -6135,12 +6142,11 @@ function mcGPAComment(gpa) {
     if (gpa >= 2.5) return 'Good! Second Class Lower (2:2)';
     if (gpa >= 1.5) return 'Fair! Third Class';
     if (gpa >= 1.0) return 'Pass';
-    return 'Fail. Retake required.';
+    return 'Failed. You need to put in a lot of work for improvement.';
 }
 
-// ── Print result sheet as PDF ──
-window.printResultSheet = function(encodedHTML) {
-    const html = decodeURIComponent(encodedHTML);
+// ── Print result sheet as official PDF ──
+window.printResultSheet = function(html) {
     const win = window.open('', '_blank');
     if (!win) {
         alert('Please allow popups to download PDF.');
@@ -6148,22 +6154,180 @@ window.printResultSheet = function(encodedHTML) {
     }
     win.document.write(`
         <!DOCTYPE html>
-        <html><head>
+        <html>
+        <head>
         <meta charset="UTF-8">
-        <title>ExamForge Result Sheet</title>
+        <title>ExamForge Official Result Sheet</title>
         <style>
-            @page { margin: 15mm; size: A4 portrait; }
-            body { font-family: 'Space Grotesk', Arial, sans-serif; margin: 0; padding: 0; }
+            @page { margin: 12mm 15mm; size: A4 portrait; }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+                font-family: 'Times New Roman', Times, serif;
+                color: #1a1a1a;
+                font-size: 11pt;
+                line-height: 1.5;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .result-container {
+                max-width: 190mm;
+                margin: 0 auto;
+                padding: 10px 0;
+            }
+            .header {
+                text-align: center;
+                border-bottom: 3px double #1a1a1a;
+                padding-bottom: 18px;
+                margin-bottom: 24px;
+            }
+            .header h1 {
+                font-size: 18pt;
+                font-weight: 900;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+            }
+            .header .subtitle {
+                font-size: 10pt;
+                color: #555;
+                margin-top: 2px;
+            }
+            .header .motto {
+                font-size: 9pt;
+                font-style: italic;
+                color: #888;
+                margin-top: 2px;
+            }
+            .header .official-stamp {
+                display: inline-block;
+                border: 2px solid #1a1a1a;
+                border-radius: 50%;
+                width: 70px;
+                height: 70px;
+                line-height: 70px;
+                text-align: center;
+                font-size: 7pt;
+                font-weight: 700;
+                text-transform: uppercase;
+                margin-bottom: 10px;
+                color: #1a1a1a;
+            }
+            .event-title {
+                font-size: 13pt;
+                font-weight: 700;
+                text-align: center;
+                margin-bottom: 16px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .info-row {
+                display: flex;
+                justify-content: space-between;
+                font-size: 10pt;
+                margin-bottom: 4px;
+                padding: 0 4px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 16px 0;
+                font-size: 10pt;
+            }
+            table th {
+                background: #1a1a1a;
+                color: #ffffff;
+                padding: 8px 6px;
+                font-size: 8pt;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border: 1px solid #1a1a1a;
+                text-align: center;
+                font-weight: 700;
+            }
+            table td {
+                padding: 7px 6px;
+                border: 1px solid #333;
+                text-align: center;
+            }
+            table td:first-child {
+                text-align: left;
+                font-weight: 600;
+            }
+            table tr:nth-child(even) td {
+                background: #f7f7f7;
+            }
+            .grade-A { color: #1a7a1a; font-weight: 700; }
+            .grade-B { color: #2d6a2d; font-weight: 700; }
+            .grade-C { color: #6a6a1a; font-weight: 700; }
+            .grade-D { color: #9a6a0a; font-weight: 700; }
+            .grade-E { color: #b06030; font-weight: 700; }
+            .grade-F { color: #cc2222; font-weight: 700; }
+            .summary-box {
+                border: 2px solid #1a1a1a;
+                padding: 14px 18px;
+                margin: 16px 0;
+                background: #fafafa;
+            }
+            .summary-row {
+                display: flex;
+                justify-content: space-between;
+                font-size: 11pt;
+                padding: 3px 0;
+            }
+            .summary-row.total {
+                border-top: 2px solid #1a1a1a;
+                margin-top: 6px;
+                padding-top: 8px;
+                font-weight: 700;
+                font-size: 12pt;
+            }
+            .comment-box {
+                border: 1px solid #1a1a1a;
+                padding: 12px 16px;
+                margin: 16px 0;
+                font-size: 10pt;
+                font-style: italic;
+                background: #f5f5f5;
+            }
+            .footer {
+                margin-top: 24px;
+                padding-top: 12px;
+                border-top: 1px solid #999;
+                font-size: 8pt;
+                color: #888;
+                text-align: center;
+            }
+            .footer p { margin: 2px 0; }
+            .signature-row {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 28px;
+                padding: 0 20px;
+            }
+            .signature-line {
+                text-align: center;
+                font-size: 9pt;
+            }
+            .signature-line .line {
+                width: 160px;
+                border-top: 1px solid #1a1a1a;
+                margin: 28px auto 4px;
+            }
             @media print {
                 body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .no-print { display: none; }
             }
         </style>
-        </head><body>
-        ${html}
-        <script>
-            window.onload = function() { setTimeout(function() { window.print(); }, 500); };
-        <\/script>
-        </body></html>
+        </head>
+        <body>
+            <div class="result-container">
+                ${html}
+            </div>
+            <script>
+                window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 800); };
+            <\/script>
+        </body>
+        </html>
     `);
     win.document.close();
 };
@@ -7180,18 +7344,23 @@ window.mcBroadcastEventResults = async function(eventId) {
 
 // Result Sheet HTML Builder
 function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const studentName = studentData.displayName || 'N/A';
+    const studentEmail = studentData.email || '';
+    
     const rows = studentData.subjects.map(s => {
         const g = s.grade;
         return `
         <tr>
-            <td style="padding:10px 12px;border:1px solid #333;font-weight:700;">${s.name}</td>
-            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${s.creditUnit}</td>
-            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${s.correct}/${s.total}</td>
-            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${s.score}%</td>
-            <td style="padding:10px 12px;border:1px solid #333;text-align:center;font-weight:800;color:${g.grade === 'F' ? '#dc2626' : '#16a34a'};">${g.grade}</td>
-            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${g.points.toFixed(1)}</td>
-            <td style="padding:10px 12px;border:1px solid #333;text-align:center;">${(g.points * s.creditUnit).toFixed(1)}</td>
-            <td style="padding:10px 12px;border:1px solid #333;">${g.remark}</td>
+            <td style="text-align:left;">${s.name}</td>
+            <td>${s.creditUnit}</td>
+            <td>${s.correct}/${s.total}</td>
+            <td>${s.score}%</td>
+            <td class="grade-${g.grade}">${g.grade}</td>
+            <td>${g.points.toFixed(1)}</td>
+            <td>${(g.points * s.creditUnit).toFixed(1)}</td>
+            <td style="font-size:9pt;">${g.remark}</td>
         </tr>`;
     }).join('');
     
@@ -7199,43 +7368,89 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
     const totalCU = studentData.subjects.reduce((sum, s) => sum + s.creditUnit, 0);
     
     return `
-    <div style="font-family:'Space Grotesk',sans-serif;max-width:800px;margin:0 auto;background:#fff;color:#000;padding:20px;">
-        <div style="text-align:center;border-bottom:3px solid #fe6961;padding-bottom:16px;margin-bottom:20px;">
-            <h1 style="font-size:1.4rem;font-weight:900;margin:0;text-transform:uppercase;color:#18160F;">ExamForge</h1>
-            <h2 style="font-size:1.1rem;font-weight:700;margin:8px 0 0 0;color:#353637;">${eventTitle}</h2>
-            <p style="font-size:0.75rem;color:#3a3b3d;margin:4px 0 0 0;">Official Transcript — Result Sheet</p>
+        <div class="header">
+            <div class="official-stamp">EF</div>
+            <h1>ExamForge</h1>
+            <div class="subtitle">Academic Performance · Official Transcript</div>
+            <div class="motto">"Excellence Through Rigour"</div>
         </div>
         
-        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:0.78rem;">
+        <div class="event-title">${eventTitle}</div>
+        
+        <div class="info-row">
+            <span><strong>Student:</strong> ${studentName}</span>
+            <span><strong>Date:</strong> ${dateStr}</span>
+        </div>
+        <div class="info-row">
+            <span><strong>Email:</strong> ${studentEmail}</span>
+            <span><strong>Transcript ID:</strong> EF-${Date.now().toString(36).toUpperCase()}</span>
+        </div>
+        
+        <table>
             <thead>
-                <tr style="background:#f0f0f0;">
-                    <th style="padding:10px 12px;border:1px solid #333;text-align:left;font-size:0.65rem;text-transform:uppercase;">Course</th>
-                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">CU</th>
-                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">Score</th>
-                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">%</th>
-                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">Grade</th>
-                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">GP</th>
-                    <th style="padding:10px 12px;border:1px solid #333;text-align:center;font-size:0.65rem;text-transform:uppercase;">QP</th>
-                    <th style="padding:10px 12px;border:1px solid #333;text-align:left;font-size:0.65rem;text-transform:uppercase;">Remark</th>
+                <tr>
+                    <th style="text-align:left;min-width:100px;">Course</th>
+                    <th style="width:35px;">CU</th>
+                    <th style="width:60px;">Score</th>
+                    <th style="width:45px;">%</th>
+                    <th style="width:40px;">Grade</th>
+                    <th style="width:40px;">GP</th>
+                    <th style="width:50px;">QP</th>
+                    <th style="text-align:left;">Remark</th>
                 </tr>
             </thead>
             <tbody>
                 ${rows}
             </tbody>
-            <tfoot>
-                <tr style="background:#f9f9f9;font-weight:900;">
-                    <td style="padding:10px 12px;border:1px solid #333;" colspan="2">Total CU: ${totalCU}</td>
-                    <td style="padding:10px 12px;border:1px solid #333;" colspan="3">GPA: ${gpa.toFixed(2)}</td>
-                    <td style="padding:10px 12px;border:1px solid #333;" colspan="3">${gpaComment}</td>
-                </tr>
-            </tfoot>
         </table>
         
-        <div style="font-size:0.7rem;color:#3a3b3d;text-align:center;border-top:2px solid #333;padding-top:12px;">
-            <p style="margin:2px 0;">Grade: A(5.0) B(4.0) C(3.0) D(2.0) E(1.0) F(0.0)</p>
-            <p style="margin:2px 0;">Generated by ExamForge · ${new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}</p>
+        <div class="summary-box">
+            <div class="summary-row">
+                <span><strong>Total Credit Units (CU):</strong></span>
+                <span>${totalCU}</span>
+            </div>
+            <div class="summary-row">
+                <span><strong>Total Quality Points (QP):</strong></span>
+                <span>${totalQP.toFixed(1)}</span>
+            </div>
+            <div class="summary-row total">
+                <span><strong>GRADE POINT AVERAGE (GPA):</strong></span>
+                <span>${gpa.toFixed(2)}</span>
+            </div>
         </div>
-    </div>`;
+        
+        <div class="comment-box">
+            <strong>Academic Comment:</strong> ${gpaComment}
+        </div>
+        
+        <table style="font-size:8pt;margin-top:8px;">
+            <tr>
+                <th style="padding:4px;">Grade</th>
+                <td style="padding:4px;">A</td><td style="padding:4px;">B</td><td style="padding:4px;">C</td>
+                <td style="padding:4px;">D</td><td style="padding:4px;">E</td><td style="padding:4px;">F</td>
+            </tr>
+            <tr>
+                <th style="padding:4px;">Points</th>
+                <td style="padding:4px;">5.0</td><td style="padding:4px;">4.0</td><td style="padding:4px;">3.0</td>
+                <td style="padding:4px;">2.0</td><td style="padding:4px;">1.0</td><td style="padding:4px;">0.0</td>
+            </tr>
+        </table>
+        
+        <div class="signature-row">
+            <div class="signature-line">
+                <div class="line"></div>
+                ExamForge Administrator
+            </div>
+            <div class="signature-line">
+                <div class="line"></div>
+                Date Issued
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is a computer-generated transcript. All results are final and subject to institutional verification.</p>
+            <p>ExamForge © ${now.getFullYear()} · Official Academic Record</p>
+        </div>`;
 }
 
 // ── Edit credit unit for a subject in an event ──
