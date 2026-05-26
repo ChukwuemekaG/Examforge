@@ -629,7 +629,10 @@ function setupAdminListeners() {
 
     document.querySelectorAll('[data-view]').forEach(el => {
         if (!el.classList.contains('nav-item')) {
-            el.addEventListener('click', () => navigate(el.getAttribute('data-view')));
+            el.addEventListener('click', () => {
+                navigate(el.getAttribute('data-view'));
+                if (window.innerWidth <= 768) closeMobile();
+            });
         }
     });
 
@@ -6181,8 +6184,8 @@ function mcGPAComment(gpa) {
     return 'You need to put in a lot of work for improvement.';
 }
 
-// ── Open result sheet in browser for viewing/download ──
-window.printResultSheet = function(html) {
+// ── Generate and download PDF ──
+window.printResultSheet = async function(html) {
     const fullDoc = `
         <!DOCTYPE html>
         <html>
@@ -6236,10 +6239,7 @@ window.printResultSheet = function(html) {
                 border: 2px solid #6d6d6d;
                 margin-bottom: 28px;
             }
-            .top-bar img {
-                height: 48px;
-                width: auto;
-            }
+            .top-bar img { max-width:120px; max-height:60px; width:auto; height:auto; object-fit:contain; }
             .top-bar .title-area { flex: 1; }
             .top-bar .title-area h1 {
                 font-family: 'Space Grotesk', sans-serif;
@@ -6440,6 +6440,32 @@ window.printResultSheet = function(html) {
             <div class="result-container">
                 ${html}
             </div>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+            <script>
+                setTimeout(() => {
+                    const element = document.querySelector('.result-container');
+                    html2pdf().set({
+                        margin: [10, 10, 10, 10],
+                        filename: 'ExamForge_Result_Sheet.pdf',
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { 
+                            scale: 2, 
+                            useCORS: true,
+                            letterRendering: true,
+                            backgroundColor: '#fbfcff'
+                        },
+                        jsPDF: { 
+                            unit: 'mm', 
+                            format: 'a4', 
+                            orientation: 'portrait' 
+                        }
+                    }).from(element).save().then(() => {
+                        document.querySelector('.result-container').innerHTML = '<div style="text-align:center;padding:80px 20px;font-family:Space Grotesk,sans-serif;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div style="font-size:20px;font-weight:800;margin-bottom:8px;">PDF Downloaded Successfully!</div><div style="font-size:13px;color:#666;">Check your downloads folder for ExamForge_Result_Sheet.pdf</div><div style="margin-top:24px;font-size:11px;color:#999;">You can close this window.</div></div>';
+                    }).catch(() => {
+                        window.print();
+                    });
+                }, 1500);
+            <\/script>
         </body>
         </html>
     `;
@@ -6449,18 +6475,16 @@ window.printResultSheet = function(html) {
         const url = URL.createObjectURL(blob);
         const win = window.open(url, '_blank');
         if (!win) {
-            alert('Please allow popups to view the result sheet.');
+            alert('Please allow popups to download the PDF.');
         }
-        // Clean up blob URL after a delay
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
     } catch (e) {
-        // Fallback
         const win = window.open('', '_blank');
         if (win) {
             win.document.write(fullDoc);
             win.document.close();
         } else {
-            alert('Please allow popups to view the result sheet.');
+            alert('Please allow popups to download the PDF.');
         }
     }
 };
@@ -7530,7 +7554,7 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
     
     return `
         <div class="top-bar">
-            <img src="/examforge.jpeg" alt="ExamForge" onerror="this.style.display='none'">
+            <img src="/examforge.jpeg" alt="ExamForge" onerror="this.style.display='none'" style="max-width:120px;max-height:60px;width:auto;height:auto;object-fit:contain;">
             <div class="title-area">
                 <h1>Exam<span>Forge</span></h1>
                 <div class="sub">Official Result Sheet</div>
