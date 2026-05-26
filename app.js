@@ -6145,11 +6145,11 @@ function mcGPAComment(gpa) {
     return 'Failed. You need to put in a lot of work for improvement.';
 }
 
-// ── Print result sheet as official PDF ──
+// ── Open result sheet in browser for viewing/download ──
 window.printResultSheet = function(html) {
     const win = window.open('', '_blank');
     if (!win) {
-        alert('Please allow popups to download PDF.');
+        alert('Please allow popups to view the result sheet.');
         return;
     }
     win.document.write(`
@@ -6168,11 +6168,30 @@ window.printResultSheet = function(html) {
                 line-height: 1.5;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                position: relative;
+            }
+            body::before {
+                content: '';
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 500px;
+                height: 500px;
+                background-image: url('/examforge-logo.png');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+                opacity: 0.06;
+                pointer-events: none;
+                z-index: -1;
             }
             .result-container {
                 max-width: 190mm;
                 margin: 0 auto;
                 padding: 10px 0;
+                position: relative;
+                z-index: 1;
             }
             .header {
                 text-align: center;
@@ -6262,6 +6281,7 @@ window.printResultSheet = function(html) {
             .grade-D { color: #9a6a0a; font-weight: 700; }
             .grade-E { color: #b06030; font-weight: 700; }
             .grade-F { color: #cc2222; font-weight: 700; }
+            .na-subject { color: #999; font-style: italic; }
             .summary-box {
                 border: 2px solid #1a1a1a;
                 padding: 14px 18px;
@@ -6313,9 +6333,9 @@ window.printResultSheet = function(html) {
                 border-top: 1px solid #1a1a1a;
                 margin: 28px auto 4px;
             }
+            .no-print { display: none; }
             @media print {
                 body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .no-print { display: none; }
             }
         </style>
         </head>
@@ -6323,9 +6343,6 @@ window.printResultSheet = function(html) {
             <div class="result-container">
                 ${html}
             </div>
-            <script>
-                window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 800); };
-            <\/script>
         </body>
         </html>
     `);
@@ -7266,6 +7283,23 @@ window.mcBroadcastEventResults = async function(eventId) {
                 });
             }
             
+            // Fill in any subjects the student didn't attempt
+            for (const [uid, data] of Object.entries(studentResults)) {
+                const attemptedSubjects = new Set(data.subjects.map(s => s.name));
+                for (const subj of subjects) {
+                    if (!attemptedSubjects.has(subj.name)) {
+                        data.subjects.push({
+                            name: subj.name,
+                            creditUnit: subj.creditUnit,
+                            score: null,
+                            correct: 0,
+                            total: 0,
+                            grade: null
+                        });
+                    }
+                }
+            }
+            
             if (Object.keys(studentResults).length === 0) {
                 return window.showEFModal("No Data", "No student attempts found. Students need to take the exams first.", "OK", null, true);
             }
@@ -7277,7 +7311,7 @@ window.mcBroadcastEventResults = async function(eventId) {
                 // Calculate GPA
                 let totalPoints = 0, totalCU = 0;
                 data.subjects.forEach(s => {
-                    totalPoints += s.grade.points * s.creditUnit;
+                    totalPoints += (s.grade && s.grade.points ? s.grade.points : 0) * s.creditUnit;
                     totalCU += s.creditUnit;
                 });
                 const gpa = totalCU > 0 ? Math.round((totalPoints / totalCU) * 100) / 100 : 0;
@@ -7310,7 +7344,7 @@ window.mcBroadcastEventResults = async function(eventId) {
                     id: notifRef.id,
                     type: 'broadcast',
                     title: `📊 ${evTitle} - Results Released`,
-                    message: `Your results for ${evTitle} are ready.\n\nGPA: ${gpa.toFixed(2)} - ${gpaComment}\nSubjects: ${data.subjects.length}\nTotal Credit Units: ${totalCU}\n\nTap to view your full result sheet.`,
+                    message: `Your results for ${evTitle} are ready.\n\nTap to view your full result sheet.`,
                     actionLabel: 'VIEW RESULT',
                     actionPath: `/quiz.html?resultId=${resultId}&eventId=${eventId}`,
                     timestamp: serverTimestamp(),
@@ -7342,7 +7376,7 @@ window.mcBroadcastEventResults = async function(eventId) {
     });
 };
 
-// Result Sheet HTML Builder
+// ── Build official result sheet HTML ──
 function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -7350,6 +7384,18 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
     const studentEmail = studentData.email || '';
     
     const rows = studentData.subjects.map(s => {
+        // Handle unattempted subjects (score will be null/undefined)
+        if (s.score === null || s.score === undefined || s.grade === null) {
+            return `
+            <tr>
+                <td style="text-align:left;">${s.name}</td>
+                <td>${s.creditUnit}</td>
+                <td class="na-subject" colspan="3">Not attempted</td>
+                <td class="na-subject">—</td>
+                <td class="na-subject">0.0</td>
+                <td class="na-subject">—</td>
+            </tr>`;
+        }
         const g = s.grade;
         return `
         <tr>
@@ -7364,7 +7410,7 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
         </tr>`;
     }).join('');
     
-    const totalQP = studentData.subjects.reduce((sum, s) => sum + (s.grade.points * s.creditUnit), 0);
+    const totalQP = studentData.subjects.reduce((sum, s) => sum + ((s.grade && s.grade.points ? s.grade.points : 0) * s.creditUnit), 0);
     const totalCU = studentData.subjects.reduce((sum, s) => sum + s.creditUnit, 0);
     
     return `
