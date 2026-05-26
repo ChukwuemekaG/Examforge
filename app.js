@@ -3643,15 +3643,9 @@ window.openAdminUserModal = async function(uid) {
     // Full-screen overlay — not a small modal
     const overlay = document.createElement('div');
     overlay.id = 'admin-user-panel';
-    overlay.style.cssText = `
-        position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);
-        display:flex;align-items:stretch;justify-content:flex-end;z-index:2000;`;
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:2000;animation:fadeIn 0.2s ease;';
     overlay.innerHTML = `
-        <div id="aup-panel" style="
-            width:min(780px,100vw);height:100vh;background:var(--bg-card);
-            display:flex;flex-direction:column;overflow:hidden;
-            border-left:3px solid var(--text);box-shadow:-8px 0 32px rgba(0,0,0,0.25);
-            animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
+        <div id="aup-panel" style="display:flex;flex-direction:column;overflow:hidden;flex:1;">
             <style>
                 @keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
                 .aup-tab-bar{display:flex;border-bottom:2px solid var(--border);background:var(--bg-inset);}
@@ -3700,15 +3694,18 @@ window.openAdminUserModal = async function(uid) {
                     .udt-btns{grid-column:1/-1;justify-content:flex-end;}}
             </style>
             <!-- Header -->
-            <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:2px solid var(--border);flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+                <button onclick="document.getElementById('admin-user-panel').remove()"
+                    style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round">arrow_back</span>
+                </button>
                 <div id="aup-avatar" class="mc-avatar" style="width:52px;height:52px;font-size:1.1rem;flex-shrink:0;">?</div>
                 <div style="flex:1;min-width:0;">
                     <div id="aup-name" style="font-weight:900;font-size:1.1rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Loading…</div>
                     <div id="aup-sub" style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
                 </div>
                 <button onclick="document.getElementById('admin-user-panel').remove()"
-                    style="background:var(--bg-inset);border:1.5px solid var(--border);border-radius:8px;
-                    cursor:pointer;padding:7px;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;">
+                    style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                     <span class="material-icons-round">close</span>
                 </button>
             </div>
@@ -6609,31 +6606,36 @@ window.mcOpenCreateEventMockModal = function(eventId, subject) {
     
     const modal = document.createElement('div');
     modal.id = 'ef-dq-builder-modal'; // Reuse CSS selectors
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;animation:popIn 0.3s ease;';
+    modal.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:3000;animation:fadeIn 0.2s ease;';
     modal.innerHTML = `
         <style>
-            .dq-modal-card { width: min(920px, 95vw); height: 88vh; }
+            .dq-modal-card { flex:1; display:flex; flex-direction:column; overflow:hidden; }
             .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
             .dq-question-grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; }
             @media (max-width: 600px) {
-                .dq-modal-card { width: 100vw !important; height: 100vh !important; max-height: 100vh !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
                 .dq-meta-grid, .dq-question-grid-split { grid-template-columns: 1fr !important; gap: 12px !important; }
                 .dq-toggle-grid { grid-template-columns: 1fr !important; }
                 .dq-footer-actions { flex-direction: column !important; gap: 10px !important; width: 100%; }
                 .dq-footer-actions button { width: 100% !important; }
             }
         </style>
-        <div class="card dq-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text); box-shadow:8px 8px 0px var(--text); background:var(--bg-card); border-radius:16px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
-                <div style="font-weight:900; font-size:1.1rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
-                    <span class="material-icons-round" style="color:var(--brand);">library_books</span> Create Mock: ${subject}
+        <div class="dq-modal-card">
+            <div style="display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
+                <button onclick="document.getElementById('ef-dq-builder-modal').remove()"
+                    style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round">arrow_back</span>
+                </button>
+                <div style="width:40px;height:40px;border-radius:8px;background:var(--brand-dim);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span class="material-icons-round" style="color:var(--brand);font-size:1.1rem;">library_books</span>
                 </div>
-                <button onclick="document.getElementById('ef-dq-builder-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text); box-shadow:2px 2px 0px var(--text); border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
-                    <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
+                <div style="font-weight:900;font-size:1.05rem;color:var(--text);text-transform:uppercase;flex:1;">Create Mock: ${subject}</div>
+                <button onclick="document.getElementById('ef-dq-builder-modal').remove()"
+                    style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round">close</span>
                 </button>
             </div>
             
-            <div style="flex:1; overflow-y:auto; padding:20px; background:var(--bg-card); display:flex; flex-direction:column; gap:20px;">
+            <div style="flex:1; overflow-y:auto; padding:20px; background:var(--bg); display:flex; flex-direction:column; gap:20px;">
                 <div class="dq-meta-grid">
                     <div class="mc-field" style="margin-bottom:0;">
                         <label style="font-weight:800; text-transform:uppercase; font-size:0.7rem; color:var(--text); margin-bottom:6px; display:block;">Mock Title</label>
