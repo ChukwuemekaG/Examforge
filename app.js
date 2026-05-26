@@ -5840,51 +5840,9 @@ window.adminPromptNotification = function(userId) {
                             <span class="material-icons-round">close</span>
                         </button>
                     </div>
-                    <div style="flex:1;overflow-y:auto;padding:24px;background:var(--bg);">
-                        <div style="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:20px;">
-                            <!-- Student Info -->
-                            <div style="background:var(--bg-card);border:2px solid var(--border);border-radius:10px;padding:16px 20px;">
-                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                                    <div>
-                                        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:2px;">Student</div>
-                                        <div style="font-weight:800;font-size:1rem;color:var(--text);">${rd.eventTitle}</div>
-                                    </div>
-                                    <div style="text-align:right;">
-                                        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:2px;">GPA</div>
-                                        <div style="font-weight:900;font-size:1.8rem;color:var(--brand);line-height:1;">${rd.gpa ? rd.gpa.toFixed(2) : '—'}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Subjects Table -->
-                            <div style="background:var(--bg-card);border:2px solid var(--border);border-radius:10px;overflow:hidden;">
-                                <div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:12px 14px;border-bottom:2px solid var(--border);background:var(--bg-inset);">Course Breakdown</div>
-                                <div style="overflow-x:auto;">
-                                    <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
-                                        <thead>
-                                            <tr style="background:var(--bg-inset);">
-                                                <th style="padding:8px 6px;text-align:left;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">Course</th>
-                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">CU</th>
-                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">Score</th>
-                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">%</th>
-                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">Grade</th>
-                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">GP</th>
-                                                <th style="padding:8px 6px;text-align:center;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">QP</th>
-                                                <th style="padding:8px 6px;text-align:left;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);border-bottom:1px solid var(--border);">Remark</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${subjRows}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            
-                            <!-- Comment -->
-                            <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:16px 20px;">
-                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:6px;">Academic Comment</div>
-                                <div style="font-weight:800;font-size:1.1rem;color:var(--text);">${rd.gpaComment || '—'}</div>
-                            </div>
+                    <div style="flex:1;overflow-y:auto;background:#fbfcff;padding:20px;">
+                        <div style="max-width:800px;margin:0 auto;font-family:'Space Grotesk',sans-serif;color:#18160F;font-size:13px;line-height:1.6;">
+                            ${rd.resultHTML || '<div style="text-align:center;padding:48px;color:#999;">Result sheet not available.</div>'}
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 20px;border-top:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
@@ -6220,23 +6178,18 @@ function mcGPAComment(gpa) {
     if (gpa >= 2.5) return 'Good! Second Class Lower (2:2)';
     if (gpa >= 1.5) return 'Fair! Third Class';
     if (gpa >= 1.0) return 'Pass';
-    return 'Failed. You need to put in a lot of work for improvement.';
+    return 'You need to put in a lot of work for improvement.';
 }
 
 // ── Open result sheet in browser for viewing/download ──
 window.printResultSheet = function(html) {
-    const win = window.open('', '_blank');
-    if (!win) {
-        alert('Please allow popups to view the result sheet.');
-        return;
-    }
-    win.document.write(`
+    const fullDoc = `
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ExamForge - Result Sheet</title>
+        <title>ExamForge - Official Result Sheet</title>
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             @page { margin: 10mm; size: A4 portrait; }
@@ -6287,9 +6240,7 @@ window.printResultSheet = function(html) {
                 height: 48px;
                 width: auto;
             }
-            .top-bar .title-area {
-                flex: 1;
-            }
+            .top-bar .title-area { flex: 1; }
             .top-bar .title-area h1 {
                 font-family: 'Space Grotesk', sans-serif;
                 font-size: 22px;
@@ -6358,26 +6309,20 @@ window.printResultSheet = function(html) {
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.08em;
-                border: 2px solid #18160F;
+                border: 1px solid #333;
                 text-align: center;
             }
             table th:first-child { text-align: left; }
             table td {
                 padding: 10px 8px;
-                border: 2px solid #666;
+                border: 1px solid #666;
                 text-align: center;
                 font-size: 13px;
                 font-weight: 700;
                 color: #353637;
             }
-            table td:first-child {
-                text-align: left;
-                font-weight: 700;
-                color: #18160F;
-            }
-            table tr:nth-child(even) td {
-                background: #f4f4f0;
-            }
+            table td:first-child { text-align: left; font-weight: 700; color: #18160F; }
+            table tr:nth-child(even) td { background: #f4f4f0; }
             .grade-A { color: #16a34a; font-weight: 800; }
             .grade-B { color: #2563eb; font-weight: 800; }
             .grade-C { color: #ca8a04; font-weight: 800; }
@@ -6497,8 +6442,27 @@ window.printResultSheet = function(html) {
             </div>
         </body>
         </html>
-    `);
-    win.document.close();
+    `;
+    
+    try {
+        const blob = new Blob([fullDoc], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        if (!win) {
+            alert('Please allow popups to view the result sheet.');
+        }
+        // Clean up blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+        // Fallback
+        const win = window.open('', '_blank');
+        if (win) {
+            win.document.write(fullDoc);
+            win.document.close();
+        } else {
+            alert('Please allow popups to view the result sheet.');
+        }
+    }
 };
 
 window.mcRenderSubEventsTab = async function() {
