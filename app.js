@@ -1350,7 +1350,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
 
 // ── DAILY QUIZ TAB ────────────────────────────────────────────
 
-let currentBuilderQuestions = [];
+var currentBuilderQuestions = [];
 
 async function mcRenderDailyQuizTab() {
     const panel = document.getElementById('mc-tab-content');
