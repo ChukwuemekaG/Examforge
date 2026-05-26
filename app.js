@@ -862,6 +862,25 @@ function renderMaster() {
                 .mc-tab .material-icons-round { margin-right:0 !important; }
                 .mc-tab { padding:6px 10px; }
             }
+
+            /* ── Overflow safety ── */
+            #mc-tab-content,
+            #mc-tab-content > div,
+            .mc-stat-bar,
+            .mc-card-grid,
+            #mc-user-grid,
+            #mc-question-list,
+            #mc-dq-list,
+            #mc-advice-list,
+            #mc-subevents-list,
+            #mc-course-grid,
+            #mc-topic-grid {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            * { box-sizing: border-box; }
         </style>
 
         <div class="page-header">
@@ -918,8 +937,11 @@ function renderMaster() {
 window.mcSwitchTab = function(tab) {
     masterTab = tab;
     document.querySelectorAll('.mc-tab').forEach(t => {
-        const tabName = t.textContent.trim().toLowerCase().replace(/\s+/g,'');
-        t.classList.toggle('active', tabName.includes(tab) || tab.includes(tabName));
+        // Use the data-view attribute or the first label span for matching
+        const fullLabel = t.querySelector('.mc-tab-label');
+        const shortLabel = t.querySelector('.mc-tab-label-short');
+        const labelText = (fullLabel ? fullLabel.textContent : t.textContent).trim().toLowerCase().replace(/\s+/g,'');
+        t.classList.toggle('active', labelText.includes(tab) || tab.includes(labelText));
     });
     mcRenderTabContent();
 };
