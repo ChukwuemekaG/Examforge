@@ -705,9 +705,7 @@ function renderMaster() {
                 display:flex; gap:4px; margin-bottom:24px; background:var(--bg-inset);
                 padding:4px; border-radius:12px; border:1px solid var(--border);
                 width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;
-                scrollbar-width:none; -ms-overflow-style:none;
             }
-            .mc-tab-bar::-webkit-scrollbar { display:none; }
             .mc-tab {
                 padding:8px 20px; border-radius:8px; border:none;
                 background:transparent; color:var(--text-muted);
@@ -793,7 +791,7 @@ function renderMaster() {
             
             /* ── Section Header ── */
             .mc-section-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
-            .mc-section-title { font-weight:800; font-size:clamp(0.7rem,2vw,0.8rem); text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); }
+            .mc-section-title { font-weight:800; font-size:clamp(0.7rem,2vw,0.8rem); text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); word-break:break-word; max-width:100%; }
             
             /* ── Breadcrumbs ── */
             .mc-breadcrumb { display:flex; align-items:center; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
@@ -810,7 +808,7 @@ function renderMaster() {
             .mc-q-text { font-weight:700; font-size:clamp(0.78rem,2vw,0.85rem); color:var(--text); margin-bottom:8px; word-break:break-word; }
             .mc-q-opts { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
             @media(max-width:500px){ .mc-q-opts { grid-template-columns:1fr; } }
-            .mc-q-opt { font-size:clamp(0.65rem,1.5vw,0.72rem); padding:5px 10px; border-radius:6px; background:var(--bg-inset); color:var(--text-sub); font-weight:600; }
+            .mc-q-opt { font-size:clamp(0.65rem,1.5vw,0.72rem); padding:5px 10px; border-radius:6px; background:var(--bg-inset); color:var(--text-sub); font-weight:600; word-break:break-word; }
             .mc-q-opt.correct { background:rgba(22,163,74,0.12); color:#16a34a; border:1px solid #16a34a; font-weight:800; }
             
             /* ── FAB - Adjusted for bottom nav ── */
@@ -1114,9 +1112,11 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                     <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">add</span> New Course
                 </button>
             </div>
-            <div id="mc-course-grid" class="mc-card-grid">
-                <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
-                    <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.5rem;">autorenew</span>
+            <div style="max-width:1100px;width:100%;">
+                <div id="mc-course-grid" class="mc-card-grid">
+                    <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
+                        <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.5rem;">autorenew</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -1263,32 +1263,32 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
 
             // ── Topic properties banner ───────────────────────────────
             const propBanner = `
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--bg-inset);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;">
-                    <span style="font-size:0.7rem;font-weight:900;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-right:4px;">Settings</span>
-                    <span style="font-size:0.72rem;font-weight:700;color:var(--text);background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:3px 8px;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--bg-inset);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;width:100%;box-sizing:border-box;">
+                    <span style="font-size:0.7rem;font-weight:900;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-right:4px;flex-shrink:0;">Settings</span>
+                    <span style="font-size:clamp(0.65rem,1.8vw,0.72rem);font-weight:700;color:var(--text);background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:3px 8px;white-space:nowrap;">
                         ⏱ ${tData.timeLimit || 40} min
                     </span>
-                    <span style="font-size:0.72rem;font-weight:700;border-radius:5px;padding:3px 8px;
+                    <span style="font-size:clamp(0.65rem,1.8vw,0.72rem);font-weight:700;border-radius:5px;padding:3px 8px;word-break:break-word;
                         background:${tData.isStrict ? 'rgba(220,38,38,0.08)' : 'var(--bg-card)'};
                         color:${tData.isStrict ? '#dc2626' : 'var(--text-muted)'};
                         border:1px solid ${tData.isStrict ? '#dc2626' : 'var(--border)'};">
-                        ${tData.isStrict ? '🔒 Strict — Exam only' : '🔓 Relaxed — Practice allowed'}
+                        ${tData.isStrict ? '🔒 Strict' : '🔓 Relaxed'}
                     </span>
-                    <span style="font-size:0.72rem;font-weight:700;border-radius:5px;padding:3px 8px;
+                    <span style="font-size:clamp(0.65rem,1.8vw,0.72rem);font-weight:700;border-radius:5px;padding:3px 8px;word-break:break-word;
                         background:${tData.isMock ? 'rgba(124,58,237,0.08)' : 'var(--bg-card)'};
                         color:${tData.isMock ? '#7c3aed' : 'var(--text-muted)'};
                         border:1px solid ${tData.isMock ? '#7c3aed' : 'var(--border)'};">
-                        ${tData.isMock ? '🎭 Mock — Results hidden' : '📊 Results visible'}
+                        ${tData.isMock ? '🎭 Mock' : '📊 Visible'}
                     </span>
-                    <span style="font-size:0.72rem;font-weight:700;border-radius:5px;padding:3px 8px;
+                    <span style="font-size:clamp(0.65rem,1.8vw,0.72rem);font-weight:700;border-radius:5px;padding:3px 8px;word-break:break-word;
                         background:${tData.isCorrection===false ? 'rgba(245,158,11,0.08)' : 'var(--bg-card)'};
                         color:${tData.isCorrection===false ? '#d97706' : 'var(--text-muted)'};
                         border:1px solid ${tData.isCorrection===false ? '#d97706' : 'var(--border)'};">
-                        ${tData.isCorrection===false ? '🚫 No correction review' : '✅ Corrections allowed'}
+                        ${tData.isCorrection===false ? '🚫 No review' : '✅ Review'}
                     </span>
                     <button onclick="window.mcOpenEditTopicModal('${courseId}','${topicId}')"
-                        style="margin-left:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.7rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:4px;">
-                        <span class="material-icons-round" style="font-size:0.85rem;">tune</span> Edit Settings
+                        style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:clamp(0.65rem,1.8vw,0.7rem);font-weight:800;color:var(--text);display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                        <span class="material-icons-round" style="font-size:0.85rem;">tune</span> Edit
                     </button>
                 </div>`;
 
@@ -1339,7 +1339,7 @@ async function mcRenderDailyQuizTab() {
             <!-- Header section -->
             <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:16px;margin-bottom:8px;">
                 <div>
-                    <span class="mc-section-title" style="font-size:1.6rem;font-weight:900;text-transform:uppercase;color:var(--text);display:block;">Daily Quizzes Hub</span>
+                        <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Quizzes Hub</span>
                     <div id="mc-dq-sub-count" style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Loading subscriber count…</div>
                 </div>
                 <button class="btn btn-primary" onclick="window.mcOpenCreateDailyQuizModal()" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
@@ -1470,7 +1470,7 @@ async function mcLoadDQHistory() {
                 <span class="material-icons-round" style="color:#2563eb;flex-shrink:0;">today</span>
                 <div style="flex:1;min-width:0;">
                     <div style="font-weight:800;font-size:0.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.title}</div>
-                    <div style="font-size:0.68rem;color:var(--text-muted);">Sent ${ts} · ${b.recipientCount} recipients · Due today at 23:59</div>
+                    <div style="font-size:0.68rem;color:var(--text-muted);word-break:break-word;">Sent ${ts} · ${b.recipientCount} recipients · Due today at 23:59</div>
                 </div>
             </div>`;
         }).join('');
@@ -1490,7 +1490,7 @@ async function mcRenderDailyAdviceTab() {
             <!-- Header section -->
             <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:16px;margin-bottom:8px;">
                 <div>
-                    <span class="mc-section-title" style="font-size:1.6rem;font-weight:900;text-transform:uppercase;color:var(--text);display:block;">Daily Advice Hub</span>
+                    <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Advice Hub</span>
                     <div id="mc-advice-sub-count" style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Draft and broadcast cleanly formatted study advices directly to student feeds.</div>
                 </div>
                 <button class="btn btn-primary" onclick="window.mcOpenCreateDailyAdviceModal()" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
@@ -6052,7 +6052,7 @@ window.mcRenderSubEventsTab = async function() {
         <div style="max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
             <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:16px;margin-bottom:8px;">
                 <div>
-                    <span class="mc-section-title" style="font-size:1.6rem;font-weight:900;text-transform:uppercase;color:var(--text);display:block;">Subscription Events</span>
+                    <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Subscription Events</span>
                     <div style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Manage dynamic registrations, subjects, and event-based mock exams.</div>
                 </div>
                 <button class="btn btn-primary" onclick="window.mcOpenCreateSubEventModal()" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
