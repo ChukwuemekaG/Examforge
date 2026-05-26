@@ -775,7 +775,8 @@ function renderMaster() {
             .mc-stat-lbl { font-size:clamp(0.55rem,1.5vw,0.65rem); font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-top:4px; }
             
             /* ── User Grid ── */
-            @media(max-width:600px){ #mc-user-grid { grid-template-columns:1fr !important; } }
+            @media(max-width:600px){ #mc-user-grid { grid-template-columns:1fr !important; gap:8px; } }
+            .mc-user-card .mc-avatar + div { min-width:0; overflow:hidden; }
             
             /* ── User Card ── */
             .mc-user-card {
@@ -783,6 +784,7 @@ function renderMaster() {
                 border-radius:10px; padding:10px 14px; cursor:pointer;
                 display:flex; align-items:center; gap:12px;
                 transition:transform 0.1s, box-shadow 0.1s;
+                overflow:hidden; max-width:100%;
             }
             .mc-user-card:hover { transform:translate(-2px,-2px); box-shadow:3px 3px 0px var(--text); border-color:var(--text); }
             @media(max-width:400px){ .mc-user-card { padding:8px 10px; gap:8px; } }
@@ -989,12 +991,7 @@ function mcRenderUsersTab() {
     panel.innerHTML = `
         <div class="mc-section-hdr">
             <span class="mc-section-title">Student Registry</span>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <input class="mc-search" id="mc-user-search" placeholder="Search name, handle or email…" style="max-width:320px;width:100%;">
-                <button class="btn btn-primary btn-sm" id="mc-load-users-btn" style="white-space:nowrap;">
-                    <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">refresh</span> Reload
-                </button>
-            </div>
+            <input class="mc-search" id="mc-user-search" placeholder="Search name, handle or email…" style="max-width:320px;width:100%;">
         </div>
         <div id="mc-user-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
             <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
