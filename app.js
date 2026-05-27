@@ -2424,7 +2424,8 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         
         const quizShareUrl = window.location.origin + '/quiz?dqid=' + dqid;
         
-        const attemptsSnap = await getDocs(query(collection(db, "daily_quizzes", dqid, "attempts"), orderBy('timestamp', 'desc')));
+        const attemptsQuery = query(collection(db, "daily_quizzes", dqid, "attempts"), orderBy('timestamp', 'desc'));
+        const attemptsSnap = await getDocs(attemptsQuery);
         const attempts = attemptsSnap.docs.map(d => d.data());
         
         const attemptCount = attempts.length;
@@ -2506,11 +2507,11 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             <!-- Summary Stats -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div style="background:var(--bg-card);border:2px solid var(--text);border-radius:12px;padding:10px;text-align:center;">
-                    <div style="font-size:1.5rem;font-weight:900;color:var(--text);">${attemptCount}</div>
+                    <div data-ac style="font-size:1.5rem;font-weight:900;color:var(--text);">${attemptCount}</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Total Attempts</div>
                 </div>
                 <div style="background:var(--bg-card);border:2px solid var(--text);border-radius:12px;padding:10px;text-align:center;">
-                    <div style="font-size:1.5rem;font-weight:900;color:#16a34a;">${avgScore}%</div>
+                    <div data-aa style="font-size:1.5rem;font-weight:900;color:#16a34a;">${avgScore}%</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Average Accuracy</div>
                 </div>
             </div>
@@ -2549,11 +2550,72 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                     </button>
                 </div>
                 ` : ''}
-                <div style="overflow-x:auto;border:2px solid var(--text);border-radius:8px;">
+                <div data-at style="overflow-x:auto;border:2px solid var(--text);border-radius:8px;">
                 ${attemptsHTML}
                 </div>
             </div>
         `;
+
+        // ── Real-time attempts listener ──
+        let attemptsListener = onSnapshot(attemptsQuery, (snap) => {
+            const newAttempts = snap.docs.map(d => d.data());
+            const newCount = newAttempts.length;
+            let newAvg = 0;
+            if (newCount > 0) {
+                newAvg = Math.round(newAttempts.reduce((s, a) => s + (a.score || 0), 0) / newCount);
+            }
+            
+            // Update summary stats
+            const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
+            const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
+            if (countEl) countEl.textContent = newCount;
+            if (avgEl) avgEl.textContent = newAvg + '%';
+            
+            // Rebuild table rows
+            const tbody = document.getElementById('ef-dq-det-body')?.querySelector('table tbody');
+            if (!tbody) return;
+            
+            if (newCount === 0) {
+                tbody.innerHTML = '';
+                const container = tbody.closest('[data-at]');
+                if (container) {
+                    container.innerHTML = `<div style="text-align:center;padding:48px 24px;border:2px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:0.8rem;">
+                        <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:8px;">people_outline</span>
+                        <strong style="color:var(--text);">No attempts recorded yet</strong>
+                        <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz.</div>
+                    </div>`;
+                }
+                return;
+            }
+            
+            tbody.innerHTML = newAttempts.map(a => {
+                const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
+                const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
+                const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
+                return `
+                <tr style="border-bottom:1.5px solid var(--border);">
+                    <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
+                        ${a.displayName}
+                        <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
+                    </td>
+                    <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
+                        <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
+                    </td>
+                    <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
+                    <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
+                </tr>`;
+            }).join('');
+        });
+        
+        // Clean up listener when overlay is removed
+        const detOverlay = document.getElementById('ef-dq-details-overlay');
+        if (detOverlay) {
+            const origClose = detOverlay.remove.bind(detOverlay);
+            detOverlay.remove = function() {
+                if (attemptsListener) attemptsListener();
+                origClose();
+            };
+        }
 
         if (attemptCount > 0) {
             document.getElementById('btn-export-csv')?.addEventListener('click', () => {
