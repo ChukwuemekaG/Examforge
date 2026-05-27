@@ -1881,25 +1881,34 @@ window.mcOpenCreateDailyQuizModal = function() {
             .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
             .dq-question-grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; align-items: start; }
             .dq-toggle-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+            .dq-opt-row { display:flex; align-items:center; gap:6px; }
+            .dq-opt-row input { flex:1; min-width:0; }
+            .dq-opt-del-btn { flex-shrink:0; padding:3px 6px; font-size:0.6rem; height:28px; }
             @media (max-width: 600px) {
-                .dq-meta-grid, .dq-question-grid-split, .dq-toggle-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
-                .dq-header-actions-btn { padding: 4px 8px !important; font-size: 0.65rem !important; }
+                .dq-meta-grid, .dq-question-grid-split, .dq-toggle-grid { grid-template-columns: 1fr !important; gap: 6px !important; }
+                .dq-header-actions-btn { padding: 3px 6px !important; font-size: 0.6rem !important; }
+            }
+            @media (max-width: 400px) {
+                .dq-opt-row { flex-wrap:wrap; gap:4px; }
+                .dq-opt-row input { flex:1 1 100%; order:2; }
+                .dq-opt-row label { order:1; }
+                .dq-opt-row .dq-opt-del-btn { order:3; }
             }
         </style>
         <div class="card dq-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:none; background:transparent;">
             <!-- Modal Header -->
-            <div style="display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
                 <button onclick="document.getElementById('ef-dq-builder-modal').remove()"
-                    style="width:34px;height:34px;border-radius:6px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-                    <span class="material-icons-round" style="font-size:1rem;">arrow_back</span>
+                    style="width:30px;height:30px;border-radius:5px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round" style="font-size:0.9rem;">arrow_back</span>
                 </button>
-                <div style="width:34px;height:34px;border-radius:6px;background:var(--brand-dim);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <span class="material-icons-round" style="color:var(--brand);font-size:1rem;">today</span>
+                <div style="width:30px;height:30px;border-radius:5px;background:var(--brand-dim);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span class="material-icons-round" style="color:var(--brand);font-size:0.9rem;">today</span>
                 </div>
-                <div style="font-weight:800; font-size:0.95rem; color:var(--text); text-transform:uppercase; flex:1;">Create Daily Quiz</div>
+                <div style="font-weight:700; font-size:0.85rem; color:var(--text); text-transform:uppercase; flex:1;">Create Daily Quiz</div>
                 <button onclick="document.getElementById('ef-dq-builder-modal').remove()"
-                    style="width:34px;height:34px;border-radius:6px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-                    <span class="material-icons-round" style="font-size:1rem;">close</span>
+                    style="width:30px;height:30px;border-radius:5px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round" style="font-size:0.9rem;">close</span>
                 </button>
             </div>
             
@@ -2125,12 +2134,12 @@ window.mcRenderBuilderQuestions = function() {
         const optionsHTML = q.options.map((opt, optIdx) => {
             const letter = letters[optIdx] || '';
             const delBtn = q.options.length > 2 
-                ? `<button onclick="window.mcRemoveBuilderOption(${qIdx}, ${optIdx})" style="background:var(--bg-inset); border:2px solid var(--text); border-radius:6px; cursor:pointer; padding:4px 8px; font-weight:800; font-size:0.7rem; height:34px;">DEL</button>` 
+                ? `<button onclick="window.mcRemoveBuilderOption(${qIdx}, ${optIdx})" class="dq-opt-del-btn" style="background:var(--bg-inset); border:2px solid var(--text); border-radius:6px; cursor:pointer; font-weight:800;">DEL</button>` 
                 : '';
             return `
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div class="dq-opt-row">
                 <label style="font-weight:900; font-size:0.8rem; color:var(--text); width:20px;">${letter}.</label>
-                <input type="text" class="dq-opt-input-${qIdx}" data-opt-idx="${optIdx}" value="${opt.replace(/"/g, '&quot;')}" placeholder="Option ${letter}" style="flex:1; border:2px solid var(--text); border-radius:6px; padding:6px 10px; font-size:0.8rem; font-weight:600;background:var(--bg-card); color:var(--text);">
+                <input type="text" class="dq-opt-input-${qIdx}" data-opt-idx="${optIdx}" value="${opt.replace(/"/g, '&quot;')}" placeholder="Option ${letter}" style="flex:1; min-width:0; border:2px solid var(--text); border-radius:6px; padding:6px 10px; font-size:0.78rem; font-weight:600; background:var(--bg-card); color:var(--text); box-sizing:border-box;">
                 ${delBtn}
             </div>
             `;
