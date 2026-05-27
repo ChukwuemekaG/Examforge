@@ -465,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         progressText.textContent = `Question ${qIndex + 1} of ${subject.questions.length}`;
         progressBar.style.width = `${((qIndex + 1) / subject.questions.length) * 100}%`;
-        qText.textContent = q.question;
+        qText.innerHTML = q.question;
         optionsContainer.innerHTML = '';
         explBox.classList.add('hidden');
         updateMapHighlight();
@@ -519,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (examState.isReviewMode || (examState.mode === 'practice' && subject.userAnswers[qIndex] !== null)) {
-            explText.textContent = q.explanation || "No explanation provided.";
+            explText.innerHTML = q.explanation || "No explanation provided.";
             explBox.classList.remove('hidden');
         }
 
@@ -653,8 +653,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 9. SECURITY & TIMERS ---
     function handleSecurityViolation() {
         if (!examState.isQuizActive || examState.isReviewMode) return;
+        // Allow exiting fullscreen only on results/review screens
+        if (examState.isReviewMode) return;
         const leftFullscreen = !document.fullscreenElement && !document.webkitFullscreenElement;
-        if (leftFullscreen || document.hidden) forceSubmit();
+        if ((leftFullscreen || document.hidden) && !examState.isReviewMode) forceSubmit();
     }
 
     function timerTick() {
@@ -685,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.removeEventListener('webkitfullscreenchange', handleSecurityViolation);
         document.removeEventListener('visibilitychange', handleSecurityViolation);
 
-        if (document.exitFullscreen && document.fullscreenElement) document.exitFullscreen().catch(() => { });
+        // Don't exit fullscreen - stay in exam mode for review
 
         calculateAndShowResults();
     }
@@ -765,10 +767,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Switch to result view immediately but show "Syncing" state
+        // Switch to result view immediately but show pulsing loading animation
         document.getElementById('subject-scores-container').innerHTML = breakdownHTML;
         const rTitle = document.getElementById('result-title');
-        rTitle.textContent = "Syncing results... please do not close.";
+        rTitle.innerHTML = 'Submitting Exam <span style="display:inline-block;animation:pulse 1s infinite;">...</span>';
+        document.getElementById('result-icon').textContent = 'sync';
+        document.getElementById('result-icon').style.color = 'var(--brand)';
         btnReview.disabled = true; // Disable until save is done
         if (!canReviewAny) btnReview.style.display = 'none';
         
@@ -776,16 +780,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (currentUser && examState.mode === 'exam') {
             try {
-                // Wait for the save to actually finish
                 await saveResultsToFirebase(perc, globalCorrect, globalTotal);
             } catch (e) {
                 console.error("Save failed:", e);
-                rTitle.textContent = "Sync Error. Please contact admin.";
+                rTitle.innerHTML = '<span style="color:var(--brand);">⚠️ Sync Error. Please contact admin.</span>';
             }
         }
 
-        // Final UI reveal
-        rTitle.textContent = `Score: ${perc}% (${globalCorrect}/${globalTotal})`;
+        // Final UI reveal - elaborate results
+        const wrong = globalTotal - globalCorrect;
+        const grade = perc >= 80 ? 'A' : perc >= 65 ? 'B' : perc >= 50 ? 'C' : perc >= 40 ? 'D' : 'F';
+        const gradeColor = perc >= 80 ? '#16a34a' : perc >= 65 ? '#2563eb' : perc >= 50 ? '#ca8a04' : perc >= 40 ? '#d97706' : '#dc2626';
+        const timeSpent = examState.timeTaken ? `${Math.floor(examState.timeTaken/60)}m ${examState.timeTaken%60}s` : '—';
+        
+        rTitle.innerHTML = `<span style="font-size:2.5rem;font-weight:900;color:${gradeColor};">${perc}%</span>`;
+        document.getElementById('result-icon').textContent = perc >= 80 ? 'emoji_events' : perc >= 50 ? 'check_circle' : 'assignment';
+        document.getElementById('result-icon').style.color = gradeColor;
+        document.getElementById('subject-scores-container').innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+                <div style="background:rgba(22,163,74,0.08);border:2px solid #16a34a;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${globalCorrect}</div>
+                    <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Correct</div>
+                </div>
+                <div style="background:rgba(220,38,38,0.06);border:2px solid #dc2626;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="font-size:1.3rem;font-weight:900;color:#dc2626;">${wrong}</div>
+                    <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Wrong</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+                    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Grade</div>
+                    <div style="font-size:1.5rem;font-weight:900;color:${gradeColor};">${grade}</div>
+                </div>
+                <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+                    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Time Spent</div>
+                    <div style="font-size:1.1rem;font-weight:800;color:var(--text);">${timeSpent}</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;background:var(--bg-inset);border-radius:6px;padding:6px 10px;">
+                <div style="display:flex;justify-content:space-between;font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">
+                    <span>Performance</span>
+                    <span>${perc}%</span>
+                </div>
+                <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
+                    <div style="height:100%;width:${perc}%;background:${gradeColor};border-radius:4px;transition:width 1s ease;"></div>
+                </div>
+            </div>
+        `;
         btnReview.disabled = false;
     }
 
@@ -919,10 +960,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 // ── End cleanup ──
 
+                // ── Save result entry to user's results collection ──
+                try {
+                    const resultRef = doc(collection(db, 'users', currentUser.uid, 'results'));
+                    await setDoc(resultRef, {
+                        id: resultRef.id,
+                        quizId: examState.quizId,
+                        course: examState.subjects?.map(s => s.title).join(', ') || 'Mock Exam',
+                        date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                        score: finalScore,
+                        total: 100,
+                        grade: finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F',
+                        correct: correct,
+                        totalQuestions: total,
+                        timeTaken: examState.timeTaken,
+                        isMock: true,
+                        timestamp: serverTimestamp()
+                    });
+                } catch(e) { console.error("Failed to save mock result:", e); }
+                // ── End result save ──
+
+                // === Streak/stats update for mock exam ===
                 const updatePayload = {
                     streak: streakUpdate.streak,
                     highestStreak: streakUpdate.highestStreak,
                     lastExamDate: streakUpdate.lastExamDate,
+                    exaRating: newExa,
                 };
                 if (userSnap.exists()) await updateDoc(userRef, updatePayload);
                 else await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
@@ -995,6 +1058,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('timer-display').style.display = 'none';
         document.getElementById('btn-submit-early').style.display = 'none';
         document.getElementById('q-progress').textContent = 'Review Mode';
+        // Close the sidebar/map drawer if open
+        const sidebar = document.querySelector('.cbt-sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        if (sidebar) sidebar.classList.remove('mobile-open');
+        if (overlay) overlay.classList.remove('active');
+        // Reset to first subject, first question
+        examState.currentSubjectIdx = 0;
         buildSubjectTabs();
         loadSubject(0);
         switchView('quiz');
