@@ -120,46 +120,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (elTitle) elTitle.textContent = prev.title || 'Daily Quiz Completed';
                     if (elContainer) elContainer.innerHTML = prev.html || '';
                     if (elReview) {
-                        // Clone and replace button to remove any old event listeners
-                        const newBtn = elReview.cloneNode(false);
-                        newBtn.textContent = 'REVIEW CORRECTIONS';
-                        newBtn.className = elReview.className;
-                        newBtn.style.cssText = elReview.style.cssText;
-                        newBtn.style.display = '';
-                        console.log('Creating cached review button');
-                        newBtn.onclick = function() {
-                            console.log('CACHED REVIEW CLICKED', { hasQuestions: !!prev.questions, qCount: prev.questions?.length, hasAnswers: !!prev.userAnswers });
-                            if (prev.questions && prev.questions.length > 0) {
-                                examState.isReviewMode = true;
-                                examState.subjects = [{
-                                    id: 0,
-                                    title: 'Daily Quiz',
-                                    isCorrection: true,
-                                    questions: prev.questions,
-                                    userAnswers: prev.userAnswers || new Array(prev.questions.length).fill(null),
-                                    currentQIdx: 0
-                                }];
-                                const td = document.getElementById('timer-display');
-                                if (td) td.style.display = 'none';
-                                const se = document.getElementById('btn-submit-early');
-                                if (se) se.style.display = 'none';
-                                const qp = document.getElementById('q-progress');
-                                if (qp) qp.textContent = 'Review Mode';
-                                const sidebar = document.querySelector('.cbt-sidebar');
-                                const overlay2 = document.querySelector('.sidebar-overlay');
-                                if (sidebar) sidebar.classList.remove('mobile-open');
-                                if (overlay2) overlay2.classList.remove('active');
-                                examState.currentSubjectIdx = 0;
-                                console.log('Calling buildSubjectTabs...');
-                                window.buildSubjectTabs();
-                                console.log('Calling loadSubject...');
-                                window.loadSubject(0);
-                                console.log('Calling switchView...');
-                                window.switchView('quiz');
-                                console.log('Review mode activated');
+                        // Inject cached answers into examState so the original review handler works
+                        if (prev.questions && prev.questions.length > 0 && examState.subjects?.[0]) {
+                            examState.subjects[0].questions = prev.questions;
+                            if (prev.userAnswers && prev.userAnswers.length > 0) {
+                                examState.subjects[0].userAnswers = prev.userAnswers;
                             }
-                        };
-                        elReview.parentNode.replaceChild(newBtn, elReview);
+                        }
+                        elReview.style.display = '';
+                        elReview.textContent = 'REVIEW CORRECTIONS';
                     }
                     if (elSubmit) elSubmit.style.display = 'none';
                     if (elTimer) elTimer.style.display = 'none';
