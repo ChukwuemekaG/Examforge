@@ -434,7 +434,7 @@ function setupAdminListeners() {
                     // Initialize FCM silently - errors won't show in console
                     try {
                         const messaging = getMessaging(firebaseApp);
-                        getToken(messaging, { vapidKey: 'BEr--9CxPudHChjFyqTNS_FPvtdLaEBFgwNbiYvM5DLQC9g-DjtIqVq0O4dTDqY9ln8pV9NRGHE2vjK3pHNF7V0' }).then(async (token) => {
+                        getToken(messaging, { vapidKey: 'BIJISfaqXYe_1SglbBFHM8NChjM7TOEGGk3G26_XBerH9iK13oaRc_m_JPzuTssiNIz6CXijtGkXRRfY28PeryE' }).then(async (token) => {
                             if (token && auth.currentUser) {
                                 try {
                                     await updateDoc(doc(db, 'users', auth.currentUser.uid), {
