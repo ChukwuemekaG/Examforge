@@ -91,6 +91,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dqDoc = await getDoc(doc(db, 'daily_quizzes', dqid));
                 if (!dqDoc.exists()) throw new Error(`Daily Quiz not found.`);
                 const d = dqDoc.data();
+                const maxAttempts = d.maxAttempts || 1;
+                
+                // Check browser storage for previous attempt
+                const storageKey = 'examforge_dq_' + dqid;
+                const previousAttempt = localStorage.getItem(storageKey);
+                
+                if (previousAttempt) {
+                    const prev = JSON.parse(previousAttempt);
+                    // Show results directly - no retake
+                    document.getElementById('result-icon').textContent = 'assignment';
+                    document.getElementById('result-icon').style.color = '#2563eb';
+                    document.getElementById('result-title').textContent = prev.title || 'Daily Quiz Completed';
+                    document.getElementById('subject-scores-container').innerHTML = prev.html || '';
+                    document.getElementById('btn-review').style.display = 'none';
+                    document.getElementById('btn-submit-early').style.display = 'none';
+                    document.getElementById('timer-display').style.display = 'none';
+                    document.getElementById('quiz-header-actions').style.display = 'none';
+                    switchView('results');
+                    return;
+                }
                 
                 const allQuestions = d.questions || [];
                 if (allQuestions.length === 0) throw new Error('No questions available in this daily quiz.');
@@ -1029,6 +1049,48 @@ document.addEventListener('DOMContentLoaded', () => {
                         timeTaken: examState.timeTaken,
                         timestamp: serverTimestamp()
                     });
+                    
+                    // Save to localStorage for browser-based retake prevention
+                    try {
+                        const wrong = total - correct;
+                        const gradeChar = finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F';
+                        const gradeColor = finalScore >= 80 ? '#16a34a' : finalScore >= 65 ? '#2563eb' : finalScore >= 50 ? '#ca8a04' : finalScore >= 40 ? '#d97706' : '#dc2626';
+                        const timeStr = examState.timeTaken ? `${Math.floor(examState.timeTaken/60)}m ${examState.timeTaken%60}s` : '—';
+                        const storageKey = 'examforge_dq_' + examState.quizId;
+                        localStorage.setItem(storageKey, JSON.stringify({
+                            title: `${finalScore}% - Completed`,
+                            html: `
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+                            <div style="background:rgba(22,163,74,0.08);border:2px solid #16a34a;border-radius:10px;padding:14px;text-align:center;">
+                                <div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${correct}</div>
+                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Correct</div>
+                            </div>
+                            <div style="background:rgba(220,38,38,0.06);border:2px solid #dc2626;border-radius:10px;padding:14px;text-align:center;">
+                                <div style="font-size:1.3rem;font-weight:900;color:#dc2626;">${wrong}</div>
+                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Wrong</div>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+                                <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Grade</div>
+                                <div style="font-size:1.5rem;font-weight:900;color:${gradeColor};">${gradeChar}</div>
+                            </div>
+                            <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+                                <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Time</div>
+                                <div style="font-size:1.1rem;font-weight:800;color:var(--text);">${timeStr}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px;background:var(--bg-inset);border-radius:6px;padding:6px 10px;">
+                            <div style="display:flex;justify-content:space-between;font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">
+                                <span>Score</span>
+                                <span>${finalScore}%</span>
+                            </div>
+                            <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
+                                <div style="height:100%;width:${finalScore}%;background:${gradeColor};border-radius:4px;"></div>
+                            </div>
+                        </div>`
+                        }));
+                    } catch(e) { console.error("localStorage save failed:", e); }
                 }
 
                 const updatePayload = {

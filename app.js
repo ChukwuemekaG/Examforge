@@ -1925,7 +1925,7 @@ window.mcOpenCreateDailyQuizModal = function() {
     modal.innerHTML = `
         <style>
             .dq-modal-card { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-            .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+            .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
             .dq-question-grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; align-items: start; }
             .dq-toggle-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
             .dq-opt-row { display:flex; align-items:center; gap:6px; }
@@ -1970,6 +1970,10 @@ window.mcOpenCreateDailyQuizModal = function() {
                     <div class="mc-field" style="margin-bottom:0;">
                         <label style="font-weight:800; text-transform:uppercase; font-size:0.7rem; color:var(--text); margin-bottom:6px; display:block;">Time Limit (Minutes)</label>
                         <input type="number" id="dq-builder-time" value="10" min="1" max="180" style="border:3px solid var(--text); border-radius:8px; padding:10px 14px; font-weight:800; font-size:0.85rem; width:100%; box-sizing:border-box; background:var(--bg-card); color:var(--text);">
+                    </div>
+                    <div class="mc-field" style="margin-bottom:0;">
+                        <label style="font-weight:800; text-transform:uppercase; font-size:0.7rem; color:var(--text); margin-bottom:6px; display:block;">Max Attempts</label>
+                        <input type="number" id="dq-builder-attempts" value="1" min="1" max="10" style="border:3px solid var(--text); border-radius:8px; padding:10px 14px; font-weight:800; font-size:0.85rem; width:100%; box-sizing:border-box; background:var(--bg-card); color:var(--text);">
                     </div>
                 </div>
                 
@@ -2339,11 +2343,14 @@ window.mcSaveCreatedDailyQuiz = async function() {
         const dqid = 'dq_' + baseId;
         const qDocRef = doc(db, 'daily_quizzes', dqid);
         
+        const maxAttempts = parseInt(document.getElementById('dq-builder-attempts')?.value) || 1;
+        
         await setDoc(qDocRef, {
             id: dqid,
             title,
             questions: window.currentBuilderQuestions,
             timeLimit: time,
+            maxAttempts: maxAttempts,
             createdAt: serverTimestamp()
         });
         
@@ -2377,7 +2384,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                 </div>
                 <div style="flex:1;min-width:0;">
                     <div id="ef-dq-det-title" style="font-weight:700;font-size:0.85rem;color:var(--text);">Loading Quiz details…</div>
-                    <div id="ef-dq-det-meta" style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">Quiz ID: <code style="font-family:var(--font-mono);font-size:0.6rem;">${dqid}</code></div>
+                    <div id="ef-dq-det-meta" style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;"></div>
                 </div>
                 <button onclick="this.closest('#ef-dq-details-overlay').remove()"
                     style="width:30px;height:30px;border-radius:5px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
@@ -2403,7 +2410,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         }
         const q = dqDoc.data();
         document.getElementById('ef-dq-det-title').textContent = q.title;
-        document.getElementById('ef-dq-det-meta').innerHTML = `Exam Mode · ${q.questions?.length || 0} Questions · ${q.timeLimit || 10} Minutes · ID: <code style="font-family:var(--font-mono);font-size:0.65rem;">${dqid}</code>`;
+        document.getElementById('ef-dq-det-meta').innerHTML = `${q.questions?.length || 0} questions · ${q.timeLimit || 10} min`;
         
         const quizShareUrl = window.location.origin + '/quiz.html?dqid=' + dqid;
         
@@ -2510,29 +2517,31 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                     <label style="font-weight:800;text-transform:uppercase;font-size:0.65rem;color:var(--text-muted);margin-bottom:4px;display:block;">Optional Broadcast Invitation Message</label>
                     <textarea id="dq-broadcast-msg" rows="2" placeholder="Good morning! Today's quiz is ready. You have ${q.timeLimit || 10} minutes. Good luck!" style="border:2px solid var(--text);border-radius:8px;padding:8px 12px;font-size:0.78rem;font-weight:600;width:100%;box-sizing:border-box;"></textarea>
                 </div>
-                <button class="btn btn-primary" id="btn-dq-broadcast" onclick="window.mcBroadcastDailyQuiz('${dqid}', '${subscriberCount}')" style="font-weight:900;border:3px solid var(--text);padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:6px;">
-                    <span class="material-icons-round" style="font-size:1.1rem;">send</span> BROADCAST NOW TO SUBSCRIBERS
+                <button class="btn btn-primary" id="btn-dq-broadcast" onclick="window.mcBroadcastDailyQuiz('${dqid}', '${subscriberCount}')" style="font-weight:800;border:2px solid var(--text);padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:4px;font-size:0.75rem;">
+                    <span class="material-icons-round" style="font-size:0.95rem;">send</span> BROADCAST
                 </button>
             </div>
             
             <!-- Student Attempts Table -->
             <div>
-                <div style="font-weight:900;font-size:0.8rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                    <div style="display:flex;align-items:center;gap:6px;">
+                <div style="font-weight:900;font-size:0.8rem;text-transform:uppercase;color:var(--text);margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                         <span class="material-icons-round" style="color:var(--text-muted);">analytics</span> Student Attempts History
                     </div>
-                    ${attemptCount > 0 ? `
-                    <div style="display:flex;gap:8px;">
-                        <button id="btn-export-csv" class="btn btn-outline btn-sm" style="padding:6px 12px;font-size:0.7rem;font-weight:800;display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--bg-card);border:2px solid var(--text);border-radius:6px;">
-                            <span class="material-icons-round" style="font-size:0.95rem;">download</span> Export CSV
-                        </button>
-                        <button id="btn-export-pdf" class="btn btn-outline btn-sm" style="padding:6px 12px;font-size:0.7rem;font-weight:800;display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--bg-card);border:2px solid var(--text);border-radius:6px;">
-                            <span class="material-icons-round" style="font-size:0.95rem;">picture_as_pdf</span> Export PDF
-                        </button>
-                    </div>
-                    ` : ''}
                 </div>
+                ${attemptCount > 0 ? `
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                    <button id="btn-export-csv" class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:0.65rem;font-weight:800;display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--bg-card);border:2px solid var(--text);border-radius:6px;">
+                        <span class="material-icons-round" style="font-size:0.85rem;">download</span> CSV
+                    </button>
+                    <button id="btn-export-pdf" class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:0.65rem;font-weight:800;display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--bg-card);border:2px solid var(--text);border-radius:6px;">
+                        <span class="material-icons-round" style="font-size:0.85rem;">picture_as_pdf</span> PDF
+                    </button>
+                </div>
+                ` : ''}
+                <div style="overflow-x:auto;border:2px solid var(--text);border-radius:8px;">
                 ${attemptsHTML}
+                </div>
             </div>
         `;
 
@@ -7449,7 +7458,7 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
     modal.innerHTML = `
         <style>
             .dq-modal-card { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-            .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+            .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
             .dq-question-grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; }
             @media (max-width: 600px) {
                 .dq-meta-grid, .dq-question-grid-split { grid-template-columns: 1fr !important; gap: 12px !important; }
