@@ -848,9 +848,9 @@ function renderMaster() {
             @media(max-width:460px){ .mc-2col { grid-template-columns:1fr; } }
             
             /* ── Daily Quiz grid ── */
-            @media(max-width:600px){ #mc-dq-list { grid-template-columns:1fr !important; gap:14px !important; } }
-            @media(max-width:600px){ #mc-advice-list { grid-template-columns:1fr !important; gap:14px !important; } }
-            @media(max-width:600px){ #mc-subevents-list { grid-template-columns:1fr !important; gap:14px !important; } }
+            @media(max-width:600px){ #mc-dq-list { grid-template-columns:1fr !important; gap:8px !important; } }
+            @media(max-width:600px){ #mc-advice-list { grid-template-columns:1fr !important; gap:8px !important; } }
+            @media(max-width:600px){ #mc-subevents-list { grid-template-columns:1fr !important; gap:8px !important; } }
             
             /* ── DQ History ── */
             @media(max-width:500px){ #mc-dq-history > div { flex-direction:column !important; align-items:flex-start !important; gap:8px !important; } }
@@ -1360,17 +1360,17 @@ async function mcRenderDailyQuizTab() {
             <!-- Header section -->
             <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:10px;margin-bottom:8px;">
                 <div>
-                        <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.3rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Quizzes Hub</span>
+                        <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.3rem);font-weight:800;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Quizzes Hub</span>
                     <div id="mc-dq-sub-count" style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Loading subscriber count…</div>
                 </div>
-                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyQuizModal()" style="font-weight:900;border:3px solid var(--text);padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
+                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyQuizModal()" style="font-weight:800;border:2px solid var(--text);padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE DAILY QUIZ
                 </button>
             </div>
 
             <!-- Quiz Grid -->
             <div>
-                <h2 style="font-weight:900;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Active Daily Challenges</h2>
+                <h2 style="font-weight:800;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Active Daily Challenges</h2>
                 <div id="mc-dq-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
                     <div style="grid-column:1/-1;text-align:center;padding:56px;color:var(--text-muted);">
                         <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;margin-bottom:8px;">autorenew</span>
@@ -1381,7 +1381,7 @@ async function mcRenderDailyQuizTab() {
 
             <!-- Broadcast History section -->
             <div style="margin-top:24px;border-top:3px solid var(--text);padding-top:24px;">
-                <h2 style="font-weight:900;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Recent Subscriber Broadcasts</h2>
+                <h2 style="font-weight:800;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Recent Subscriber Broadcasts</h2>
                 <div id="mc-dq-history">
                     <div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:24px;">Loading history…</div>
                 </div>
@@ -1421,13 +1421,13 @@ async function mcLoadDailyQuizzes() {
         grid.innerHTML = quizzes.map(q => {
             const dateStr = q.createdAt?.toDate ? q.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : 'Recently';
             return `
-            <div class="card" style="padding:20px;border:3px solid var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:var(--bg-card);transition:transform 0.2s;">
+            <div class="card" style="padding:12px;border:2px solid var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:10px;background:var(--bg-card);transition:transform 0.2s;">
                 <div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                        <span style="font-size:0.65rem;font-weight:900;text-transform:uppercase;color:var(--brand);background:rgba(37,99,235,0.06);padding:3px 8px;border:1.5px solid var(--brand);border-radius:6px;letter-spacing:0.05em;">Exam Mode</span>
+                        <span style="font-size:0.65rem;font-weight:800;text-transform:uppercase;color:var(--brand);background:rgba(37,99,235,0.06);padding:3px 8px;border:1.5px solid var(--brand);border-radius:6px;letter-spacing:0.05em;">Exam Mode</span>
                         <span style="font-size:0.68rem;color:var(--text-muted);font-weight:600;">${dateStr}</span>
                     </div>
-                    <h3 style="font-weight:900;font-size:1.05rem;color:var(--text);line-height:1.3;margin:0 0 10px 0;word-break:break-word;">${q.title}</h3>
+                    <h3 style="font-weight:800;font-size:0.95rem;color:var(--text);line-height:1.3;margin:0 0 10px 0;word-break:break-word;">${q.title}</h3>
                     <div style="display:flex;gap:12px;font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;">
                         <div style="display:flex;align-items:center;gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">help_outline</span>
@@ -1441,7 +1441,7 @@ async function mcLoadDailyQuizzes() {
                 </div>
                 
                 <div style="display:flex;gap:8px;margin-top:auto;">
-                    <button class="btn btn-outline" onclick="window.mcViewDailyQuizDetails('${q.id}')" style="flex:1;font-size:0.7rem;padding:6px;border:2px solid var(--text);font-weight:800;">
+                    <button class="btn btn-outline" onclick="window.mcViewDailyQuizDetails('${q.id}')" style="flex:1;font-size:0.65rem;padding:4px;border:2px solid var(--text);font-weight:800;">
                         VIEW DETAILS
                     </button>
                     <button class="btn btn-danger" onclick="window.mcDeleteDailyQuiz('${q.id}', '${q.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);display:flex;align-items:center;justify-content:center;aspect-ratio:1;">
@@ -1686,7 +1686,7 @@ window.mcDeleteDailyAdvice = function(id, title) {
 window.mcOpenCreateDailyAdviceModal = function() {
     const modal = document.createElement('div');
     modal.id = 'ef-adv-builder-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;animation:popIn 0.3s ease;';
+    modal.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:3000;animation:fadeIn 0.2s ease;';
     modal.innerHTML = `
         <style>
             .adv-modal-card {
@@ -1924,19 +1924,25 @@ window.mcOpenCreateDailyQuizModal = function() {
                 }
             }
         </style>
-        <div class="card dq-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
+        <div class="card dq-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:none; background:transparent;">
             <!-- Modal Header -->
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
-                <div style="font-weight:900; font-size:1.2rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
-                    <span class="material-icons-round" style="color:var(--brand);">today</span> Create Daily Quiz
+            <div style="display:flex; align-items:center; gap:14px; padding:12px 16px; border-bottom:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
+                <button onclick="document.getElementById('ef-dq-builder-modal').remove()"
+                    style="width:36px;height:36px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round">arrow_back</span>
+                </button>
+                <div style="width:36px;height:36px;border-radius:8px;background:var(--brand-dim);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span class="material-icons-round" style="color:var(--brand);font-size:1rem;">today</span>
                 </div>
-                <button onclick="document.getElementById('ef-dq-builder-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
-                    <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
+                <div style="font-weight:800; font-size:1rem; color:var(--text); text-transform:uppercase; flex:1;">Create Daily Quiz</div>
+                <button onclick="document.getElementById('ef-dq-builder-modal').remove()"
+                    style="width:36px;height:36px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round">close</span>
                 </button>
             </div>
             
             <!-- Modal Body -->
-            <div style="flex:1; overflow-y:auto; padding:20px; background:var(--bg-card); display:flex; flex-direction:column; gap:20px;">
+            <div style="flex:1; overflow-y:auto; padding:16px; background:var(--bg); display:flex; flex-direction:column; gap:14px;">
                 <!-- Quiz Meta Row -->
                 <div class="dq-meta-grid">
                     <div class="mc-field" style="margin-bottom:0;">
@@ -1999,10 +2005,10 @@ window.mcOpenCreateDailyQuizModal = function() {
             </div>
             
             <!-- Modal Footer -->
-            <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
-                <div class="dq-footer-actions" style="display:flex; align-items:center; gap:12px; width:auto;">
-                    <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:10px 20px;">CANCEL</button>
-                    <button class="btn btn-primary" onclick="window.mcSaveCreatedDailyQuiz()" style="font-weight:900; border:3px solid var(--text);padding:10px 24px;">SAVE & PUBLISH</button>
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:12px 16px; border-top:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
+                <div class="dq-footer-actions" style="display:flex; align-items:center; gap:10px; width:auto;">
+                    <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:2px solid var(--border); font-weight:800; padding:8px 16px;">CANCEL</button>
+                    <button class="btn btn-primary" onclick="window.mcSaveCreatedDailyQuiz()" style="font-weight:800; border:2px solid var(--text); padding:8px 20px;">SAVE & PUBLISH</button>
                 </div>
             </div>
         </div>
@@ -6653,19 +6659,25 @@ window.mcLoadSubEvents = async function() {
 window.mcOpenCreateSubEventModal = function() {
     const modal = document.createElement('div');
     modal.id = 'ef-subevent-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;animation:popIn 0.3s ease;padding:12px;box-sizing:border-box;';
+    modal.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:3000;animation:fadeIn 0.2s ease;';
     modal.innerHTML = `
-        <div class="card" style="width:min(500px, 100%); max-height:90vh; display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
-                <div style="font-weight:900; font-size:1.1rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
-                    <span class="material-icons-round" style="color:var(--brand);">event_available</span> Create Event
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:14px; padding:12px 16px; border-bottom:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
+                <button onclick="document.getElementById('ef-subevent-modal').remove()"
+                    style="width:36px;height:36px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round">arrow_back</span>
+                </button>
+                <div style="width:36px;height:36px;border-radius:8px;background:var(--brand-dim);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span class="material-icons-round" style="color:var(--brand);font-size:1rem;">event_available</span>
                 </div>
-                <button onclick="document.getElementById('ef-subevent-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
-                    <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
+                <div style="font-weight:800; font-size:1rem; color:var(--text); text-transform:uppercase; flex:1;">Create Event</div>
+                <button onclick="document.getElementById('ef-subevent-modal').remove()"
+                    style="width:36px;height:36px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round">close</span>
                 </button>
             </div>
             
-            <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px;">
+            <div style="flex:1; overflow-y:auto; padding:16px; background:var(--bg); display:flex; flex-direction:column; gap:12px;">
                 <div class="mc-field" style="margin-bottom:0;">
                     <label style="font-weight:800; text-transform:uppercase; font-size:0.7rem; color:var(--text); margin-bottom:6px; display:block;">Event Title</label>
                     <input type="text" id="se-title" placeholder="e.g. JAMB Bi-Weekly Mock 1" style="border:3px solid var(--text); border-radius:8px; padding:10px 14px; font-weight:800; font-size:0.85rem; width:100%; box-sizing:border-box;">
@@ -6684,9 +6696,9 @@ window.mcOpenCreateSubEventModal = function() {
                 </div>
             </div>
             
-            <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
-                <button class="btn btn-ghost" onclick="document.getElementById('ef-subevent-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:10px 20px;">CANCEL</button>
-                <button class="btn btn-primary" onclick="window.mcSaveSubEvent()" style="font-weight:900; border:3px solid var(--text);padding:10px 24px;">SAVE EVENT</button>
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:12px 16px; border-top:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
+                <button class="btn btn-ghost" onclick="document.getElementById('ef-subevent-modal').remove()" style="border:2px solid var(--border); font-weight:800; padding:8px 16px;">CANCEL</button>
+                <button class="btn btn-primary" onclick="window.mcSaveSubEvent()" style="font-weight:800; border:2px solid var(--text); padding:8px 20px;">SAVE EVENT</button>
             </div>
         </div>
     `;
