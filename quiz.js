@@ -120,10 +120,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (elTitle) elTitle.textContent = prev.title || 'Daily Quiz Completed';
                     if (elContainer) elContainer.innerHTML = prev.html || '';
                     if (elReview) {
-                        elReview.style.display = '';
-                        elReview.textContent = 'REVIEW CORRECTIONS';
-                        // Hook review button to load cached questions
-                        elReview.onclick = function() {
+                        // Clone and replace button to remove any old event listeners
+                        const newBtn = elReview.cloneNode(false);
+                        newBtn.textContent = 'REVIEW CORRECTIONS';
+                        newBtn.className = elReview.className;
+                        newBtn.style.cssText = elReview.style.cssText;
+                        newBtn.style.display = '';
+                        newBtn.onclick = function() {
                             if (prev.questions && prev.questions.length > 0) {
                                 examState.isReviewMode = true;
                                 examState.subjects = [{
@@ -134,19 +137,23 @@ document.addEventListener('DOMContentLoaded', () => {
                                     userAnswers: prev.userAnswers || new Array(prev.questions.length).fill(null),
                                     currentQIdx: 0
                                 }];
-                                document.getElementById('timer-display').style.display = 'none';
-                                document.getElementById('btn-submit-early').style.display = 'none';
-                                document.getElementById('q-progress').textContent = 'Review Mode';
+                                const td = document.getElementById('timer-display');
+                                if (td) td.style.display = 'none';
+                                const se = document.getElementById('btn-submit-early');
+                                if (se) se.style.display = 'none';
+                                const qp = document.getElementById('q-progress');
+                                if (qp) qp.textContent = 'Review Mode';
                                 const sidebar = document.querySelector('.cbt-sidebar');
                                 const overlay2 = document.querySelector('.sidebar-overlay');
                                 if (sidebar) sidebar.classList.remove('mobile-open');
                                 if (overlay2) overlay2.classList.remove('active');
                                 examState.currentSubjectIdx = 0;
-                                if (typeof buildSubjectTabs === 'function') buildSubjectTabs();
-                                if (typeof loadSubject === 'function') loadSubject(0);
-                                if (typeof switchView === 'function') switchView('quiz');
+                                window.buildSubjectTabs();
+                                window.loadSubject(0);
+                                window.switchView('quiz');
                             }
                         };
+                        elReview.parentNode.replaceChild(newBtn, elReview);
                     }
                     if (elSubmit) elSubmit.style.display = 'none';
                     if (elTimer) elTimer.style.display = 'none';
@@ -505,6 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
             subjectTabsContainer.appendChild(tab);
         });
     }
+    window.buildSubjectTabs = buildSubjectTabs;
 
     function loadSubject(subjectIndex) {
         examState.currentSubjectIdx = subjectIndex;
@@ -516,6 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
         buildQuestionMap();
         renderQuestion(subject.currentQIdx);
     }
+    window.loadSubject = loadSubject;
 
     function buildQuestionMap() {
         questionMapContainer.innerHTML = '';
@@ -1323,6 +1332,7 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.values(views).forEach(v => v.classList.remove('active'));
         views[viewName].classList.add('active');
     }
+    window.switchView = switchView;
 
     init();
 });
