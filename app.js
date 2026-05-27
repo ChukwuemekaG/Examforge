@@ -11,6 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, arrayUnion, arrayRemove, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
+import { app as firebaseApp } from './firebase-config.js';
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -432,8 +433,8 @@ function setupAdminListeners() {
                     }
                     // Initialize FCM silently - errors won't show in console
                     try {
-                        const messaging = getMessaging();
-                        getToken(messaging).then(async (token) => {
+                        const messaging = getMessaging(firebaseApp);
+                        getToken(messaging, { vapidKey: 'BEr--9CxPudHChjFyqTNS_FPvtdLaEBFgwNbiYvM5DLQC9g-DjtIqVq0O4dTDqY9ln8pV9NRGHE2vjK3pHNF7V0' }).then(async (token) => {
                             if (token && auth.currentUser) {
                                 try {
                                     await updateDoc(doc(db, 'users', auth.currentUser.uid), {

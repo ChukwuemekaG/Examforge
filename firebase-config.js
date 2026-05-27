@@ -17,3 +17,4 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 // Explicitly target the "default" database, just like Pormaro
 export const db = getFirestore(app, "default");
+export { app };
