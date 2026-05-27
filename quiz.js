@@ -119,7 +119,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (elIcon) { elIcon.textContent = 'assignment'; elIcon.style.color = '#2563eb'; }
                     if (elTitle) elTitle.textContent = prev.title || 'Daily Quiz Completed';
                     if (elContainer) elContainer.innerHTML = prev.html || '';
-                    if (elReview) elReview.style.display = 'none';
+                    if (elReview) {
+                        elReview.style.display = '';
+                        elReview.textContent = 'REVIEW CORRECTIONS';
+                        // Hook review button to load cached questions
+                        elReview.onclick = function() {
+                            if (prev.questions && prev.questions.length > 0) {
+                                examState.isReviewMode = true;
+                                examState.subjects = [{
+                                    id: 0,
+                                    title: 'Daily Quiz',
+                                    isCorrection: true,
+                                    questions: prev.questions,
+                                    userAnswers: prev.userAnswers || new Array(prev.questions.length).fill(null),
+                                    currentQIdx: 0
+                                }];
+                                document.getElementById('timer-display').style.display = 'none';
+                                document.getElementById('btn-submit-early').style.display = 'none';
+                                document.getElementById('q-progress').textContent = 'Review Mode';
+                                const sidebar = document.querySelector('.cbt-sidebar');
+                                const overlay2 = document.querySelector('.sidebar-overlay');
+                                if (sidebar) sidebar.classList.remove('mobile-open');
+                                if (overlay2) overlay2.classList.remove('active');
+                                examState.currentSubjectIdx = 0;
+                                if (typeof buildSubjectTabs === 'function') buildSubjectTabs();
+                                if (typeof loadSubject === 'function') loadSubject(0);
+                                if (typeof switchView === 'function') switchView('quiz');
+                            }
+                        };
+                    }
                     if (elSubmit) elSubmit.style.display = 'none';
                     if (elTimer) elTimer.style.display = 'none';
                     if (elHeader) elHeader.style.display = 'none';
@@ -1155,7 +1183,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
                                 <div style="height:100%;width:${finalScore}%;background:${gradeColor};border-radius:4px;"></div>
                             </div>
-                        </div>`
+                        </div>`,
+                        questions: examState.subjects?.[0]?.questions || [],
+                        userAnswers: examState.subjects?.[0]?.userAnswers || []
                         }));
                     } catch(e) { console.error("DQ localStorage save failed:", e); }
                 }
