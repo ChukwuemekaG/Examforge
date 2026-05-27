@@ -2410,6 +2410,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         }
         const q = dqDoc.data();
         document.getElementById('ef-dq-det-title').textContent = q.title;
+        document.getElementById('ef-dq-det-title').style.fontSize = '0.75rem';
         document.getElementById('ef-dq-det-meta').innerHTML = `${q.questions?.length || 0} questions · ${q.timeLimit || 10} min`;
         
         const quizShareUrl = window.location.origin + '/quiz.html?dqid=' + dqid;
@@ -2452,8 +2453,8 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             }).join('');
             
             attemptsHTML = `
-            <div style="border:2px solid var(--text);border-radius:10px;overflow:hidden;background:var(--bg-card);">
-                <table style="width:100%;border-collapse:collapse;text-align:left;">
+            <div style="border:2px solid var(--text);border-radius:10px;overflow-x:auto;background:var(--bg-card);">
+                <table style="width:100%;min-width:500px;border-collapse:collapse;text-align:left;">
                     <thead>
                         <tr style="background:var(--bg-inset);border-bottom:3px solid var(--text);">
                             <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Student</th>
