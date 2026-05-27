@@ -4795,10 +4795,10 @@ window.adminPromptNotification = function(userId) {
 
                     let actionBtn = isRegistered ? 
                         `<button class="btn btn-outline btn-sm" style="border-color:#f59e0b; color:#f59e0b; pointer-events:none;" disabled>Registered</button>` : 
-                        `<button class="btn btn-primary btn-sm btn-register-dynamic" data-event-id="${ev.id}" data-event-title="${ev.title.replace(/"/g, '&quot;')}" data-subjects="${(ev.availableSubjects||[]).join('|')}" data-max="${ev.maxSubjects||10}" style="background:#f59e0b; border-color:var(--border);">Register</button>`;
+                        `<button class="btn btn-primary btn-sm btn-register-dynamic" data-event-id="${ev.id}" data-event-title="${ev.title.replace(/"/g, '&quot;')}" data-subjects="${encodeURIComponent(JSON.stringify(ev.availableSubjects||[]))}" data-max="${ev.maxSubjects||10}" style="background:#f59e0b; border-color:var(--border);">Register</button>`;
                     
                     let subjectsLabel = isRegistered ? 
-                        `<div style="font-size:0.65rem; color:#f59e0b; margin-top:4px; font-weight:700;">Subjects: ${subjects.join(', ')}</div>` : '';
+                        `<div style="font-size:0.65rem; color:#f59e0b; margin-top:4px; font-weight:700;">Subjects: ${subjects.map(s => typeof s === 'string' ? s : (s.name || s)).join(', ')}</div>` : '';
 
                     dynamicHTML += `
                     <div class="card" style="padding:20px; border-color: #f59e0b;">
@@ -4883,7 +4883,14 @@ window.adminPromptNotification = function(userId) {
                 btn.addEventListener('click', () => {
                     const eventId = btn.getAttribute('data-event-id');
                     const title = btn.getAttribute('data-event-title');
-                    const subjects = btn.getAttribute('data-subjects').split('|').filter(Boolean);
+                    const rawSubjects = btn.getAttribute('data-subjects');
+                    let subjects = [];
+                    try {
+                        const parsed = JSON.parse(decodeURIComponent(rawSubjects));
+                        subjects = (parsed || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
+                    } catch(e) {
+                        subjects = (rawSubjects || '').split('|').filter(Boolean);
+                    }
                     const max = parseInt(btn.getAttribute('data-max'), 10) || 10;
                     window.openDynamicRegistrationModal(eventId, title, subjects, max);
                 });
@@ -4900,12 +4907,15 @@ window.adminPromptNotification = function(userId) {
         modal.id = 'ef-reg-modal';
         modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;animation:popIn 0.3s ease;';
         
-        const checksHTML = availableSubjects.map(s => `
+        const checksHTML = availableSubjects.map(s => {
+            const name = typeof s === 'string' ? s : (s.name || String(s));
+            return `
             <label style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--bg-inset); border:2px solid var(--border); border-radius:8px; cursor:pointer;">
-                <input type="checkbox" value="${s.replace(/"/g, '&quot;')}" class="reg-subject-cb" style="width:18px; height:18px; accent-color:var(--brand);">
-                <span style="font-weight:700; font-size:0.85rem; color:var(--text);">${s}</span>
+                <input type="checkbox" class="reg-subject-cb" value="${name.replace(/\"/g, '&quot;')}" style="width:18px;height:18px;accent-color:var(--brand);">
+                <span>${name}</span>
             </label>
-        `).join('');
+        `;
+        }).join('');
 
         modal.innerHTML = `
             <div class="card" style="width:min(440px, 90vw); display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
