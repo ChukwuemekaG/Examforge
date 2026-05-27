@@ -908,7 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="height:100%;width:${perc}%;background:${gradeColor};border-radius:4px;transition:width 1s ease;"></div>
                 </div>
             </div>
-        `;
+        `);
         btnReview.disabled = false;
     }
 
