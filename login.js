@@ -178,8 +178,6 @@ formRegister.addEventListener('submit', async (e) => {
         });
     }
 
-    // ── GOOGLE AUTH DISABLED ──
-    /*
     const googleProvider = new GoogleAuthProvider();
     const handleGoogleAuth = async () => {
         clearFeedback();
@@ -198,6 +196,4 @@ formRegister.addEventListener('submit', async (e) => {
     document.querySelectorAll('.btn-google-login, .btn-google-reg').forEach(btn => {
         btn.addEventListener('click', handleGoogleAuth);
     });
-    */
-    // ── END GOOGLE AUTH ──
 });
