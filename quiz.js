@@ -376,10 +376,40 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             console.warn("Fullscreen blocked.");
         }
+
+        // ── Anti-cheat measures ──
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'u', 's', 'p', 'i'].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+        });
+        document.addEventListener('copy', (e) => e.preventDefault());
+        document.addEventListener('cut', (e) => e.preventDefault());
+        document.addEventListener('paste', (e) => e.preventDefault());
+        document.addEventListener('selectstart', (e) => e.preventDefault());
     });
 
     function beginActiveQuiz() {
         examState.isQuizActive = true;
+
+        // ── Periodic anti-cheat check ──
+        const antiCheatInterval = setInterval(() => {
+            if (!examState.isQuizActive || examState.isReviewMode) {
+                clearInterval(antiCheatInterval);
+                return;
+            }
+            // Re-apply prevention handlers in case they were overridden
+            document.addEventListener('contextmenu', (e) => e.preventDefault(), { once: false });
+            document.addEventListener('copy', (e) => e.preventDefault(), { once: false });
+            document.addEventListener('paste', (e) => e.preventDefault(), { once: false });
+        }, 5000);
+
         examState.startTime = Date.now();
 
         document.addEventListener('fullscreenchange', handleSecurityViolation);
