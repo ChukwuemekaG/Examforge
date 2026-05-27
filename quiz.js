@@ -119,6 +119,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     const gradeChar = existingAttempt.score >= 80 ? 'A' : existingAttempt.score >= 65 ? 'B' : existingAttempt.score >= 50 ? 'C' : existingAttempt.score >= 40 ? 'D' : 'F';
                     const gradeColor = existingAttempt.score >= 80 ? '#16a34a' : existingAttempt.score >= 65 ? '#2563eb' : existingAttempt.score >= 50 ? '#ca8a04' : existingAttempt.score >= 40 ? '#d97706' : '#dc2626';
                     
+                    // Insert quiz info bar for daily quiz retake
+                    const dqContainer = $id('subject-scores-container');
+                    const existingInfoBar = $id('quiz-info-bar');
+                    if (dqContainer && !existingInfoBar) {
+                        const infoDiv = document.createElement('div');
+                        infoDiv.id = 'quiz-info-bar';
+                        infoDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;';
+                        const dqTitle = d?.title || 'Daily Quiz';
+                        const dqTime = d?.timeLimit ? d.timeLimit + ' min' : '—';
+                        infoDiv.innerHTML = `
+                            <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:700;color:var(--text);">
+                                <span class="material-icons-round" style="font-size:1rem;color:var(--brand);">book</span>
+                                ${dqTitle}
+                            </div>
+                            <div style="flex:1;"></div>
+                            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                <span style="display:flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">
+                                    <span class="material-icons-round" style="font-size:0.85rem;">timer</span>
+                                    ${dqTime}
+                                </span>
+                                <span style="display:flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">
+                                    <span class="material-icons-round" style="font-size:0.85rem;">gavel</span>
+                                    Exam Mode
+                                </span>
+                            </div>
+                        `;
+                        dqContainer.parentNode.insertBefore(infoDiv, dqContainer);
+                    }
+
                     safeHTML('subject-scores-container', `
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
                             <div style="background:rgba(22,163,74,0.08);border:2px solid #16a34a;border-radius:10px;padding:14px;text-align:center;">

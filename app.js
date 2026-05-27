@@ -5582,7 +5582,7 @@ window.adminPromptNotification = function(userId) {
             <div class="page-sub">Performance History & Analytics</div>
         </div>
 
-        <div class="card-grid card-grid-strict" style="margin-bottom: 32px;">
+        <div class="card-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:24px;">
             <div class="card stat-card">
                 <div class="stat-label"><span class="material-icons-round">analytics</span> Avg. Accuracy</div>
                 <div class="stat-value">${analytics.avg}%</div>
