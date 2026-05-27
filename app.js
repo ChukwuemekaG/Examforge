@@ -1574,7 +1574,7 @@ async function mcLoadDailyAdvices() {
                         ${cat.label}
                     </div>
                     <!-- Title -->
-                    <h3 style="font-weight:900;font-size:0.95rem;color:var(--text);margin:0 0 8px 0;line-height:1.3;text-transform:uppercase;font-family:'Space Grotesk',sans-serif;">
+                    <h3 style="font-weight:900;font-size:0.95rem;color:var(--text);margin:0 0 8px 0;line-height:1.3;text-transform:uppercase;font-family:'Poppins',sans-serif;">
                         ${adv.title.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
                     </h3>
                     <!-- Snippet -->
@@ -5857,7 +5857,7 @@ window.adminPromptNotification = function(userId) {
                             </div>
                             
                             <!-- Title -->
-                            <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:900;color:var(--text);line-height:1.2;margin:0 0 12px 0;letter-spacing:-0.02em;">
+                            <h1 style="font-family:'Poppins',sans-serif;font-size:1.8rem;font-weight:800;color:var(--text);line-height:1.2;margin:0 0 12px 0;letter-spacing:-0.02em;">
                                 ${(n.title || 'Daily Advice').replace(/</g,'<').replace(/>/g,'>')}
                             </h1>
                             
@@ -5871,7 +5871,7 @@ window.adminPromptNotification = function(userId) {
                             <div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:32px;"></div>
                             
                             <!-- Content -->
-                            <div style="font-size:1.05rem;line-height:1.8;color:var(--text);font-weight:500;white-space:pre-wrap;word-break:break-word;font-family:'Space Grotesk',sans-serif;">
+                            <div style="font-size:1.1rem;line-height:2;color:var(--text);font-weight:500;white-space:pre-wrap;word-break:break-word;font-family:'Poppins',sans-serif;">
                                 ${(n.message || '').replace(/</g,'<').replace(/>/g,'>')}
                             </div>
                         </div>
@@ -6268,14 +6268,14 @@ window.printResultSheet = async function(html) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>ExamForge - Official Result Sheet</title>
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             @page { margin: 10mm; size: A4 portrait; }
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
-                font-family: 'Space Grotesk', sans-serif;
+                font-family: 'Poppins', sans-serif;
                 color: #18160F;
-                font-size: 13px;
+                font-size: 15px;
                 line-height: 1.6;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
@@ -6317,8 +6317,8 @@ window.printResultSheet = async function(html) {
             .top-bar img { max-width:120px; max-height:60px; width:auto; height:auto; object-fit:contain; }
             .top-bar .title-area { flex: 1; }
             .top-bar .title-area h1 {
-                font-family: 'Space Grotesk', sans-serif;
-                font-size: 22px;
+                font-family: 'Poppins', sans-serif;
+                font-size: 24px;
                 font-weight: 800;
                 text-transform: uppercase;
                 letter-spacing: -0.03em;
@@ -6327,7 +6327,7 @@ window.printResultSheet = async function(html) {
             }
             .top-bar .title-area h1 span { color: #fe6961; }
             .top-bar .title-area .sub {
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 600;
                 color: #3a3b3d;
                 text-transform: uppercase;
@@ -6338,8 +6338,8 @@ window.printResultSheet = async function(html) {
                 background: #fe6961;
                 color: #FFFFFF;
                 padding: 14px 20px;
-                font-size: 18px;
-                font-weight: 900;
+                font-size: 20px;
+                font-weight: 800;
                 text-transform: uppercase;
                 letter-spacing: 0.04em;
                 border: 2px solid #6d6d6d;
@@ -6364,7 +6364,7 @@ window.printResultSheet = async function(html) {
                 letter-spacing: 0.08em;
             }
             .info-card .value {
-                font-size: 15px;
+                font-size: 16px;
                 font-weight: 900;
                 color: #18160F;
                 margin-top: 2px;
@@ -6392,8 +6392,8 @@ window.printResultSheet = async function(html) {
                 padding: 10px 8px;
                 border: 1px solid #666;
                 text-align: center;
-                font-size: 13px;
-                font-weight: 700;
+                font-size: 14px;
+                font-weight: 600;
                 color: #353637;
             }
             table td:first-child { text-align: left; font-weight: 700; color: #18160F; }
@@ -6431,7 +6431,7 @@ window.printResultSheet = async function(html) {
             }
             .summary-card.gpa-card .s-label { color: rgba(255,255,255,0.85); }
             .summary-card .s-value {
-                font-size: 28px;
+                font-size: 32px;
                 font-weight: 900;
                 color: #18160F;
                 line-height: 1.1;
@@ -6454,8 +6454,8 @@ window.printResultSheet = async function(html) {
                 margin-bottom: 4px;
             }
             .comment-box .c-text {
-                font-size: 16px;
-                font-weight: 800;
+                font-size: 18px;
+                font-weight: 700;
                 color: #18160F;
             }
             .grade-ref {
@@ -6535,7 +6535,7 @@ window.printResultSheet = async function(html) {
                             orientation: 'portrait' 
                         }
                     }).from(element).save().then(() => {
-                        document.querySelector('.result-container').innerHTML = '<div style="text-align:center;padding:80px 20px;font-family:Space Grotesk,sans-serif;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div style="font-size:20px;font-weight:800;margin-bottom:8px;">PDF Downloaded Successfully!</div><div style="font-size:13px;color:#666;">Check your downloads folder for ExamForge_Result_Sheet.pdf</div><div style="margin-top:24px;font-size:11px;color:#999;">You can close this window.</div></div>';
+                        document.querySelector('.result-container').innerHTML = '<div style="text-align:center;padding:80px 20px;font-family:Poppins,sans-serif;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div style="font-size:20px;font-weight:800;margin-bottom:8px;">PDF Downloaded Successfully!</div><div style="font-size:13px;color:#666;">Check your downloads folder for ExamForge_Result_Sheet.pdf</div><div style="margin-top:24px;font-size:11px;color:#999;">You can close this window.</div></div>';
                     }).catch(() => {
                         window.print();
                     });
