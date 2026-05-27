@@ -421,6 +421,9 @@ function setupAdminListeners() {
                     }
                 });
 
+                // Fetch user results from Firestore before rendering
+                try { await fetchResultsOnce(user.uid); } catch (e) { console.error("Failed to load results:", e); }
+
                 init();
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
