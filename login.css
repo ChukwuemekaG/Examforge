@@ -132,7 +132,6 @@ body {
     max-width: 450px;
     background: var(--white);
     border: var(--border-thickness) solid var(--black);
-    box-shadow: 12px 12px 0px var(--black);
     padding: 40px;
 }
 
@@ -200,7 +199,6 @@ body {
 
 .input-group input:focus, .input-group select:focus {
     border-color: var(--brand-red);
-    box-shadow: 4px 4px 0px var(--brand-red);
     transform: translate(-2px, -2px);
 }
 
@@ -216,7 +214,6 @@ body {
     text-transform: uppercase;
     letter-spacing: 1px;
     cursor: pointer;
-    box-shadow: 6px 6px 0px var(--black);
     transition: var(--sharp-transition);
 }
 .error-box {
@@ -232,7 +229,7 @@ body {
 }
 .btn-sharp-solid.full-width { width: 100%; }
 .btn-sharp-solid:hover { background: #e63530; }
-.btn-sharp-solid:active { transform: translate(6px, 6px); box-shadow: 0px 0px 0px var(--black); }
+.btn-sharp-solid:active { transform: translate(6px, 6px); }
 
 .forgot-link {
     display: block;
@@ -256,7 +253,6 @@ body {
     
     /* Remove the heavy shadow on mobile to save space, make box full width */
     .form-container { 
-        box-shadow: none; 
         border: none; 
         padding: 20px 10px; 
         max-width: 100%;
@@ -286,8 +282,8 @@ body {
     
     .input-group input, .input-group select { padding: 12px; font-size: 0.9rem; }
     
-    .btn-sharp-solid { padding: 15px; box-shadow: 4px 4px 0px var(--black); }
-    .btn-sharp-solid:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--black); }
+    .btn-sharp-solid { padding: 15px; }
+    .btn-sharp-solid:active { transform: translate(4px, 4px); }
 }
 /* Loading Screen Overlay */
 .loading-overlay {
@@ -369,7 +365,6 @@ body {
     text-transform: uppercase;
     letter-spacing: 1px;
     cursor: pointer;
-    box-shadow: 6px 6px 0px var(--black);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -383,7 +378,6 @@ body {
 
 .btn-google:active {
     transform: translate(6px, 6px);
-    box-shadow: 0px 0px 0px var(--black);
 }
 
 .google-icon {

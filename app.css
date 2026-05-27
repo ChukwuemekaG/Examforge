@@ -213,7 +213,6 @@ input { font-family: inherit; }
 .search-box:focus-within {
     border-color: var(--brand);
     background: var(--bg-card);
-    box-shadow: 0 0 0 3px var(--brand-dim);
 }
 .search-box .material-icons-round { color: var(--text-muted); font-size: 17px; flex-shrink: 0; }
 .search-box input {
@@ -402,7 +401,6 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     max-width: 500px;
     height: 48px;
     font-size: 1rem;
-    box-shadow: var(--shadow-lg);
 }
 
 .search-overlay .search-box input {
@@ -492,7 +490,6 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
 .status-dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: #16a34a; flex-shrink: 0;
-    box-shadow: 0 0 5px rgba(22,163,74,0.5);
 }
 .status-label {
     font-family: poppins; font-size: 0.62rem;
@@ -660,9 +657,8 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
 .card-accent {
     border-color: var(--brand);
     background: var(--brand-dim);
-    box-shadow: 3px 3px 0px var(--brand-hover);
 }
-.card-accent:hover { box-shadow: 5px 5px 0px var(--brand-hover); }
+.card-accent:hover { }
 
 /* ============================================================
    BUTTONS
@@ -763,7 +759,6 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     background: var(--bg-card);
     border: 2px solid var(--border-heavy);
     border-radius: var(--r-md);
-    box-shadow: var(--shadow-card);
     overflow: auto;
     max-width: 92vw;
 }
@@ -938,11 +933,9 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
 @keyframes ef-bounce {
     from {
         transform: translateY(0);
-        box-shadow: 0 0 0 transparent;
     }
     to {
         transform: translateY(-20px);
-        box-shadow: 0 15px 0 -5px var(--text-muted); 
     }
 }
 
@@ -976,11 +969,9 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
 @keyframes ef-dot-bounce {
     from {
         transform: translateY(0);
-        box-shadow: 0 0 0 transparent;
     }
     to {
         transform: translateY(-16px);
-        box-shadow: 0 10px 0 -4px var(--text-muted);
     }
 }
 
@@ -1006,7 +997,6 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
         height: calc(100vh - var(--topbar-h));
         height: calc(100dvh - var(--topbar-h));
         z-index: 100;
-        box-shadow: 4px 0 20px rgba(0,0,0,0.2);
         transition: left 0.25s ease;
     }
     .sidebar.mobile-open { left: 0; }

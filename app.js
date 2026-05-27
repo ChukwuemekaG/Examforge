@@ -1421,7 +1421,7 @@ async function mcLoadDailyQuizzes() {
         grid.innerHTML = quizzes.map(q => {
             const dateStr = q.createdAt?.toDate ? q.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : 'Recently';
             return `
-            <div class="card" style="padding:20px;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:var(--bg-card);transition:transform 0.2s,box-shadow 0.2s;">
+            <div class="card" style="padding:20px;border:3px solid var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:var(--bg-card);transition:transform 0.2s;">
                 <div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                         <span style="font-size:0.65rem;font-weight:900;text-transform:uppercase;color:var(--brand);background:rgba(37,99,235,0.06);padding:3px 8px;border:1.5px solid var(--brand);border-radius:6px;letter-spacing:0.05em;">Exam Mode</span>
@@ -1441,10 +1441,10 @@ async function mcLoadDailyQuizzes() {
                 </div>
                 
                 <div style="display:flex;gap:8px;margin-top:auto;">
-                    <button class="btn btn-outline" onclick="window.mcViewDailyQuizDetails('${q.id}')" style="flex:1;font-size:0.7rem;padding:6px;border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);font-weight:800;">
+                    <button class="btn btn-outline" onclick="window.mcViewDailyQuizDetails('${q.id}')" style="flex:1;font-size:0.7rem;padding:6px;border:2px solid var(--text);font-weight:800;">
                         VIEW DETAILS
                     </button>
-                    <button class="btn btn-danger" onclick="window.mcDeleteDailyQuiz('${q.id}', '${q.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);display:flex;align-items:center;justify-content:center;aspect-ratio:1;">
+                    <button class="btn btn-danger" onclick="window.mcDeleteDailyQuiz('${q.id}', '${q.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);display:flex;align-items:center;justify-content:center;aspect-ratio:1;">
                         <span class="material-icons-round" style="font-size:0.95rem;">delete</span>
                     </button>
                 </div>
@@ -1487,7 +1487,7 @@ async function mcLoadDQHistory() {
             const b = d.data();
             const ts = b.timestamp?.toDate ? b.timestamp.toDate().toLocaleString() : 'Unknown';
             return `
-            <div style="display:flex;align-items:center;gap:14px;padding:10px 14px;background:var(--bg-card);border:2px solid var(--text);box-shadow:3px 3px 0px var(--text);border-radius:8px;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:14px;padding:10px 14px;background:var(--bg-card);border:2px solid var(--text);border-radius:8px;margin-bottom:8px;">
                 <span class="material-icons-round" style="color:#2563eb;flex-shrink:0;">today</span>
                 <div style="flex:1;min-width:0;">
                     <div style="font-weight:800;font-size:0.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.title}</div>
@@ -1514,7 +1514,7 @@ async function mcRenderDailyAdviceTab() {
                     <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Advice Hub</span>
                     <div id="mc-advice-sub-count" style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Draft and broadcast cleanly formatted study advices directly to student feeds.</div>
                 </div>
-                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyAdviceModal()" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
+                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyAdviceModal()" style="font-weight:900;border:3px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE DAILY ADVICE
                 </button>
             </div>
@@ -1567,10 +1567,10 @@ async function mcLoadDailyAdvices() {
             const snippet = adv.content.length > 120 ? adv.content.substring(0, 120) + '…' : adv.content;
 
             return `
-            <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;border:3px solid var(--text);box-shadow:4px 4px 0 var(--text);border-radius:12px;padding:16px;background:var(--bg-card);transition:transform 0.1s, box-shadow 0.1s;position:relative;">
+            <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;border:3px solid var(--text);border-radius:12px;padding:16px;background:var(--bg-card);transition:transform 0.1s, border 0.1s;position:relative;">
                 <div>
                     <!-- Category Badge -->
-                    <div style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:0.6rem;font-weight:900;text-transform:uppercase;border:1.5px solid var(--text);box-shadow:1.5px 1.5px 0 var(--text);background:${cat.bg};color:${cat.color};margin-bottom:12px;">
+                    <div style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:0.6rem;font-weight:900;text-transform:uppercase;border:1.5px solid var(--text);background:${cat.bg};color:${cat.color};margin-bottom:12px;">
                         ${cat.label}
                     </div>
                     <!-- Title -->
@@ -1589,8 +1589,8 @@ async function mcLoadDailyAdvices() {
                         <span>Audience: ${adv.targetAudience === 'all' ? 'All Users' : 'Subscribers'} (${adv.recipientCount || 0})</span>
                     </div>
                     <div style="display:flex;gap:6px;">
-                        <button class="btn btn-outline" onclick="window.mcViewDailyAdviceDetails('${id}')" style="font-size:0.65rem;padding:4px 8px;font-weight:800;border:2px solid var(--text);box-shadow:2px 2px 0 var(--text);">VIEW</button>
-                        <button class="btn btn-danger" onclick="window.mcDeleteDailyAdvice('${id}', '${adv.title.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:4px 8px;font-weight:800;border:2px solid var(--text);box-shadow:2px 2px 0 var(--text);"><span class="material-icons-round" style="font-size:0.8rem;">delete</span></button>
+                        <button class="btn btn-outline" onclick="window.mcViewDailyAdviceDetails('${id}')" style="font-size:0.65rem;padding:4px 8px;font-weight:800;border:2px solid var(--text);">VIEW</button>
+                        <button class="btn btn-danger" onclick="window.mcDeleteDailyAdvice('${id}', '${adv.title.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:4px 8px;font-weight:800;border:2px solid var(--text);"><span class="material-icons-round" style="font-size:0.8rem;">delete</span></button>
                     </div>
                 </div>
             </div>`;
@@ -1606,7 +1606,7 @@ window.mcViewDailyAdviceDetails = async function(id) {
     overlay.id = 'ef-advice-details-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:stretch;justify-content:flex-end;z-index:2000;';
     overlay.innerHTML = `
-        <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);box-shadow:-8px 0 32px rgba(0,0,0,0.25);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
+        <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
             <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:2px solid var(--border);flex-shrink:0;">
                 <div style="width:44px;height:44px;border-radius:10px;background:rgba(124,58,237,0.08);border:1.5px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <span class="material-icons-round" style="color:#7c3aed;">tips_and_updates</span>
@@ -1645,13 +1645,13 @@ window.mcViewDailyAdviceDetails = async function(id) {
 
         document.getElementById('ef-adv-det-body').innerHTML = `
             <div style="display:flex;align-items:center;gap:10px;">
-                <div style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:0.65rem;font-weight:900;text-transform:uppercase;border:1.5px solid var(--text);box-shadow:1.5px 1.5px 0 var(--text);background:${cat.bg};color:${cat.color};">
+                <div style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:0.65rem;font-weight:900;text-transform:uppercase;border:1.5px solid var(--text);background:${cat.bg};color:${cat.color};">
                     ${cat.label}
                 </div>
                 <span style="font-size:0.7rem;color:var(--text-muted);font-weight:700;">Audience: ${adv.targetAudience === 'all' ? 'All Users' : 'Subscribers Only'} (${adv.recipientCount || 0} sent)</span>
             </div>
             
-            <div style="background:var(--bg-inset);border:3px solid var(--text);box-shadow:4px 4px 0 var(--text);border-radius:12px;padding:20px;margin-top:8px;">
+            <div style="background:var(--bg-inset);border:3px solid var(--text);border-radius:12px;padding:20px;margin-top:8px;">
                 <div style="white-space:pre-wrap;word-break:break-word;font-size:0.85rem;line-height:1.6;font-weight:500;color:var(--text);">
                     ${adv.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
                 </div>
@@ -1705,8 +1705,7 @@ window.mcOpenCreateDailyAdviceModal = function() {
                     max-height: 100vh !important;
                     border: none !important;
                     border-radius: 0 !important;
-                    box-shadow: none !important;
-                }
+                    }
                 .adv-meta-grid {
                     grid-template-columns: 1fr !important;
                     gap: 12px !important;
@@ -1721,13 +1720,13 @@ window.mcOpenCreateDailyAdviceModal = function() {
                 }
             }
         </style>
-        <div class="card adv-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text); box-shadow:8px 8px 0px var(--text); background:var(--bg-card); border-radius:16px;">
+        <div class="card adv-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
             <!-- Modal Header -->
             <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                 <div style="font-weight:900; font-size:1.2rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
                     <span class="material-icons-round" style="color:#7c3aed;">tips_and_updates</span> Compose Daily Advice
                 </div>
-                <button onclick="document.getElementById('ef-adv-builder-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text); box-shadow:2px 2px 0px var(--text); border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
+                <button onclick="document.getElementById('ef-adv-builder-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
                     <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
                 </button>
             </div>
@@ -1770,8 +1769,8 @@ window.mcOpenCreateDailyAdviceModal = function() {
             <!-- Modal Footer -->
             <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                 <div class="adv-footer-actions" style="display:flex; align-items:center; gap:12px; width:auto;">
-                    <button class="btn btn-ghost" onclick="document.getElementById('ef-adv-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900; box-shadow:none; padding:10px 20px;">CANCEL</button>
-                    <button class="btn btn-primary" onclick="window.mcPublishDailyAdvice()" style="font-weight:900; border:3px solid var(--text); box-shadow:4px 4px 0px var(--text); padding:10px 24px; background:#7c3aed; border-color:var(--text);">PUBLISH & BROADCAST</button>
+                    <button class="btn btn-ghost" onclick="document.getElementById('ef-adv-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:10px 20px;">CANCEL</button>
+                    <button class="btn btn-primary" onclick="window.mcPublishDailyAdvice()" style="font-weight:900; border:3px solid var(--text);padding:10px 24px; background:#7c3aed; border-color:var(--text);">PUBLISH & BROADCAST</button>
                 </div>
             </div>
         </div>
@@ -1902,8 +1901,7 @@ window.mcOpenCreateDailyQuizModal = function() {
                     max-height: 100vh !important;
                     border: none !important;
                     border-radius: 0 !important;
-                    box-shadow: none !important;
-                }
+                    }
                 .dq-meta-grid {
                     grid-template-columns: 1fr !important;
                     gap: 12px !important;
@@ -1926,13 +1924,13 @@ window.mcOpenCreateDailyQuizModal = function() {
                 }
             }
         </style>
-        <div class="card dq-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text); box-shadow:8px 8px 0px var(--text); background:var(--bg-card); border-radius:16px;">
+        <div class="card dq-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
             <!-- Modal Header -->
             <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                 <div style="font-weight:900; font-size:1.2rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
                     <span class="material-icons-round" style="color:var(--brand);">today</span> Create Daily Quiz
                 </div>
-                <button onclick="document.getElementById('ef-dq-builder-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text); box-shadow:2px 2px 0px var(--text); border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
+                <button onclick="document.getElementById('ef-dq-builder-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
                     <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
                 </button>
             </div>
@@ -1954,7 +1952,7 @@ window.mcOpenCreateDailyQuizModal = function() {
                 <hr style="border:0; border-top:3px solid var(--text); margin:4px 0;">
                 
                 <!-- Smart Bulk Parser Panel -->
-                <div id="dq-bulk-import-panel" style="display:none; background:var(--bg-inset); border:3px solid var(--text); box-shadow:4px 4px 0 var(--text); border-radius:12px; padding:16px; margin-bottom:12px; animation:popIn 0.25s ease;">
+                <div id="dq-bulk-import-panel" style="display:none; background:var(--bg-inset); border:3px solid var(--text);border-radius:12px; padding:16px; margin-bottom:12px; animation:popIn 0.25s ease;">
                     <div style="font-weight:900; font-size:0.9rem; text-transform:uppercase; color:#7c3aed; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
                         <span class="material-icons-round">auto_fix_high</span> Smart Bulk Questions Parser
                     </div>
@@ -1966,10 +1964,10 @@ window.mcOpenCreateDailyQuizModal = function() {
                             <div>1. Which gas is absorbed?<br>A. Oxygen B. ✅CO2<br>Explanation: CO2 for photosynthesis</div>
                         </div>
                     </div>
-                    <textarea id="dq-bulk-import-textarea" rows="8" placeholder="1. What is the powerhouse of the cell?&#10;A. Nucleus&#10;B. ✅Mitochondria&#10;C. Ribosome&#10;D. Golgi Apparatus&#10;&#10;2. What is 2 + 2?&#10;A. 3  B. ✅4  C. 5  D. 6" style="font-family:var(--font-mono); font-size:0.75rem; width:100%; border:2px solid var(--text); border-radius:8px; padding:10px; box-shadow:2px 2px 0 var(--text); box-sizing:border-box; resize:vertical; background:var(--bg-card); color:var(--text);"></textarea>
+                    <textarea id="dq-bulk-import-textarea" rows="8" placeholder="1. What is the powerhouse of the cell?&#10;A. Nucleus&#10;B. ✅Mitochondria&#10;C. Ribosome&#10;D. Golgi Apparatus&#10;&#10;2. What is 2 + 2?&#10;A. 3  B. ✅4  C. 5  D. 6" style="font-family:var(--font-mono); font-size:0.75rem; width:100%; border:2px solid var(--text); border-radius:8px; padding:10px;box-sizing:border-box; resize:vertical; background:var(--bg-card); color:var(--text);"></textarea>
                     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
-                        <button class="btn btn-ghost" onclick="window.mcToggleDQBulkImport()" style="font-size:0.7rem; padding:6px 12px; border:2px solid var(--border); box-shadow:none;">Cancel</button>
-                        <button class="btn btn-primary" onclick="window.mcProcessDQBulkImport()" style="font-size:0.7rem; padding:6px 16px; border:2px solid var(--text); box-shadow:2px 2px 0 var(--text); background:#7c3aed; border-color:var(--text);">Analyze & Import</button>
+                        <button class="btn btn-ghost" onclick="window.mcToggleDQBulkImport()" style="font-size:0.7rem; padding:6px 12px; border:2px solid var(--border);">Cancel</button>
+                        <button class="btn btn-primary" onclick="window.mcProcessDQBulkImport()" style="font-size:0.7rem; padding:6px 16px; border:2px solid var(--text);background:#7c3aed; border-color:var(--text);">Analyze & Import</button>
                     </div>
                 </div>
 
@@ -1979,16 +1977,16 @@ window.mcOpenCreateDailyQuizModal = function() {
                         <div style="font-weight:900; font-size:1.05rem; text-transform:uppercase; color:var(--text);">Questions Builder</div>
                         <!-- Collapse/Expand Helpers -->
                         <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
-                            <button class="btn btn-ghost" onclick="window.mcCollapseAllBuilderQuestions()" style="font-size:0.62rem; padding:2px 6px; border:1px solid var(--border); box-shadow:none; font-weight:800; text-transform:uppercase;">Collapse All</button>
-                            <button class="btn btn-ghost" onclick="window.mcExpandAllBuilderQuestions()" style="font-size:0.62rem; padding:2px 6px; border:1px solid var(--border); box-shadow:none; font-weight:800; text-transform:uppercase;">Expand All</button>
+                            <button class="btn btn-ghost" onclick="window.mcCollapseAllBuilderQuestions()" style="font-size:0.62rem; padding:2px 6px; border:1px solid var(--border);font-weight:800; text-transform:uppercase;">Collapse All</button>
+                            <button class="btn btn-ghost" onclick="window.mcExpandAllBuilderQuestions()" style="font-size:0.62rem; padding:2px 6px; border:1px solid var(--border);font-weight:800; text-transform:uppercase;">Expand All</button>
                         </div>
                     </div>
                     
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <button class="btn btn-outline dq-header-actions-btn" onclick="window.mcToggleDQBulkImport()" style="font-size:0.72rem; padding:6px 12px; border:2px solid #7c3aed; color:#7c3aed; box-shadow:2px 2px 0px var(--text); font-weight:800; display:flex; align-items:center; gap:4px;">
+                        <button class="btn btn-outline dq-header-actions-btn" onclick="window.mcToggleDQBulkImport()" style="font-size:0.72rem; padding:6px 12px; border:2px solid #7c3aed; color:#7c3aed;font-weight:800; display:flex; align-items:center; gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">auto_fix_high</span> Bulk Import
                         </button>
-                        <button class="btn btn-primary dq-header-actions-btn" onclick="window.mcAddBuilderQuestion()" style="font-size:0.72rem; padding:6px 12px; border:2px solid var(--text); box-shadow:2px 2px 0px var(--text); font-weight:800; display:flex; align-items:center; gap:4px;">
+                        <button class="btn btn-primary dq-header-actions-btn" onclick="window.mcAddBuilderQuestion()" style="font-size:0.72rem; padding:6px 12px; border:2px solid var(--text);font-weight:800; display:flex; align-items:center; gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">add</span> Add Question
                         </button>
                     </div>
@@ -2003,8 +2001,8 @@ window.mcOpenCreateDailyQuizModal = function() {
             <!-- Modal Footer -->
             <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                 <div class="dq-footer-actions" style="display:flex; align-items:center; gap:12px; width:auto;">
-                    <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900; box-shadow:none; padding:10px 20px;">CANCEL</button>
-                    <button class="btn btn-primary" onclick="window.mcSaveCreatedDailyQuiz()" style="font-weight:900; border:3px solid var(--text); box-shadow:4px 4px 0px var(--text); padding:10px 24px;">SAVE & PUBLISH</button>
+                    <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:10px 20px;">CANCEL</button>
+                    <button class="btn btn-primary" onclick="window.mcSaveCreatedDailyQuiz()" style="font-weight:900; border:3px solid var(--text);padding:10px 24px;">SAVE & PUBLISH</button>
                 </div>
             </div>
         </div>
@@ -2161,19 +2159,19 @@ window.mcRenderBuilderQuestions = function() {
         const optionsHTML = q.options.map((opt, optIdx) => {
             const letter = letters[optIdx] || '';
             const delBtn = q.options.length > 2 
-                ? `<button onclick="window.mcRemoveBuilderOption(${qIdx}, ${optIdx})" style="background:var(--bg-inset); border:2px solid var(--text); border-radius:6px; cursor:pointer; padding:4px 8px; font-weight:800; font-size:0.7rem; height:34px; box-shadow:2px 2px 0 var(--text);">DEL</button>` 
+                ? `<button onclick="window.mcRemoveBuilderOption(${qIdx}, ${optIdx})" style="background:var(--bg-inset); border:2px solid var(--text); border-radius:6px; cursor:pointer; padding:4px 8px; font-weight:800; font-size:0.7rem; height:34px;">DEL</button>` 
                 : '';
             return `
             <div style="display:flex; align-items:center; gap:8px;">
                 <label style="font-weight:900; font-size:0.8rem; color:var(--text); width:20px;">${letter}.</label>
-                <input type="text" class="dq-opt-input-${qIdx}" data-opt-idx="${optIdx}" value="${opt.replace(/"/g, '&quot;')}" placeholder="Option ${letter}" style="flex:1; border:2px solid var(--text); border-radius:6px; padding:6px 10px; font-size:0.8rem; font-weight:600; box-shadow:2px 2px 0 var(--text); background:var(--bg-card); color:var(--text);">
+                <input type="text" class="dq-opt-input-${qIdx}" data-opt-idx="${optIdx}" value="${opt.replace(/"/g, '&quot;')}" placeholder="Option ${letter}" style="flex:1; border:2px solid var(--text); border-radius:6px; padding:6px 10px; font-size:0.8rem; font-weight:600;background:var(--bg-card); color:var(--text);">
                 ${delBtn}
             </div>
             `;
         }).join('');
         
         const correctDropdownHTML = `
-        <select class="dq-correct-select-${qIdx}" style="border:2px solid var(--text); border-radius:6px; padding:6px 10px; font-size:0.78rem; font-weight:800; width:100%; margin-bottom:0; box-shadow:2px 2px 0 var(--text); background:var(--bg-card); color:var(--text);">
+        <select class="dq-correct-select-${qIdx}" style="border:2px solid var(--text); border-radius:6px; padding:6px 10px; font-size:0.78rem; font-weight:800; width:100%; margin-bottom:0;background:var(--bg-card); color:var(--text);">
             ${q.options.map((_, optIdx) => {
                 const letter = letters[optIdx] || '';
                 return `<option value="${optIdx}" ${q.correctIndex === optIdx ? 'selected' : ''}>Option ${letter}</option>`;
@@ -2182,7 +2180,7 @@ window.mcRenderBuilderQuestions = function() {
         `;
         
         return `
-        <div class="card" style="padding:16px; border:3px solid var(--text); box-shadow:4px 4px 0px var(--text); background:var(--bg-inset); position:relative; display:flex; flex-direction:column; gap:0;">
+        <div class="card" style="padding:16px; border:3px solid var(--text);background:var(--bg-inset); position:relative; display:flex; flex-direction:column; gap:0;">
             <!-- Accordion Header -->
             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%;">
                 <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:0; cursor:pointer; user-select:none;" onclick="window.mcToggleBuilderAccordion(${qIdx})">
@@ -2192,7 +2190,7 @@ window.mcRenderBuilderQuestions = function() {
                         ${q.question ? q.question.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'Empty question statement…'}
                     </span>
                 </div>
-                <button onclick="window.mcRemoveBuilderQuestion(${qIdx})" style="background:rgba(220,38,38,0.06); border:2px solid var(--brand); border-radius:6px; cursor:pointer; padding:4px 8px; color:var(--brand); font-weight:800; font-size:0.65rem; display:flex; align-items:center; gap:2px; box-shadow:2px 2px 0 var(--text); flex-shrink:0;">
+                <button onclick="window.mcRemoveBuilderQuestion(${qIdx})" style="background:rgba(220,38,38,0.06); border:2px solid var(--brand); border-radius:6px; cursor:pointer; padding:4px 8px; color:var(--brand); font-weight:800; font-size:0.65rem; display:flex; align-items:center; gap:2px;flex-shrink:0;">
                     <span class="material-icons-round" style="font-size:0.8rem;">delete</span> REMOVE
                 </button>
             </div>
@@ -2202,7 +2200,7 @@ window.mcRenderBuilderQuestions = function() {
                 <!-- Question text -->
                 <div>
                     <label style="font-weight:800; text-transform:uppercase; font-size:0.65rem; color:var(--text-muted); margin-bottom:4px; display:block;">Question Statement</label>
-                    <textarea class="dq-question-text-${qIdx}" rows="2" placeholder="Write the question here..." oninput="document.querySelector('.dq-accordion-preview-${qIdx}').textContent = this.value || 'Empty question statement…'" style="border:2px solid var(--text); border-radius:6px; padding:8px 10px; font-size:0.8rem; font-weight:700; width:100%; box-sizing:border-box; box-shadow:2px 2px 0 var(--text); background:var(--bg-card); color:var(--text);">${q.question}</textarea>
+                    <textarea class="dq-question-text-${qIdx}" rows="2" placeholder="Write the question here..." oninput="document.querySelector('.dq-accordion-preview-${qIdx}').textContent = this.value || 'Empty question statement…'" style="border:2px solid var(--text); border-radius:6px; padding:8px 10px; font-size:0.8rem; font-weight:700; width:100%; box-sizing:border-box;background:var(--bg-card); color:var(--text);">${q.question}</textarea>
                 </div>
                 
                 <!-- Options section -->
@@ -2210,7 +2208,7 @@ window.mcRenderBuilderQuestions = function() {
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
                         <label style="font-weight:800; text-transform:uppercase; font-size:0.65rem; color:var(--text-muted);">Answer Options</label>
                         ${q.options.length < 6 ? `
-                        <button onclick="window.mcAddBuilderOption(${qIdx})" style="background:var(--bg-card); border:2px solid var(--text); border-radius:6px; cursor:pointer; padding:3px 8px; font-weight:800; font-size:0.65rem; color:var(--text); display:flex; align-items:center; gap:2px; box-shadow:2px 2px 0 var(--text);">
+                        <button onclick="window.mcAddBuilderOption(${qIdx})" style="background:var(--bg-card); border:2px solid var(--text); border-radius:6px; cursor:pointer; padding:3px 8px; font-weight:800; font-size:0.65rem; color:var(--text); display:flex; align-items:center; gap:2px;">
                             <span class="material-icons-round" style="font-size:0.8rem;">add</span> Add Option
                         </button>
                         ` : ''}
@@ -2228,7 +2226,7 @@ window.mcRenderBuilderQuestions = function() {
                     </div>
                     <div>
                         <label style="font-weight:800; text-transform:uppercase; font-size:0.65rem; color:var(--text-muted); margin-bottom:4px; display:block;">Explanation (Detailed Solution)</label>
-                        <input type="text" class="dq-explanation-text-${qIdx}" value="${q.explanation.replace(/"/g, '&quot;')}" placeholder="e.g. Using the formula x = -b/2a, we get..." style="border:2px solid var(--text); border-radius:6px; padding:6px 10px; font-size:0.8rem; font-weight:600; width:100%; box-sizing:border-box; box-shadow:2px 2px 0 var(--text); background:var(--bg-card); color:var(--text);">
+                        <input type="text" class="dq-explanation-text-${qIdx}" value="${q.explanation.replace(/"/g, '&quot;')}" placeholder="e.g. Using the formula x = -b/2a, we get..." style="border:2px solid var(--text); border-radius:6px; padding:6px 10px; font-size:0.8rem; font-weight:600; width:100%; box-sizing:border-box;background:var(--bg-card); color:var(--text);">
                     </div>
                 </div>
             </div>
@@ -2346,7 +2344,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
     overlay.id = 'ef-dq-details-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:stretch;justify-content:flex-end;z-index:2000;';
     overlay.innerHTML = `
-        <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);box-shadow:-8px 0 32px rgba(0,0,0,0.25);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
+        <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
             <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:2px solid var(--border);flex-shrink:0;">
                 <div style="width:44px;height:44px;border-radius:10px;background:rgba(22,163,74,0.08);border:1.5px solid #16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <span class="material-icons-round" style="color:#16a34a;">today</span>
@@ -2421,7 +2419,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             }).join('');
             
             attemptsHTML = `
-            <div style="border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);border-radius:10px;overflow:hidden;background:var(--bg-card);">
+            <div style="border:3px solid var(--text);border-radius:10px;overflow:hidden;background:var(--bg-card);">
                 <table style="width:100%;border-collapse:collapse;text-align:left;">
                     <thead>
                         <tr style="background:var(--bg-inset);border-bottom:3px solid var(--text);">
@@ -2449,14 +2447,14 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         
         document.getElementById('ef-dq-det-body').innerHTML = `
             <!-- Share URL Banner -->
-            <div style="background:var(--bg-inset);border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+            <div style="background:var(--bg-inset);border:3px solid var(--text);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;">
                 <div style="font-weight:900;font-size:0.8rem;text-transform:uppercase;color:var(--text);display:flex;align-items:center;gap:6px;">
                     <span class="material-icons-round" style="color:var(--brand);">link</span> Unique Quiz URL (Cryptic)
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;background:var(--bg-card);border:2px solid var(--text);border-radius:8px;padding:8px 12px;overflow:hidden;">
                     <span style="font-size:0.72rem;font-family:var(--font-mono);color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${quizShareUrl}</span>
                     <button onclick="window.copyShareLink('${quizShareUrl.replace(/'/g,"\\'")}', this)"
-                        style="flex-shrink:0;background:var(--bg-inset);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.68rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:4px;">
+                        style="flex-shrink:0;background:var(--bg-inset);border:2px solid var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.68rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:4px;">
                         <span class="material-icons-round" style="font-size:0.85rem;">content_copy</span> Copy Link
                     </button>
                 </div>
@@ -2464,18 +2462,18 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             
             <!-- Summary Stats -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                <div style="background:var(--bg-card);border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);border-radius:12px;padding:16px;text-align:center;">
+                <div style="background:var(--bg-card);border:3px solid var(--text);border-radius:12px;padding:16px;text-align:center;">
                     <div style="font-size:2rem;font-weight:900;color:var(--text);">${attemptCount}</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Total Attempts</div>
                 </div>
-                <div style="background:var(--bg-card);border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);border-radius:12px;padding:16px;text-align:center;">
+                <div style="background:var(--bg-card);border:3px solid var(--text);border-radius:12px;padding:16px;text-align:center;">
                     <div style="font-size:2rem;font-weight:900;color:#16a34a;">${avgScore}%</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Average Accuracy</div>
                 </div>
             </div>
             
             <!-- Broadcast Section -->
-            <div style="background:rgba(37,99,235,0.04);border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;">
+            <div style="background:rgba(37,99,235,0.04);border:3px solid var(--text);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;">
                 <div style="font-weight:900;font-size:0.9rem;text-transform:uppercase;color:var(--text);display:flex;align-items:center;gap:6px;">
                     <span class="material-icons-round" style="color:#2563eb;">send</span> Broadcast to Subscribers
                 </div>
@@ -2484,9 +2482,9 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                 </p>
                 <div class="mc-field" style="margin-bottom:0;">
                     <label style="font-weight:800;text-transform:uppercase;font-size:0.65rem;color:var(--text-muted);margin-bottom:4px;display:block;">Optional Broadcast Invitation Message</label>
-                    <textarea id="dq-broadcast-msg" rows="2" placeholder="Good morning! Today's quiz is ready. You have ${q.timeLimit || 10} minutes. Good luck!" style="border:2px solid var(--text);border-radius:8px;padding:8px 12px;font-size:0.78rem;font-weight:600;width:100%;box-sizing:border-box;box-shadow:2px 2px 0 var(--text);"></textarea>
+                    <textarea id="dq-broadcast-msg" rows="2" placeholder="Good morning! Today's quiz is ready. You have ${q.timeLimit || 10} minutes. Good luck!" style="border:2px solid var(--text);border-radius:8px;padding:8px 12px;font-size:0.78rem;font-weight:600;width:100%;box-sizing:border-box;"></textarea>
                 </div>
-                <button class="btn btn-primary" id="btn-dq-broadcast" onclick="window.mcBroadcastDailyQuiz('${dqid}', '${subscriberCount}')" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <button class="btn btn-primary" id="btn-dq-broadcast" onclick="window.mcBroadcastDailyQuiz('${dqid}', '${subscriberCount}')" style="font-weight:900;border:3px solid var(--text);padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:6px;">
                     <span class="material-icons-round" style="font-size:1.1rem;">send</span> BROADCAST NOW TO SUBSCRIBERS
                 </button>
             </div>
@@ -2499,10 +2497,10 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                     </div>
                     ${attemptCount > 0 ? `
                     <div style="display:flex;gap:8px;">
-                        <button id="btn-export-csv" class="btn btn-outline btn-sm" style="padding:6px 12px;font-size:0.7rem;font-weight:800;display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);border-radius:6px;">
+                        <button id="btn-export-csv" class="btn btn-outline btn-sm" style="padding:6px 12px;font-size:0.7rem;font-weight:800;display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--bg-card);border:2px solid var(--text);border-radius:6px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">download</span> Export CSV
                         </button>
-                        <button id="btn-export-pdf" class="btn btn-outline btn-sm" style="padding:6px 12px;font-size:0.7rem;font-weight:800;display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);border-radius:6px;">
+                        <button id="btn-export-pdf" class="btn btn-outline btn-sm" style="padding:6px 12px;font-size:0.7rem;font-weight:800;display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--bg-card);border:2px solid var(--text);border-radius:6px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">picture_as_pdf</span> Export PDF
                         </button>
                     </div>
@@ -2791,7 +2789,7 @@ window.mcViewTopicResults = async function(courseId, topicId) {
     overlay.id = 'ef-results-details-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:stretch;justify-content:flex-end;z-index:2000;';
     overlay.innerHTML = `
-        <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);box-shadow:-8px 0 32px rgba(0,0,0,0.25);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
+        <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
             <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:2px solid var(--border);flex-shrink:0;">
                 <div style="width:44px;height:44px;border-radius:10px;background:rgba(22,163,74,0.08);border:1.5px solid #16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <span class="material-icons-round" style="color:#16a34a;">bar_chart</span>
@@ -4323,7 +4321,7 @@ function renderUserList(users) {
              onclick="window.openAdminUserModal('${user.id}')" 
              onmouseenter="this.style.transform='translate(-2px, -2px)'; this.style.boxShadow='4px 4px 0px var(--text)'"
              onmouseleave="this.style.transform='translate(0, 0)'; this.style.boxShadow='2px 2px 0px var(--text)'"
-             style="cursor: pointer; padding: 3px 12px; border: 3px solid var(--text); box-shadow: 2px 2px 0px var(--text); display: flex; align-items: center; gap: 10px; background: var(--bg-card); transition: transform 0.1s ease, box-shadow 0.1s ease; border-radius: 8px;">
+             style="cursor: pointer; padding: 3px 12px; border: 3px solid var(--text);display: flex; align-items: center; gap: 10px; background: var(--bg-card); transition: transform 0.1s ease; border-radius: 8px;">
             
             <div style="width: 36px; height: 36px; border-radius: 8px; background: var(--brand); color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 900; border: 2px solid var(--text); flex-shrink: 0; font-size: 0.75rem; text-transform: uppercase;">
                 ${initials}
@@ -4392,7 +4390,7 @@ window.adminPromptNotification = function(userId) {
     overlay.style = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(4px);";
 
     overlay.innerHTML = `
-        <div class="card" style="padding: 32px; max-width: 450px; width: 90%; border: 4px solid var(--text); box-shadow: 8px 8px 0px var(--text); background: var(--bg-card); border-radius: 16px; animation: popIn 0.3s ease;">
+        <div class="card" style="padding: 32px; max-width: 450px; width: 90%; border: 4px solid var(--text);background: var(--bg-card); border-radius: 16px; animation: popIn 0.3s ease;">
             
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
                 <div style="background: rgba(37,99,235,0.1); border: 2px solid #2563eb; color: #2563eb; border-radius: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
@@ -4406,17 +4404,17 @@ window.adminPromptNotification = function(userId) {
             
             <div style="margin-bottom: 16px;">
                 <label style="font-size: 0.75rem; font-weight: 800; color: var(--text); display: block; margin-bottom: 6px;">Alert Title</label>
-                <input type="text" id="notif-title-input" placeholder="e.g. Account Update" style="width: 100%; padding: 14px; border: 2px solid var(--text); border-radius: 8px; font-weight: bold; background: var(--bg-inset); box-sizing: border-box; font-size: 0.9rem; transition: box-shadow 0.2s;" onfocus="this.style.boxShadow='4px 4px 0px var(--text)'" onblur="this.style.boxShadow='none'">
+                <input type="text" id="notif-title-input" placeholder="e.g. Account Update" style="width: 100%; padding: 14px; border: 2px solid var(--text); border-radius: 8px; font-weight: bold; background: var(--bg-inset); box-sizing: border-box; font-size: 0.9rem;">
             </div>
 
             <div style="margin-bottom: 24px;">
                 <label style="font-size: 0.75rem; font-weight: 800; color: var(--text); display: block; margin-bottom: 6px;">Message Body</label>
-                <textarea id="notif-msg-input" placeholder="Type your message here..." rows="4" style="width: 100%; padding: 14px; border: 2px solid var(--text); border-radius: 8px; font-weight: bold; background: var(--bg-inset); box-sizing: border-box; resize: none; font-size: 0.9rem; font-family: inherit; transition: box-shadow 0.2s;" onfocus="this.style.boxShadow='4px 4px 0px var(--text)'" onblur="this.style.boxShadow='none'"></textarea>
+                <textarea id="notif-msg-input" placeholder="Type your message here..." rows="4" style="width: 100%; padding: 14px; border: 2px solid var(--text); border-radius: 8px; font-weight: bold; background: var(--bg-inset); box-sizing: border-box; resize: none; font-size: 0.9rem; font-family: inherit;"></textarea>
             </div>
             
             <div style="display: flex; gap: 12px;">
                 <button class="btn btn-ghost" onclick="this.closest('#admin-notif-modal').remove()" style="flex: 1; border: 2px solid var(--border); font-weight: 900; border-radius: 8px; padding: 12px; background: var(--bg-card);">CANCEL</button>
-                <button class="btn btn-primary" id="btnSendCustomNotif" style="flex: 1.5; font-weight: 900; border: 3px solid var(--text); box-shadow: 4px 4px 0px var(--text); border-radius: 8px; padding: 12px; background: #2563eb; border-color: #1e40af; color: white; transition: transform 0.1s, box-shadow 0.1s;" onmousedown="this.style.transform='translate(2px, 2px)'; this.style.boxShadow='2px 2px 0px var(--text)';" onmouseup="this.style.transform='none'; this.style.boxShadow='4px 4px 0px var(--text)';">SEND ALERT</button>
+                <button class="btn btn-primary" id="btnSendCustomNotif" style="flex: 1.5; font-weight: 900; border: 3px solid var(--text);border-radius: 8px; padding: 12px; background: #2563eb; border-color: #1e40af; color: white; transition: transform 0.1s;" onmousedown="this.style.transform='translate(2px, 2px)';" onmouseup="this.style.transform='none';">SEND ALERT</button>
             </div>
         </div>
     `;
@@ -4499,7 +4497,7 @@ window.adminPromptNotification = function(userId) {
             </div>
         </div>
 
-        <div class="card" style="padding: 0; margin-bottom: 24px; border: 1px solid var(--border); border-left: 6px solid var(--brand); background: var(--bg-card); overflow: hidden; box-shadow: var(--shadow-sm);">
+        <div class="card" style="padding: 0; margin-bottom: 24px; border: 1px solid var(--border); border-left: 6px solid var(--brand); background: var(--bg-card); overflow: hidden;">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 24px; gap: 24px;">
                 
                 <div style="flex: 1; min-width: 280px;">
@@ -4516,7 +4514,7 @@ window.adminPromptNotification = function(userId) {
                 </div>
 
                 <div style="padding: 20px 24px; background: var(--bg-inset); border-radius: 16px; border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; min-width: 260px; flex-shrink: 0;">
-                    <div style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border: 2px solid var(--brand); border-radius: 14px; box-shadow: 4px 4px 0px var(--brand-dim);">
+                    <div style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border: 2px solid var(--brand); border-radius: 14px;">
                          <span class="material-icons-round" style="font-size: 2.2rem; color: var(--brand);">${exaTitle.icon}</span>
                     </div>
                     <div>
@@ -4577,7 +4575,7 @@ window.adminPromptNotification = function(userId) {
         </div>
 
         <div class="card-grid card-grid-strict" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-            <div class="card stat-card card-accent" style="background: var(--brand); border-color: var(--brand); box-shadow: 4px 4px 0px #66110f; margin: 0; min-width: 0;">
+            <div class="card stat-card card-accent" style="background: var(--brand); border-color: var(--brand);margin: 0; min-width: 0;">
                 <div class="stat-label" style="color: #ffffff !important;"><span class="material-icons-round" style="color: #ffffff !important;">public</span> National Rank</div>
                 <div class="stat-value" style="color: #ffffff !important; word-wrap: break-word;">#${nationalStats.rank}</div>
                 <div style="font-size: 0.62rem; color: rgba(255,255,255,0.85) !important; margin-top: 4px; font-weight: 600;">Out of ${nationalStats.total} Examforgites</div>
@@ -4818,10 +4816,10 @@ window.adminPromptNotification = function(userId) {
         `).join('');
 
         modal.innerHTML = `
-            <div class="card" style="width:min(440px, 90vw); display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text); box-shadow:8px 8px 0px var(--text); background:var(--bg-card); border-radius:16px;">
+            <div class="card" style="width:min(440px, 90vw); display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card);">
                     <div style="font-weight:900; font-size:1.1rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em;">Register</div>
-                    <button onclick="document.getElementById('ef-reg-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text); box-shadow:2px 2px 0px var(--text); border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
+                    <button onclick="document.getElementById('ef-reg-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
                         <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
                     </button>
                 </div>
@@ -4835,7 +4833,7 @@ window.adminPromptNotification = function(userId) {
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card);">
-                    <button class="btn btn-primary" id="btn-submit-reg" style="font-weight:900; border:3px solid var(--text); box-shadow:4px 4px 0px var(--text); padding:10px 24px; width:100%;">CONFIRM REGISTRATION</button>
+                    <button class="btn btn-primary" id="btn-submit-reg" style="font-weight:900; border:3px solid var(--text);padding:10px 24px; width:100%;">CONFIRM REGISTRATION</button>
                 </div>
             </div>
         `;
@@ -5958,13 +5956,13 @@ window.adminPromptNotification = function(userId) {
             overlay.id = 'ef-student-notif-overlay';
             overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:2500;animation:popIn 0.3s ease;';
             overlay.innerHTML = `
-                <div class="card" style="width:min(640px,92vw); max-height:80vh; display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text); box-shadow:8px 8px 0 var(--text); background:var(--bg-card); border-radius:16px;">
+                <div class="card" style="width:min(640px,92vw); max-height:80vh; display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
                     <!-- Header -->
                     <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                          <div style="font-weight:900; font-size:1.15rem; color:var(--text); text-transform:uppercase; display:flex; align-items:center; gap:8px;">
                              <span class="material-icons-round" style="color:${tc.color};">${tc.icon}</span> ${tc.label}
                          </div>
-                         <button onclick="document.getElementById('ef-student-notif-overlay').remove()" style="background:var(--bg-inset); border:2px solid var(--text); box-shadow:2px 2px 0px var(--text); border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
+                         <button onclick="document.getElementById('ef-student-notif-overlay').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
                              <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
                          </button>
                     </div>
@@ -5977,7 +5975,7 @@ window.adminPromptNotification = function(userId) {
                              </h2>
                          </div>
                          
-                         <div style="background:var(--bg-inset); border:3px solid var(--text); box-shadow:4px 4px 0 var(--text); border-radius:12px; padding:20px; margin-top:4px;">
+                         <div style="background:var(--bg-inset); border:3px solid var(--text);border-radius:12px; padding:20px; margin-top:4px;">
                              <div style="white-space:pre-wrap; word-break:break-word; font-size:0.88rem; line-height:1.6; font-weight:600; color:var(--text);">
                                  ${(n.message || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
                              </div>
@@ -5985,7 +5983,7 @@ window.adminPromptNotification = function(userId) {
                     </div>
                     <!-- Footer -->
                     <div style="display:flex; align-items:center; justify-content:flex-end; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
-                         <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:3px solid var(--text); box-shadow:3px 3px 0 var(--text); font-weight:900; font-size:0.8rem; padding:8px 16px;">CLOSE</button>
+                         <button class="btn btn-ghost" onclick="document.getElementById('ef-student-notif-overlay').remove()" style="border:3px solid var(--text);font-weight:900; font-size:0.8rem; padding:8px 16px;">CLOSE</button>
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
@@ -6015,7 +6013,7 @@ window.adminPromptNotification = function(userId) {
 
         <div class="card" style="width: calc(100% - 6px); padding: 16px !important; margin: 0 !important; border-bottom: 6px solid var(--brand); border-radius: 12px; box-sizing: border-box;">
             <div style="display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; width: 100%;">
-                <div style="width: 48px; height: 48px; border-radius: 10px; background: var(--brand); color: white; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.1rem; border: 3px solid var(--text); box-shadow: 3px 3px 0px var(--brand-dim); flex-shrink: 0;">
+                <div style="width: 48px; height: 48px; border-radius: 10px; background: var(--brand); color: white; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.1rem; border: 3px solid var(--text);flex-shrink: 0;">
                     ${initials}
                 </div>
                 <div style="min-width: 0;">
@@ -6032,9 +6030,9 @@ window.adminPromptNotification = function(userId) {
                     <div style="width: 100%; position: relative; padding-right: 4px; padding-bottom: 4px; box-sizing: border-box;">
                         <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 900; color: var(--text-muted); z-index: 1;">@</span>
                         <input type="text" id="edit-username-input" value="${currentHandle}" 
-                            style="width: 100%; padding: 12px 12px 12px 30px; font-weight: 800; font-size: 0.95rem; color: var(--text); background: var(--bg-inset); border: 3px solid var(--text); border-radius: 8px; outline: none; box-sizing: border-box; box-shadow: 4px 4px 0px var(--text); margin: 0;">
+                            style="width: 100%; padding: 12px 12px 12px 30px; font-weight: 800; font-size: 0.95rem; color: var(--text); background: var(--bg-inset); border: 3px solid var(--text); border-radius: 8px; outline: none; box-sizing: border-box;margin: 0;">
                     </div>
-                    <button class="btn btn-primary" id="btnSaveUsername" style="width: calc(100% - 4px); padding: 12px; font-weight: 900; border: 3px solid var(--text); box-shadow: 4px 4px 0px var(--text); font-size: 0.85rem; margin: 0; display: block;">SAVE CHANGES</button>
+                    <button class="btn btn-primary" id="btnSaveUsername" style="width: calc(100% - 4px); padding: 12px; font-weight: 900; border: 3px solid var(--text);font-size: 0.85rem; margin: 0; display: block;">SAVE CHANGES</button>
                 </div>
                 <div id="username-status-msg" style="font-size: 0.7rem; margin-top: 6px; font-weight: 800; min-height: 1em;"></div>
             </div>
@@ -6192,12 +6190,12 @@ window.adminPromptNotification = function(userId) {
         overlay.style = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);";
 
         overlay.innerHTML = `
-        <div class="card" style="padding: 32px; text-align: center; max-width: 400px; width: 90%; border: 4px solid var(--text); box-shadow: 8px 8px 0px var(--text); background: var(--bg-card); border-radius: 16px; animation: popIn 0.3s ease;">
+        <div class="card" style="padding: 32px; text-align: center; max-width: 400px; width: 90%; border: 4px solid var(--text);background: var(--bg-card); border-radius: 16px; animation: popIn 0.3s ease;">
             <div style="font-weight: 900; font-size: 1.4rem; color: var(--text); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">${title}</div>
             <p style="font-size: 0.9rem; color: var(--text-sub); line-height: 1.5; margin-bottom: 24px; font-weight: 600;">${message}</p>
             <div style="display: flex; gap: 12px; justify-content: center;">
-                ${!isAlert ? `<button class="btn btn-ghost" id="btnCancelEFModal" style="flex: 1; border: 3px solid var(--border); font-weight: 900; box-shadow: none;">CANCEL</button>` : ''}
-                <button class="btn btn-primary" id="btnConfirmEFModal" style="flex: 1; font-weight: 900; border: 3px solid var(--text); box-shadow: 4px 4px 0px var(--text);">${confirmLabel}</button>
+                ${!isAlert ? `<button class="btn btn-ghost" id="btnCancelEFModal" style="flex: 1; border: 3px solid var(--border); font-weight: 900;">CANCEL</button>` : ''}
+                <button class="btn btn-primary" id="btnConfirmEFModal" style="flex: 1; font-weight: 900; border: 3px solid var(--text);">${confirmLabel}</button>
             </div>
         </div>
     `;
@@ -6577,7 +6575,7 @@ window.mcRenderSubEventsTab = async function() {
                     <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Subscription Events</span>
                     <div style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Manage dynamic registrations, subjects, and event-based mock exams.</div>
                 </div>
-                <button class="btn btn-primary" onclick="window.mcOpenCreateSubEventModal()" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
+                <button class="btn btn-primary" onclick="window.mcOpenCreateSubEventModal()" style="font-weight:900;border:3px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE EVENT
                 </button>
             </div>
@@ -6618,7 +6616,7 @@ window.mcLoadSubEvents = async function() {
             const dateStr = ev.createdAt?.toDate ? ev.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : 'Recently';
             const subsList = Array.isArray(ev.availableSubjects) ? ev.availableSubjects.map(s => mcDisplaySubject(s)).join(', ') : '';
             return `
-            <div class="card" style="padding:20px;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:var(--bg-card);transition:transform 0.2s,box-shadow 0.2s;">
+            <div class="card" style="padding:20px;border:3px solid var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:var(--bg-card);transition:transform 0.2s;">
                 <div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                         <span style="font-size:0.65rem;font-weight:900;text-transform:uppercase;color:#7c3aed;background:rgba(124,58,237,0.06);padding:3px 8px;border:1.5px solid #7c3aed;border-radius:6px;letter-spacing:0.05em;">${ev.resultsReleased ? 'Results Broadcasted' : 'Active'}</span>
@@ -6632,13 +6630,13 @@ window.mcLoadSubEvents = async function() {
                 </div>
                 
                 <div style="display:flex;gap:8px;margin-top:auto;">
-                    <button class="btn btn-outline" onclick="window.mcViewSubEventDetails('${ev.id}')" style="flex:1;font-size:0.7rem;padding:6px;border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);font-weight:800;">
+                    <button class="btn btn-outline" onclick="window.mcViewSubEventDetails('${ev.id}')" style="flex:1;font-size:0.7rem;padding:6px;border:2px solid var(--text);font-weight:800;">
                         MANAGE EVENT
                     </button>
-                    <button class="btn btn-primary" onclick="window.mcBroadcastEventMocks('${ev.id}','${ev.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);font-weight:800;background:#10b981;display:flex;align-items:center;gap:4px;">
+                    <button class="btn btn-primary" onclick="window.mcBroadcastEventMocks('${ev.id}','${ev.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);font-weight:800;background:#10b981;display:flex;align-items:center;gap:4px;">
                         <span class="material-icons-round" style="font-size:0.85rem;">campaign</span>
                     </button>
-                    <button class="btn btn-danger" onclick="window.mcDeleteSubEvent('${ev.id}', '${ev.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);display:flex;align-items:center;justify-content:center;aspect-ratio:1;">
+                    <button class="btn btn-danger" onclick="window.mcDeleteSubEvent('${ev.id}', '${ev.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);display:flex;align-items:center;justify-content:center;aspect-ratio:1;">
                         <span class="material-icons-round" style="font-size:0.95rem;">delete</span>
                     </button>
                 </div>
@@ -6657,12 +6655,12 @@ window.mcOpenCreateSubEventModal = function() {
     modal.id = 'ef-subevent-modal';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;animation:popIn 0.3s ease;padding:12px;box-sizing:border-box;';
     modal.innerHTML = `
-        <div class="card" style="width:min(500px, 100%); max-height:90vh; display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text); box-shadow:8px 8px 0px var(--text); background:var(--bg-card); border-radius:16px;">
+        <div class="card" style="width:min(500px, 100%); max-height:90vh; display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
             <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                 <div style="font-weight:900; font-size:1.1rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
                     <span class="material-icons-round" style="color:var(--brand);">event_available</span> Create Event
                 </div>
-                <button onclick="document.getElementById('ef-subevent-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text); box-shadow:2px 2px 0px var(--text); border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
+                <button onclick="document.getElementById('ef-subevent-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
                     <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
                 </button>
             </div>
@@ -6687,8 +6685,8 @@ window.mcOpenCreateSubEventModal = function() {
             </div>
             
             <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
-                <button class="btn btn-ghost" onclick="document.getElementById('ef-subevent-modal').remove()" style="border:3px solid var(--border); font-weight:900; box-shadow:none; padding:10px 20px;">CANCEL</button>
-                <button class="btn btn-primary" onclick="window.mcSaveSubEvent()" style="font-weight:900; border:3px solid var(--text); box-shadow:4px 4px 0px var(--text); padding:10px 24px;">SAVE EVENT</button>
+                <button class="btn btn-ghost" onclick="document.getElementById('ef-subevent-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:10px 20px;">CANCEL</button>
+                <button class="btn btn-primary" onclick="window.mcSaveSubEvent()" style="font-weight:900; border:3px solid var(--text);padding:10px 24px;">SAVE EVENT</button>
             </div>
         </div>
     `;
@@ -7083,14 +7081,14 @@ window.mcViewSubEventDetails = async function(eventId) {
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;">
                     <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong>${subjectCounts[s.name]}</strong> students</div>
-                    <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);box-shadow:2px 2px 0px var(--text);white-space:nowrap;">CREATE/EDIT MOCK</button>
+                    <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);white-space:nowrap;">CREATE/EDIT MOCK</button>
                 </div>
             </div>`;
         }).join('');
 
         const broadcastBtn = `
             <div style="display:flex;gap:8px;width:100%;">
-                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px;text-align:center;background:#7c3aed;">
+                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:10px;text-align:center;background:#7c3aed;">
                     ${ev.resultsReleased ? 'RE-BROADCAST RESULTS' : 'BROADCAST ALL RESULTS'}
                 </button>
                 ${ev.resultsReleased ? `<span style="font-size:0.65rem;color:var(--text-muted);font-weight:700;display:flex;align-items:center;gap:4px;"><span class="material-icons-round" style="font-size:0.85rem;">info</span> Already broadcasted</span>` : ''}
@@ -7098,7 +7096,7 @@ window.mcViewSubEventDetails = async function(eventId) {
 
         document.getElementById('ef-se-det-body').innerHTML = `
             <div style="display:grid;grid-template-columns:1fr;gap:16px;">
-                <div style="background:var(--bg-card);border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);border-radius:12px;padding:16px;text-align:center;">
+                <div style="background:var(--bg-card);border:3px solid var(--text);border-radius:12px;padding:16px;text-align:center;">
                     <div style="font-size:2rem;font-weight:900;color:var(--text);">${totalRegistrations}</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Total Registered Students</div>
                 </div>
@@ -7401,11 +7399,11 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
                 
                 <hr style="border:0; border-top:3px solid var(--text); margin:4px 0;">
                 
-                <div id="dq-bulk-import-panel" style="display:none; background:var(--bg-inset); border:3px solid var(--text); box-shadow:4px 4px 0 var(--text); border-radius:12px; padding:16px; margin-bottom:12px; animation:popIn 0.25s ease;">
-                    <textarea id="dq-bulk-import-textarea" rows="8" placeholder="Paste questions here..." style="font-family:var(--font-mono); font-size:0.75rem; width:100%; border:2px solid var(--text); border-radius:8px; padding:10px; box-shadow:2px 2px 0 var(--text); box-sizing:border-box; resize:vertical; background:var(--bg-card); color:var(--text);"></textarea>
+                <div id="dq-bulk-import-panel" style="display:none; background:var(--bg-inset); border:3px solid var(--text);border-radius:12px; padding:16px; margin-bottom:12px; animation:popIn 0.25s ease;">
+                    <textarea id="dq-bulk-import-textarea" rows="8" placeholder="Paste questions here..." style="font-family:var(--font-mono); font-size:0.75rem; width:100%; border:2px solid var(--text); border-radius:8px; padding:10px;box-sizing:border-box; resize:vertical; background:var(--bg-card); color:var(--text);"></textarea>
                     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
-                        <button class="btn btn-ghost" onclick="window.mcToggleDQBulkImport()" style="font-size:0.7rem; padding:6px 12px; border:2px solid var(--border); box-shadow:none;">Cancel</button>
-                        <button class="btn btn-primary" onclick="window.mcProcessDQBulkImport()" style="font-size:0.7rem; padding:6px 16px; border:2px solid var(--text); box-shadow:2px 2px 0 var(--text); background:#7c3aed; border-color:var(--text);">Analyze & Import</button>
+                        <button class="btn btn-ghost" onclick="window.mcToggleDQBulkImport()" style="font-size:0.7rem; padding:6px 12px; border:2px solid var(--border);">Cancel</button>
+                        <button class="btn btn-primary" onclick="window.mcProcessDQBulkImport()" style="font-size:0.7rem; padding:6px 16px; border:2px solid var(--text);background:#7c3aed; border-color:var(--text);">Analyze & Import</button>
                     </div>
                 </div>
 
@@ -7413,16 +7411,16 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
                     <div>
                         <div style="font-weight:900; font-size:1.05rem; text-transform:uppercase; color:var(--text);">Questions Builder</div>
                         <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
-                            <button class="btn btn-ghost" onclick="window.mcCollapseAllBuilderQuestions()" style="font-size:0.62rem; padding:2px 6px; border:1px solid var(--border); box-shadow:none; font-weight:800; text-transform:uppercase;">Collapse All</button>
-                            <button class="btn btn-ghost" onclick="window.mcExpandAllBuilderQuestions()" style="font-size:0.62rem; padding:2px 6px; border:1px solid var(--border); box-shadow:none; font-weight:800; text-transform:uppercase;">Expand All</button>
+                            <button class="btn btn-ghost" onclick="window.mcCollapseAllBuilderQuestions()" style="font-size:0.62rem; padding:2px 6px; border:1px solid var(--border);font-weight:800; text-transform:uppercase;">Collapse All</button>
+                            <button class="btn btn-ghost" onclick="window.mcExpandAllBuilderQuestions()" style="font-size:0.62rem; padding:2px 6px; border:1px solid var(--border);font-weight:800; text-transform:uppercase;">Expand All</button>
                         </div>
                     </div>
                     
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <button class="btn btn-outline dq-header-actions-btn" onclick="window.mcToggleDQBulkImport()" style="font-size:0.72rem; padding:6px 12px; border:2px solid #7c3aed; color:#7c3aed; box-shadow:2px 2px 0px var(--text); font-weight:800; display:flex; align-items:center; gap:4px;">
+                        <button class="btn btn-outline dq-header-actions-btn" onclick="window.mcToggleDQBulkImport()" style="font-size:0.72rem; padding:6px 12px; border:2px solid #7c3aed; color:#7c3aed;font-weight:800; display:flex; align-items:center; gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">auto_fix_high</span> Bulk Import
                         </button>
-                        <button class="btn btn-primary dq-header-actions-btn" onclick="window.mcAddBuilderQuestion()" style="font-size:0.72rem; padding:6px 12px; border:2px solid var(--text); box-shadow:2px 2px 0px var(--text); font-weight:800; display:flex; align-items:center; gap:4px;">
+                        <button class="btn btn-primary dq-header-actions-btn" onclick="window.mcAddBuilderQuestion()" style="font-size:0.72rem; padding:6px 12px; border:2px solid var(--text);font-weight:800; display:flex; align-items:center; gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">add</span> Add Question
                         </button>
                     </div>
@@ -7433,11 +7431,11 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
             
             <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                 <div class="dq-footer-actions" style="display:flex; align-items:center; gap:12px; width:auto;">
-                    <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900; box-shadow:none; padding:10px 20px;">CANCEL</button>
-                    <button class="btn btn-primary" onclick="window.mcSaveCreatedEventMock('${eventId}', '${subject}')" style="font-weight:900; border:3px solid var(--text); box-shadow:4px 4px 0px var(--text); padding:10px 24px;">SAVE MOCK EXAM</button>
+                    <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:10px 20px;">CANCEL</button>
+                    <button class="btn btn-primary" onclick="window.mcSaveCreatedEventMock('${eventId}', '${subject}')" style="font-weight:900; border:3px solid var(--text);padding:10px 24px;">SAVE MOCK EXAM</button>
                 </div>
                 <!-- Add Release Button next to Save -->
-                <button class="btn btn-primary" onclick="window.mcReleaseSubjectMock('${eventId}', '${subject}')" style="background:#10b981; border:3px solid var(--text); box-shadow:4px 4px 0px var(--text); font-weight:900; padding:10px 24px; color:#fff;">SAVE & RELEASE TO STUDENTS</button>
+                <button class="btn btn-primary" onclick="window.mcReleaseSubjectMock('${eventId}', '${subject}')" style="background:#10b981; border:3px solid var(--text);font-weight:900; padding:10px 24px; color:#fff;">SAVE & RELEASE TO STUDENTS</button>
             </div>
         </div>
     `;
