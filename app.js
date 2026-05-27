@@ -1440,12 +1440,15 @@ async function mcLoadDailyQuizzes() {
                     </div>
                 </div>
                 
-                <div style="display:flex;gap:8px;margin-top:auto;">
-                    <button class="btn btn-outline" onclick="window.mcViewDailyQuizDetails('${q.id}')" style="flex:1;font-size:0.65rem;padding:4px;border:2px solid var(--text);font-weight:800;">
-                        VIEW DETAILS
+                <div style="display:flex;gap:6px;margin-top:auto;">
+                    <button class="btn btn-outline" onclick="window.mcViewDailyQuizDetails('${q.id}')" style="flex:1;font-size:0.6rem;padding:4px;border:2px solid var(--text);font-weight:800;">
+                        DETAILS
                     </button>
-                    <button class="btn btn-danger" onclick="window.mcDeleteDailyQuiz('${q.id}', '${q.title.replace(/'/g, "\\'")}')" style="font-size:0.7rem;padding:6px;border:2px solid var(--text);display:flex;align-items:center;justify-content:center;aspect-ratio:1;">
-                        <span class="material-icons-round" style="font-size:0.95rem;">delete</span>
+                    <button class="btn btn-outline" onclick="window.mcOpenEditDailyQuizModal('${q.id}')" style="font-size:0.6rem;padding:4px 8px;border:2px solid var(--text);font-weight:800;display:flex;align-items:center;gap:3px;">
+                        <span class="material-icons-round" style="font-size:0.8rem;">edit</span> EDIT
+                    </button>
+                    <button class="btn btn-danger" onclick="window.mcDeleteDailyQuiz('${q.id}', '${q.title.replace(/'/g, "\\'")}')" style="font-size:0.6rem;padding:4px 8px;border:2px solid var(--text);display:flex;align-items:center;gap:3px;">
+                        <span class="material-icons-round" style="font-size:0.8rem;">delete</span>
                     </button>
                 </div>
             </div>
@@ -2317,25 +2320,29 @@ window.mcSaveCreatedDailyQuiz = async function() {
 window.mcViewDailyQuizDetails = async function(dqid) {
     const overlay = document.createElement('div');
     overlay.id = 'ef-dq-details-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:stretch;justify-content:flex-end;z-index:2000;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:2000;animation:fadeIn 0.2s ease;';
     overlay.innerHTML = `
-        <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
-            <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:2px solid var(--border);flex-shrink:0;">
-                <div style="width:44px;height:44px;border-radius:10px;background:rgba(22,163,74,0.08);border:1.5px solid #16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <span class="material-icons-round" style="color:#16a34a;">today</span>
+        <div style="display:flex;flex-direction:column;overflow:hidden;flex:1;">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+                <button onclick="this.closest('#ef-dq-details-overlay').remove()"
+                    style="width:30px;height:30px;border-radius:5px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round" style="font-size:0.9rem;">arrow_back</span>
+                </button>
+                <div style="width:30px;height:30px;border-radius:5px;background:rgba(22,163,74,0.08);border:2px solid #16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span class="material-icons-round" style="color:#16a34a;font-size:0.9rem;">today</span>
                 </div>
                 <div style="flex:1;min-width:0;">
-                    <div id="ef-dq-det-title" style="font-weight:900;font-size:1.05rem;color:var(--text);">Loading Quiz details…</div>
-                    <div id="ef-dq-det-meta" style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Quiz ID: <code style="font-family:var(--font-mono);font-size:0.65rem;">${dqid}</code></div>
+                    <div id="ef-dq-det-title" style="font-weight:700;font-size:0.85rem;color:var(--text);">Loading Quiz details…</div>
+                    <div id="ef-dq-det-meta" style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">Quiz ID: <code style="font-family:var(--font-mono);font-size:0.6rem;">${dqid}</code></div>
                 </div>
                 <button onclick="this.closest('#ef-dq-details-overlay').remove()"
-                    style="background:var(--bg-inset);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:7px;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;">
-                    <span class="material-icons-round">close</span>
+                    style="width:30px;height:30px;border-radius:5px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round" style="font-size:0.9rem;">close</span>
                 </button>
             </div>
             
-            <div id="ef-dq-det-body" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:24px;">
-                <div style="text-align:center;padding:56px;color:var(--text-muted);">
+            <div id="ef-dq-det-body" style="flex:1;overflow-y:auto;padding:14px;background:var(--bg);display:flex;flex-direction:column;gap:14px;">
+                <div style="text-align:center;padding:32px;color:var(--text-muted);">
                     <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;">autorenew</span>
                     <div style="margin-top:12px;font-size:0.8rem;">Fetching quiz metadata and student attempts…</div>
                 </div>
@@ -2394,7 +2401,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             }).join('');
             
             attemptsHTML = `
-            <div style="border:3px solid var(--text);border-radius:10px;overflow:hidden;background:var(--bg-card);">
+            <div style="border:2px solid var(--text);border-radius:10px;overflow:hidden;background:var(--bg-card);">
                 <table style="width:100%;border-collapse:collapse;text-align:left;">
                     <thead>
                         <tr style="background:var(--bg-inset);border-bottom:3px solid var(--text);">
@@ -2422,7 +2429,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         
         document.getElementById('ef-dq-det-body').innerHTML = `
             <!-- Share URL Banner -->
-            <div style="background:var(--bg-inset);border:3px solid var(--text);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+            <div style="background:var(--bg-inset);border:2px solid var(--text);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;">
                 <div style="font-weight:900;font-size:0.8rem;text-transform:uppercase;color:var(--text);display:flex;align-items:center;gap:6px;">
                     <span class="material-icons-round" style="color:var(--brand);">link</span> Unique Quiz URL (Cryptic)
                 </div>
@@ -2436,19 +2443,19 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             </div>
             
             <!-- Summary Stats -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                <div style="background:var(--bg-card);border:3px solid var(--text);border-radius:12px;padding:16px;text-align:center;">
-                    <div style="font-size:2rem;font-weight:900;color:var(--text);">${attemptCount}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div style="background:var(--bg-card);border:2px solid var(--text);border-radius:12px;padding:10px;text-align:center;">
+                    <div style="font-size:1.5rem;font-weight:900;color:var(--text);">${attemptCount}</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Total Attempts</div>
                 </div>
-                <div style="background:var(--bg-card);border:3px solid var(--text);border-radius:12px;padding:16px;text-align:center;">
-                    <div style="font-size:2rem;font-weight:900;color:#16a34a;">${avgScore}%</div>
+                <div style="background:var(--bg-card);border:2px solid var(--text);border-radius:12px;padding:10px;text-align:center;">
+                    <div style="font-size:1.5rem;font-weight:900;color:#16a34a;">${avgScore}%</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Average Accuracy</div>
                 </div>
             </div>
             
             <!-- Broadcast Section -->
-            <div style="background:rgba(37,99,235,0.04);border:3px solid var(--text);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;">
+            <div style="background:rgba(37,99,235,0.04);border:2px solid var(--text);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;">
                 <div style="font-weight:900;font-size:0.9rem;text-transform:uppercase;color:var(--text);display:flex;align-items:center;gap:6px;">
                     <span class="material-icons-round" style="color:#2563eb;">send</span> Broadcast to Subscribers
                 </div>
@@ -2466,7 +2473,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             
             <!-- Student Attempts Table -->
             <div>
-                <div style="font-weight:900;font-size:0.9rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <div style="font-weight:900;font-size:0.8rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;">
                     <div style="display:flex;align-items:center;gap:6px;">
                         <span class="material-icons-round" style="color:var(--text-muted);">analytics</span> Student Attempts History
                     </div>
@@ -2724,12 +2731,81 @@ window.mcDeleteDailyQuiz = function(dqid, title) {
     );
 };
 
+// ── Edit an existing daily quiz ──
+window.mcOpenEditDailyQuizModal = async function(dqid) {
+    try {
+        const dqDoc = await getDoc(doc(db, 'daily_quizzes', dqid));
+        if (!dqDoc.exists()) {
+            return window.showEFModal("Not Found", "Daily quiz not found.", "OK", null, true);
+        }
+        const data = dqDoc.data();
+        
+        // Open the builder modal
+        window.mcOpenCreateDailyQuizModal();
+        
+        // Pre-fill fields after modal renders
+        setTimeout(() => {
+            const titleInput = document.getElementById('dq-builder-title');
+            const timeInput = document.getElementById('dq-builder-time');
+            if (titleInput) titleInput.value = data.title || '';
+            if (timeInput) timeInput.value = data.timeLimit || 10;
+            
+            // Load existing questions
+            if (data.questions && data.questions.length > 0) {
+                window.currentBuilderQuestions = data.questions.map(q => ({ ...q, expanded: false }));
+                if (window.currentBuilderQuestions[0]) window.currentBuilderQuestions[0].expanded = true;
+                window.mcRenderBuilderQuestions();
+            }
+            
+            // Override save button to update instead of create
+            const saveBtn = document.querySelector('#ef-dq-builder-modal .btn-primary');
+            if (saveBtn) {
+                const origClick = saveBtn.onclick;
+                saveBtn.onclick = async () => {
+                    const title = document.getElementById('dq-builder-title')?.value.trim();
+                    const time = parseInt(document.getElementById('dq-builder-time')?.value) || 10;
+                    window.mcSyncBuilderStateFromDOM();
+                    
+                    if (!title || window.currentBuilderQuestions.length === 0) {
+                        return window.showEFModal("Validation", "Please enter a title and add questions.", "OK", null, true);
+                    }
+                    
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'SAVING…';
+                    
+                    try {
+                        await updateDoc(doc(db, 'daily_quizzes', dqid), {
+                            title,
+                            questions: window.currentBuilderQuestions,
+                            timeLimit: time
+                        });
+                        
+                        document.getElementById('ef-dq-builder-modal')?.remove();
+                        window.showEFModal("Updated", "Daily quiz updated successfully!", "OK", null, true);
+                        mcLoadDailyQuizzes();
+                    } catch (e) {
+                        console.error(e);
+                        window.showEFModal("Error", e.message, "OK", null, true);
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'SAVE CHANGES';
+                    }
+                };
+                saveBtn.textContent = 'SAVE CHANGES';
+            }
+        }, 300);
+    } catch (e) {
+        console.error(e);
+        window.showEFModal("Error", e.message, "OK", null, true);
+    }
+};
+
 window.mcRenderDailyQuizTab = mcRenderDailyQuizTab;
 window.mcLoadDailyQuizzes = mcLoadDailyQuizzes;
 window.mcDeleteDailyQuiz = mcDeleteDailyQuiz;
 window.mcViewDailyQuizDetails = mcViewDailyQuizDetails;
 window.mcBroadcastDailyQuiz = mcBroadcastDailyQuiz;
 window.mcOpenCreateDailyQuizModal = mcOpenCreateDailyQuizModal;
+window.mcOpenEditDailyQuizModal = mcOpenEditDailyQuizModal;
 window.mcAddBuilderQuestion = mcAddBuilderQuestion;
 window.mcRemoveBuilderQuestion = mcRemoveBuilderQuestion;
 window.mcAddBuilderOption = mcAddBuilderOption;
