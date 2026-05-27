@@ -4451,6 +4451,19 @@ window.adminPromptNotification = function(userId) {
 
     async function renderDashboard() {
         renderLoading(" ");
+        
+        // ─── Fetch fresh user data for accurate stats ───
+        try {
+            const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+            if (userSnap.exists()) {
+                const freshData = userSnap.data();
+                if (freshData.stats) {
+                    userData.stats = { ...userData.stats, ...freshData.stats };
+                }
+            }
+        } catch (e) { console.error("Failed to fetch user stats:", e); }
+        
         // ─── Data & Analytics ───
         const analytics = getAnalytics();
         const firstName = currentUser.displayName ? currentUser.displayName.split(' ')[0] : 'Student';
@@ -7212,7 +7225,7 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
             return p.length > 1 ? (p[0][0]+p[p.length-1][0]).toUpperCase() : n.substring(0,2).toUpperCase();
         };
         
-        const subjectCols = subjects;
+        const subjectCols = (subjects || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
         
         container.innerHTML = `
             <style>

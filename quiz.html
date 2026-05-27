@@ -4,70 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="ExamForge - Exam Mode">
+    <meta property="og:description" content="Prepare smarter with ExamForge. Practice exams, track your progress, and ace your tests with confidence.">
+    <meta property="og:image" content="https://examforge.app/examforge.jpeg">
+    <meta property="og:url" content="https://examforge.app">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ExamForge">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ExamForge - Exam Mode">
+    <meta name="twitter:description" content="Prepare smarter with ExamForge. Practice exams, track your progress, and ace your tests with confidence.">
+    <meta name="twitter:image" content="https://examforge.app/examforge.jpeg">
     <title>ExamForge | Advanced Examination Engine</title>
-    <!--
-    ══════════════════════════════════════════════════════════════════
-    EXAMFORGE — quiz.html <head> OG META TAGS
-    Paste everything below into quiz.html's <head>, then add the
-    <script> block just before </body> or at the bottom of quiz.js
-    ══════════════════════════════════════════════════════════════════
--->
-
-<!-- Primary -->
-<meta name="description" content="Take a quiz and test your knowledge on ExamForge.">
-
-<!-- Open Graph (WhatsApp, Facebook, LinkedIn, Telegram) -->
-<meta property="og:title"        content="ExamForge Quiz">
-<meta property="og:description"  content="Take a quiz and test your knowledge on ExamForge.">
-<meta property="og:image"        content="/examforge.jpeg">
-<meta property="og:image:width"  content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:url"          content="">
-<meta property="og:type"         content="website">
-<meta property="og:site_name"    content="ExamForge">
-
-<!-- Twitter / X -->
-<meta name="twitter:card"        content="summary_large_image">
-<meta name="twitter:title"       content="ExamForge Quiz">
-<meta name="twitter:description" content="Take a quiz and test your knowledge on ExamForge.">
-<meta name="twitter:image"       content="/examforge.jpeg">
-
-<!--
-    ── Dynamic OG updater ────────────────────────────────────────────
-    Add this script at the BOTTOM of quiz.html (or call efUpdateOGTags()
-    from quiz.js once the title/course is known).
-    It runs immediately so meta tags are updated before any crawler
-    that executes JS can read them.
--->
-<script>
-(function efUpdateOGTags() {
-    const p     = new URLSearchParams(location.search);
-    const title = p.get('title') ? decodeURIComponent(p.get('title')) : null;
-    const course= p.get('course') || (p.get('courses') || '').split(',')[0];
-    const mode  = p.get('mode');
-
-    let displayTitle = title
-        || (mode === 'jamb' ? 'JAMB Mock Exam'
-            : course ? course.toUpperCase() + ' Quiz'
-            : 'ExamForge Quiz');
-
-    const ogTitle = displayTitle + ' — ExamForge';
-    const ogDesc  = `Ready to test yourself? Take the ${displayTitle} quiz now on ExamForge. Time-limited, scored and competitive.`;
-
-    document.title = ogTitle;
-
-    const set = (sel, val) => {
-        document.querySelectorAll(sel).forEach(el => el.setAttribute('content', val));
-    };
-
-    set('meta[property="og:title"]',        ogTitle);
-    set('meta[property="og:description"]',  ogDesc);
-    set('meta[property="og:url"]',          location.href);
-    set('meta[name="twitter:title"]',       ogTitle);
-    set('meta[name="twitter:description"]', ogDesc);
-    set('meta[name="description"]',         ogDesc);
-})();
-</script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="stylesheet" href="quiz.css">
