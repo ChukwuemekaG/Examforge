@@ -1108,3 +1108,7 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
     /* Dashboard start exam button hidden on small screens */
     .dashboard-start-exam { display: none; }
 }
+
+@media screen and (max-width: 382px) {
+    .topbar-logo { display: none; }
+}
