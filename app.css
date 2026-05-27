@@ -1110,5 +1110,5 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
 }
 
 @media screen and (max-width: 382px) {
-    .topbar-logo { display: none; }
+    .wordmark { display: none; }
 }
