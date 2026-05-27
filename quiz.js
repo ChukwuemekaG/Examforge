@@ -126,7 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         newBtn.className = elReview.className;
                         newBtn.style.cssText = elReview.style.cssText;
                         newBtn.style.display = '';
+                        console.log('Creating cached review button');
                         newBtn.onclick = function() {
+                            console.log('CACHED REVIEW CLICKED', { hasQuestions: !!prev.questions, qCount: prev.questions?.length, hasAnswers: !!prev.userAnswers });
                             if (prev.questions && prev.questions.length > 0) {
                                 examState.isReviewMode = true;
                                 examState.subjects = [{
@@ -148,9 +150,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (sidebar) sidebar.classList.remove('mobile-open');
                                 if (overlay2) overlay2.classList.remove('active');
                                 examState.currentSubjectIdx = 0;
+                                console.log('Calling buildSubjectTabs...');
                                 window.buildSubjectTabs();
+                                console.log('Calling loadSubject...');
                                 window.loadSubject(0);
+                                console.log('Calling switchView...');
                                 window.switchView('quiz');
+                                console.log('Review mode activated');
                             }
                         };
                         elReview.parentNode.replaceChild(newBtn, elReview);
