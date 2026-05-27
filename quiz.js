@@ -1089,18 +1089,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     timestamp: serverTimestamp()
                 });
 
+                // ── DQ SAVE DIAGNOSTIC ──
+                console.log('DQ Save Check:', { 
+                    quizId: examState.quizId, 
+                    startsWithDq: examState.quizId?.startsWith('dq_'),
+                    isMock: examState.isMockExam,
+                    mode: examState.mode,
+                    hasUser: !!currentUser,
+                    score: finalScore,
+                    correct, 
+                    total
+                });
+
                 if (examState.quizId && examState.quizId.startsWith('dq_')) {
                     const attemptRef = collection(db, "daily_quizzes", examState.quizId, "attempts");
-                    await addDoc(attemptRef, {
-                        uid: currentUser.uid,
-                        displayName: currentUser.displayName || existingData.displayName || currentUser.email || 'Anonymous',
-                        email: currentUser.email || 'No email',
-                        score: finalScore,
-                        correct: correct,
-                        totalQuestions: total,
-                        timeTaken: examState.timeTaken,
-                        timestamp: serverTimestamp()
-                    });
+                    try {
+                        await addDoc(attemptRef, {
+                            uid: currentUser.uid,
+                            displayName: currentUser.displayName || existingData.displayName || currentUser.email || 'Anonymous',
+                            email: currentUser.email || 'No email',
+                            score: finalScore,
+                            correct: correct,
+                            totalQuestions: total,
+                            timeTaken: examState.timeTaken,
+                            timestamp: serverTimestamp()
+                        });
+                        console.log('DQ attempt saved successfully to:', `daily_quizzes/${examState.quizId}/attempts`);
+                    } catch(e) { console.error('DQ attempt save FAILED:', e); }
                     
                     // Save to localStorage for browser-based retake prevention
                     try {
@@ -1142,7 +1157,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         </div>`
                         }));
-                    } catch(e) { console.error("localStorage save failed:", e); }
+                    } catch(e) { console.error("DQ localStorage save failed:", e); }
                 }
 
                 const updatePayload = {
