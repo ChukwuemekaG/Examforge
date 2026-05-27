@@ -99,15 +99,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (previousAttempt) {
                     const prev = JSON.parse(previousAttempt);
-                    // Show results directly - no retake
-                    document.getElementById('result-icon').textContent = 'assignment';
-                    document.getElementById('result-icon').style.color = '#2563eb';
-                    document.getElementById('result-title').textContent = prev.title || 'Daily Quiz Completed';
-                    document.getElementById('subject-scores-container').innerHTML = prev.html || '';
-                    document.getElementById('btn-review').style.display = 'none';
-                    document.getElementById('btn-submit-early').style.display = 'none';
-                    document.getElementById('timer-display').style.display = 'none';
-                    document.getElementById('quiz-header-actions').style.display = 'none';
+                    // Show results directly - no retake (with null safety)
+                    const safe = (id) => document.getElementById(id);
+                    const elIcon = safe('result-icon');
+                    const elTitle = safe('result-title');
+                    const elContainer = safe('subject-scores-container');
+                    const elReview = safe('btn-review');
+                    const elSubmit = safe('btn-submit-early');
+                    const elTimer = safe('timer-display');
+                    const elHeader = safe('quiz-header-actions');
+                    
+                    if (elIcon) { elIcon.textContent = 'assignment'; elIcon.style.color = '#2563eb'; }
+                    if (elTitle) elTitle.textContent = prev.title || 'Daily Quiz Completed';
+                    if (elContainer) elContainer.innerHTML = prev.html || '';
+                    if (elReview) elReview.style.display = 'none';
+                    if (elSubmit) elSubmit.style.display = 'none';
+                    if (elTimer) elTimer.style.display = 'none';
+                    if (elHeader) elHeader.style.display = 'none';
                     switchView('results');
                     return;
                 }
@@ -130,7 +138,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 examState.timeLimit = (d.timeLimit && d.timeLimit > 0 ? d.timeLimit : 10) * 60;
                 
                 examState.mode = 'exam'; // Always strict exam mode for daily quizzes
-                document.getElementById('rule-timer').style.display = 'block';
+                const timerEl = document.getElementById('rule-timer');
+                if (timerEl) timerEl.style.display = 'block';
                 switchView('warning');
             } catch (e) {
                 showLoadError(e);
@@ -166,7 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 examState.timeLimit = (d.timeLimit && d.timeLimit > 0 ? d.timeLimit : 10) * 60;
                 
                 examState.mode = 'exam'; // Always strict exam mode
-                document.getElementById('rule-timer').style.display = 'block';
+                const timerEl2 = document.getElementById('rule-timer');
+                if (timerEl2) timerEl2.style.display = 'block';
                 switchView('warning');
             } catch (e) {
                 showLoadError(e);
@@ -297,10 +307,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (examState.isStrict) {
                 examState.mode = 'exam';
-                document.getElementById('rule-timer').style.display = 'block';
+                const timerEl = document.getElementById('rule-timer');
+                if (timerEl) timerEl.style.display = 'block';
                 switchView('warning');
             } else {
-                document.getElementById('rule-timer').style.display = 'none';
+                const timerEl = document.getElementById('rule-timer');
+                if (timerEl) timerEl.style.display = 'none';
                 switchView('config');
             }
 
@@ -351,10 +363,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (examState.isStrict) {
             examState.mode = 'exam';
-            document.getElementById('rule-timer').style.display = 'block';
+            const timerEl = document.getElementById('rule-timer');
+            if (timerEl) timerEl.style.display = 'block';
             switchView('warning');
         } else {
-            document.getElementById('rule-timer').style.display = 'none';
+            const timerEl = document.getElementById('rule-timer');
+            if (timerEl) timerEl.style.display = 'none';
             switchView('config');
         }
     }
@@ -362,7 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-to-warning').addEventListener('click', () => {
         const mode = document.querySelector('input[name="quiz-mode"]:checked').value;
         examState.mode = mode;
-        document.getElementById('rule-timer').style.display = mode === 'exam' ? 'block' : 'none';
+        const timerEl = document.getElementById('rule-timer');
+        if (timerEl) timerEl.style.display = mode === 'exam' ? 'block' : 'none';
         switchView('warning');
     });
 
