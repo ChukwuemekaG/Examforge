@@ -10,6 +10,7 @@ import {
     deleteUser
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, arrayUnion, arrayRemove, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -421,8 +422,48 @@ function setupAdminListeners() {
                 });
 
                 init();
-                if ('Notification' in window && Notification.permission === 'default') {
-                    Notification.requestPermission().catch(console.error);
+                // ─── Push Notification Setup ─────────────────────────
+                if ('Notification' in window) {
+                    if (Notification.permission === 'default') {
+                        Notification.requestPermission().catch(console.error);
+                    }
+                    // Initialize FCM
+                    try {
+                        const messaging = getMessaging();
+                        getToken(messaging, { vapidKey: 'BEr--9CxPudHChjFyqTNS_FPvtdLaEBFgwNbiYvM5DLQC9g-DjtIqVq0O4dTDqY9ln8pV9NRGHE2vjK3pHNF7V0' })
+                            .then(async (token) => {
+                                if (token && auth.currentUser) {
+                                    await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+                                        fcmToken: token,
+                                        fcmTokenUpdatedAt: serverTimestamp()
+                                    });
+                                }
+                            })
+                            .catch((err) => console.error('FCM token error:', err));
+                        
+                        onMessage(messaging, (payload) => {
+                            const data = payload.data || {};
+                            const title = data.title || 'ExamForge';
+                            const body = data.body || '';
+                            const url = data.url || '/';
+                            if ('Notification' in window && Notification.permission === 'granted') {
+                                const n = new Notification(title, {
+                                    body: body,
+                                    icon: '/examforge.jpeg',
+                                    badge: '/512.png',
+                                    image: '/examforge.jpeg',
+                                    data: { url: url },
+                                    requireInteraction: true
+                                });
+                                n.onclick = function(e) {
+                                    e.preventDefault();
+                                    window.focus();
+                                    if (url.includes('#')) window.location.href = '/app.html' + url;
+                                    else if (url) window.location.href = url;
+                                };
+                            }
+                        });
+                    } catch(e) { console.error('FCM setup error:', e); }
                 }
             } catch (error) { console.error(error); init(); }
         } else {
@@ -5762,14 +5803,26 @@ window.adminPromptNotification = function(userId) {
                     if (change.type === 'added') {
                         const n = change.doc.data();
                         const ts = n.timestamp?.toMillis ? n.timestamp.toMillis() : Date.now();
-                        // Only trigger push notification if the document is less than 15s old to avoid spamming historical alerts
-                        if (Date.now() - ts < 15000 && 'Notification' in window && Notification.permission === 'granted') {
+                        // Only trigger push notification if the document is less than 30s old to avoid spamming historical alerts
+                        if (Date.now() - ts < 30000 && 'Notification' in window && Notification.permission === 'granted') {
                             try {
-                                new Notification(n.title || "New Notification", {
+                                const notifUrl = n.actionPath || (n.resultData ? '/app.html#inbox' : '/app.html');
+                                const notif = new Notification(n.title || "ExamForge", {
                                     body: n.message || "",
-                                    icon: "/512.png"
+                                    icon: "/examforge.jpeg",
+                                    badge: "/512.png",
+                                    image: "/examforge.jpeg",
+                                    data: { url: notifUrl },
+                                    requireInteraction: true,
+                                    vibrate: [200, 100, 200]
                                 });
-                            } catch (e) { console.error("Web Push failed:", e); }
+                                notif.onclick = function(e) {
+                                    e.preventDefault();
+                                    window.focus();
+                                    if (notifUrl.includes('#')) window.location.href = '/app.html' + notifUrl;
+                                    else if (notifUrl) window.location.href = notifUrl;
+                                };
+                            } catch (e) { console.error("Notification failed:", e); }
                         }
                     }
                 });

@@ -1,1 +1,0 @@
-\"Apply four fixes: DQ overlay, edit button, edit modal, cache busting\"  

@@ -1,64 +1,75 @@
-// sw.js - Cache-First for Google Fonts, passthrough for everything else
-const FONT_CACHE_NAME = 'examforge-fonts-cache-v1';
+const FONT_CACHE = 'examforge-cache-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  console.log('Service Worker: Installed (Font Caching Mode)');
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== FONT_CACHE_NAME) {
-            console.log('Service Worker: Clearing old cache');
-            return caches.delete(cache);
-          }
-        })
-      );
+    caches.keys().then((names) => {
+      return Promise.all(names.map((n) => {
+        if (n !== FONT_CACHE) return caches.delete(n);
+      }));
     }).then(() => clients.claim())
   );
-  console.log('Service Worker: Activated');
 });
 
-async function cacheFirstStrategy(request) {
-  const cache = await caches.open(FONT_CACHE_NAME);
-  const cachedResponse = await cache.match(request);
-
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-
+async function cacheFirst(r) {
+  const c = await caches.open(FONT_CACHE);
+  const cached = await c.match(r);
+  if (cached) return cached;
   try {
-    const networkResponse = await fetch(request);
-    if (networkResponse && networkResponse.status === 200) {
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    console.error('Service Worker: Fetch failed for font asset', error);
-    throw error;
-  }
+    const net = await fetch(r);
+    if (net && net.status === 200) c.put(r, net.clone());
+    return net;
+  } catch(e) { throw e; }
 }
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-
-  // Cache Google Fonts CSS
-  if (url.origin === 'https://fonts.googleapis.com') {
-    event.respondWith(cacheFirstStrategy(event.request));
-    return;
+  if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
+    event.respondWith(cacheFirst(event.request));
   }
+});
 
-  // Cache Google Font files (.woff2)
-  if (url.origin === 'https://fonts.gstatic.com') {
-    event.respondWith(cacheFirstStrategy(event.request));
-    return;
+// Handle all notification clicks
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(function(list) {
+        for (let i = 0; i < list.length; i++) {
+          const c = list[i];
+          const base = url.split('?')[0].split('#')[0];
+          if (c.url.includes(base) && 'focus' in c) return c.focus();
+        }
+        if (clients.openWindow) return clients.openWindow(url);
+      })
+  );
+});
+
+// Handle push events (FCM background)
+self.addEventListener('push', function(event) {
+  if (!event.data) return;
+  try {
+    const d = event.data.json();
+    const title = d.notification?.title || d.title || 'ExamForge';
+    const options = {
+      body: d.notification?.body || d.body || '',
+      icon: '/examforge.jpeg',
+      badge: '/512.png',
+      image: '/examforge.jpeg',
+      data: { url: d.data?.url || d.click_action || '/' },
+      vibrate: [200, 100, 200],
+      requireInteraction: true
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch(e) {
+    event.waitUntil(
+      self.registration.showNotification('ExamForge', {
+        body: event.data.text(), icon: '/examforge.jpeg'
+      })
+    );
   }
-
-  // For EVERYTHING else (Firebase, your app files, APIs):
-  // Do NOT call event.respondWith() — let the browser handle natively.
-  // This is critical: Firebase uses WebSockets/long-polling that break
-  // when intercepted by a service worker fetch() call.
 });
