@@ -5584,9 +5584,9 @@ window.adminPromptNotification = function(userId) {
 
         <div class="card-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:24px;">
             <div class="card stat-card">
-                <div class="stat-label"><span class="material-icons-round">analytics</span> Avg. Accuracy</div>
+                <div class="stat-label"><span class="material-icons-round">analytics</span>Accuracy</div>
                 <div class="stat-value">${analytics.avg}%</div>
-                <div style="font-size: 0.62rem; color: var(--text-muted); margin-top: 4px; font-weight: 600;">Cumulative Score</div>
+                <div style="font-size: 0.62rem; color: var(--text-muted); margin-top: 4px; font-weight: 600;">Cumulative</div>
             </div>
 
             <div class="card stat-card">

@@ -100,9 +100,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const d = dqDoc.data();
                 const maxAttempts = d.maxAttempts || 1;
                 
-                // Check Firestore for existing attempt (account-based tracking)
+                // Check for existing attempt (browser tracking + account tracking)
                 const allQuestions = d.questions || [];
                 let existingAttempt = null;
+                const storageKey = 'examforge_dq_' + dqid;
+                const cachedAttempt = localStorage.getItem(storageKey);
+                
+                // Always check Firestore first (more reliable)
                 try {
                     const attemptQuery = query(collection(db, "daily_quizzes", dqid, "attempts"), where('uid', '==', currentUser.uid));
                     const attemptSnap = await getDocs(attemptQuery);
@@ -110,6 +114,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         existingAttempt = attemptSnap.docs[0].data();
                     }
                 } catch(e) {}
+                
+                // Fall back to localStorage if no Firestore attempt found
+                if (!existingAttempt && cachedAttempt) {
+                    try {
+                        existingAttempt = JSON.parse(cachedAttempt);
+                    } catch(e) {}
+                }
                 
                 if (existingAttempt) {
                     // Show existing results - allow review
@@ -183,20 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ri = $id('result-icon'); if (ri) { ri.textContent = 'assignment'; ri.style.color = '#2563eb'; }
                     const rt = $id('result-title'); if (rt) rt.textContent = `${existingAttempt.score}% - Completed`;
                     
-                    // Enable review button with existing attempt data
+                    // Hide review button on retake - no corrections after closing
                     const rb = $id('btn-review');
-                    if (rb) {
-                        rb.style.display = '';
-                        rb.textContent = 'REVIEW CORRECTIONS';
-                        // Inject attempt data into examState for the original review handler
-                        if (allQuestions.length > 0 && examState.subjects?.[0]) {
-                            examState.subjects[0].questions = allQuestions;
-                            // Reconstruct userAnswers from the attempt's answers if available
-                            if (existingAttempt.answers) {
-                                examState.subjects[0].userAnswers = existingAttempt.answers.map(a => a.selectedIndex !== undefined ? a.selectedIndex : null);
-                            }
-                        }
-                    }
+                    if (rb) rb.style.display = 'none';
                     
                     safeDisplay('timer-display', 'none');
                     safeDisplay('btn-submit-early', 'none');
@@ -905,7 +905,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (btnMockDone) {
                         btnMockDone.removeAttribute('disabled');
                         btnMockDone.onclick = () => {
-                            window.close() || (window.location.href = 'app.html');
+                            window.location.href = '/app.html';
                         };
                     }
                 } catch (e) {
@@ -1224,6 +1224,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.log('DQ attempt saved successfully to:', `daily_quizzes/${examState.quizId}/attempts`);
                     } catch(e) { console.error('DQ attempt save FAILED:', e); }
                     
+                    // Save to localStorage for browser-based retake detection
+                    try {
+                        const storageKey = 'examforge_dq_' + examState.quizId;
+                        localStorage.setItem(storageKey, JSON.stringify({
+                            score: finalScore,
+                            correct: correct,
+                            totalQuestions: total,
+                            timeTaken: examState.timeTaken,
+                            title: d?.title || 'Daily Quiz'
+                        }));
+                    } catch(e) {}
 
                 }
 
