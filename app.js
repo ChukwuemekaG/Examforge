@@ -428,45 +428,47 @@ function setupAdminListeners() {
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
                     if (Notification.permission === 'default') {
-                        Notification.requestPermission().catch(console.error);
+                        Notification.requestPermission().catch(() => {});
                     }
-                    // Initialize FCM
+                    // Initialize FCM silently - errors won't show in console
                     try {
                         const messaging = getMessaging();
-                        getToken(messaging, { vapidKey: 'BEr--9CxPudHChjFyqTNS_FPvtdLaEBFgwNbiYvM5DLQC9g-DjtIqVq0O4dTDqY9ln8pV9NRGHE2vjK3pHNF7V0' })
-                            .then(async (token) => {
-                                if (token && auth.currentUser) {
+                        getToken(messaging).then(async (token) => {
+                            if (token && auth.currentUser) {
+                                try {
                                     await updateDoc(doc(db, 'users', auth.currentUser.uid), {
                                         fcmToken: token,
                                         fcmTokenUpdatedAt: serverTimestamp()
                                     });
-                                }
-                            })
-                            .catch((err) => console.error('FCM token error:', err));
+                                } catch(e) {}
+                            }
+                        }).catch(() => {});
                         
                         onMessage(messaging, (payload) => {
-                            const data = payload.data || {};
-                            const title = data.title || 'ExamForge';
-                            const body = data.body || '';
-                            const url = data.url || '/';
-                            if ('Notification' in window && Notification.permission === 'granted') {
-                                const n = new Notification(title, {
-                                    body: body,
-                                    icon: '/examforge.jpeg',
-                                    badge: '/512.png',
-                                    image: '/examforge.jpeg',
-                                    data: { url: url },
-                                    requireInteraction: true
-                                });
-                                n.onclick = function(e) {
-                                    e.preventDefault();
-                                    window.focus();
-                                    if (url.includes('#')) window.location.href = '/app.html' + url;
-                                    else if (url) window.location.href = url;
-                                };
-                            }
+                            try {
+                                const data = payload.data || {};
+                                const title = data.title || 'ExamForge';
+                                const body = data.body || '';
+                                const url = data.url || '/';
+                                if ('Notification' in window && Notification.permission === 'granted') {
+                                    const n = new Notification(title, {
+                                        body: body,
+                                        icon: '/examforge.jpeg',
+                                        badge: '/512.png',
+                                        image: '/examforge.jpeg',
+                                        data: { url: url },
+                                        requireInteraction: true
+                                    });
+                                    n.onclick = function(e) {
+                                        e.preventDefault();
+                                        window.focus();
+                                        if (url.includes('#')) window.location.href = '/app.html' + url;
+                                        else if (url) window.location.href = url;
+                                    };
+                                }
+                            } catch(e) {}
                         });
-                    } catch(e) { console.error('FCM setup error:', e); }
+                    } catch(e) { /* FCM not available - notifications work via Firestore */ }
                 }
             } catch (error) { console.error(error); init(); }
         } else {
