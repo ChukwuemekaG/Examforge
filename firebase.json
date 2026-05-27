@@ -1,11 +1,21 @@
 {
   "hosting": {
-    "cleanUrls": true,
     "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ]
+    ],
+    "rewrites": [
+      {
+        "source": "/quiz",
+        "destination": "/quiz.html"
+      },
+      {
+        "source": "/quiz?*",
+        "destination": "/quiz.html"
+      }
+    ],
+    "cleanUrls": true
   }
 }

@@ -2151,10 +2151,16 @@ window.mcSyncBuilderStateFromDOM = function() {
         const qTextEl = document.querySelector(`.dq-question-text-${qIdx}`);
         const explTextEl = document.querySelector(`.dq-explanation-text-${qIdx}`);
         const correctSelectEl = document.querySelector(`.dq-correct-select-${qIdx}`);
+        const bodyEl = document.querySelector(`.dq-accordion-body-${qIdx}`);
+        const iconEl = document.querySelector(`.dq-accordion-icon-${qIdx}`);
         
         if (qTextEl) q.question = qTextEl.value;
         if (explTextEl) q.explanation = explTextEl.value;
         if (correctSelectEl) q.correctIndex = parseInt(correctSelectEl.value) || 0;
+        if (bodyEl) q.expanded = bodyEl.style.display !== 'none';
+        if (iconEl && q.expanded !== undefined) {
+            iconEl.style.transform = q.expanded ? 'rotate(0deg)' : 'rotate(-90deg)';
+        }
         
         q.options.forEach((_, optIdx) => {
             const optEl = document.querySelector(`.dq-opt-input-${qIdx}[data-opt-idx="${optIdx}"]`);
@@ -2413,7 +2419,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         document.getElementById('ef-dq-det-title').style.fontSize = '0.75rem';
         document.getElementById('ef-dq-det-meta').innerHTML = `${q.questions?.length || 0} questions · ${q.timeLimit || 10} min`;
         
-        const quizShareUrl = window.location.origin + '/quiz.html?dqid=' + dqid;
+        const quizShareUrl = window.location.origin + '/quiz?dqid=' + dqid;
         
         const attemptsSnap = await getDocs(query(collection(db, "daily_quizzes", dqid, "attempts"), orderBy('timestamp', 'desc')));
         const attempts = attemptsSnap.docs.map(d => d.data());
