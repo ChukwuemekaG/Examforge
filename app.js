@@ -6407,7 +6407,7 @@ window.printResultSheet = async function(html) {
             .na-subject { color: #999; font-style: italic; font-weight: 500; }
             .summary-grid {
                 display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
+                grid-template-columns: 1fr 1fr;
                 gap: 12px;
                 margin-bottom: 24px;
             }
@@ -7796,7 +7796,6 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
                 <td>${s.creditUnit}</td>
                 <td class="na-subject" colspan="3">Not attempted</td>
                 <td class="na-subject">—</td>
-                <td class="na-subject">0.0</td>
                 <td class="na-subject">—</td>
             </tr>`;
         }
@@ -7809,12 +7808,10 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
             <td>${s.score}%</td>
             <td class="grade-${g.grade}">${g.grade}</td>
             <td>${g.points.toFixed(1)}</td>
-            <td>${(g.points * s.creditUnit).toFixed(1)}</td>
             <td style="font-size:11px;">${g.remark}</td>
         </tr>`;
     }).join('');
     
-    const totalQP = studentData.subjects.reduce((sum, s) => sum + ((s.grade && s.grade.points ? s.grade.points : 0) * s.creditUnit), 0);
     const totalCU = studentData.subjects.reduce((sum, s) => sum + s.creditUnit, 0);
     
     return `
@@ -7823,6 +7820,7 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
             <div class="title-area">
                 <h1>Exam<span>Forge</span></h1>
                 <div class="sub">Official Result Sheet</div>
+                <div style="font-size:9px;font-weight:600;color:#888;letter-spacing:0.12em;text-transform:uppercase;margin-top:4px;">Discipline. Direction. Distinction.</div>
             </div>
         </div>
         
@@ -7856,7 +7854,6 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
                     <th style="width:50px;">%</th>
                     <th style="width:45px;">Grade</th>
                     <th style="width:45px;">GP</th>
-                    <th style="width:55px;">QP</th>
                     <th style="text-align:left;">Remark</th>
                 </tr>
             </thead>
@@ -7865,14 +7862,10 @@ function buildResultSheetHTML(eventTitle, studentData, gpa, gpaComment) {
             </tbody>
         </table>
         
-        <div class="summary-grid">
+        <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
             <div class="summary-card">
-                <div class="s-label">Total CU</div>
+                <div class="s-label">Total Credit Units</div>
                 <div class="s-value">${totalCU}</div>
-            </div>
-            <div class="summary-card">
-                <div class="s-label">Total QP</div>
-                <div class="s-value">${totalQP.toFixed(1)}</div>
             </div>
             <div class="summary-card gpa-card">
                 <div class="s-label">GPA</div>
