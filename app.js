@@ -719,7 +719,7 @@ function renderMaster() {
             }
             .mc-tab.active {
                 background:var(--bg-card); color:var(--text);
-                box-shadow:0 1px 4px rgba(0,0,0,0.12); border:1px solid var(--border);
+                border:1px solid var(--border);
             }
             @media(max-width:600px){
                 .mc-tab { padding:6px 12px; font-size:0.6rem; }
@@ -740,10 +740,10 @@ function renderMaster() {
                 border-radius:12px; padding:16px; cursor:pointer;
                 display:flex; flex-direction:column;
                 min-height:120px; box-sizing:border-box;
-                transition:transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+                transition:transform 0.12s, border-color 0.12s;
                 position:relative; overflow:hidden;
             }
-            .mc-card:hover { transform:translate(-2px,-2px); box-shadow:4px 4px 0px var(--text); border-color:var(--text); }
+            .mc-card:hover { transform:translate(-2px,-2px); border-color:var(--text); }
             @media(max-width:600px){ .mc-card { padding:12px; min-height:100px; } }
             
             .mc-card-icon {
@@ -783,10 +783,10 @@ function renderMaster() {
                 background:var(--bg-card); border:2px solid var(--border);
                 border-radius:10px; padding:10px 14px; cursor:pointer;
                 display:flex; align-items:center; gap:12px;
-                transition:transform 0.1s, box-shadow 0.1s;
+                transition:transform 0.1s;
                 overflow:hidden; max-width:100%;
             }
-            .mc-user-card:hover { transform:translate(-2px,-2px); box-shadow:3px 3px 0px var(--text); border-color:var(--text); }
+            .mc-user-card:hover { transform:translate(-2px,-2px); border-color:var(--text); }
             @media(max-width:400px){ .mc-user-card { padding:8px 10px; gap:8px; } }
             .mc-avatar { width:38px; height:38px; border-radius:8px; background:var(--brand); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.8rem; flex-shrink:0; border:2px solid var(--text); text-transform:uppercase; }
             
@@ -821,20 +821,19 @@ function renderMaster() {
                 position:fixed; bottom:28px; right:28px;
                 width:52px; height:52px; border-radius:50%;
                 background:var(--brand); color:#fff; border:3px solid var(--text);
-                box-shadow:4px 4px 0px var(--text);
                 display:flex; align-items:center; justify-content:center;
                 cursor:pointer; z-index:50;
                 transition:transform 0.1s; font-size:1.5rem;
             }
-            .mc-fab:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0px var(--text); }
+            .mc-fab:hover { transform:translate(-2px,-2px); }
             @media(max-width:600px){ .mc-fab { bottom:calc(var(--bottom-nav-h,56px) + 16px); right:16px; width:48px; height:48px; } }
             @media(max-width:400px){ .mc-fab { bottom:calc(var(--bottom-nav-h,56px) + 12px); right:12px; } }
             
             /* ── Modal ── */
             .mc-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; padding:12px; }
-            .mc-modal { background:var(--bg-card); border:3px solid var(--text); box-shadow:8px 8px 0px var(--text); border-radius:16px; padding:20px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; animation:popIn 0.2s ease; box-sizing:border-box; }
+            .mc-modal { background:var(--bg-card); border:3px solid var(--text); border-radius:16px; padding:20px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; animation:popIn 0.2s ease; box-sizing:border-box; }
             @media(min-width:480px){ .mc-modal { padding:28px; } }
-            @media(max-width:400px){ .mc-modal { padding:14px; border-width:2px; box-shadow:4px 4px 0px var(--text); border-radius:10px; } }
+            @media(max-width:400px){ .mc-modal { padding:14px; border-width:2px; border-radius:10px; } }
             .mc-modal h3 { font-size:clamp(0.85rem,3vw,1rem); font-weight:900; text-transform:uppercase; margin:0 0 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
             .mc-field { margin-bottom:12px; }
             .mc-field label { display:block; font-size:0.72rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
@@ -1364,7 +1363,7 @@ async function mcRenderDailyQuizTab() {
                         <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Quizzes Hub</span>
                     <div id="mc-dq-sub-count" style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Loading subscriber count…</div>
                 </div>
-                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyQuizModal()" style="font-weight:900;border:3px solid var(--text);box-shadow:4px 4px 0px var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
+                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyQuizModal()" style="font-weight:900;border:3px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE DAILY QUIZ
                 </button>
             </div>
