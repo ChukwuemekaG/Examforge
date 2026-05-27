@@ -923,11 +923,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const grade = perc >= 80 ? 'A' : perc >= 65 ? 'B' : perc >= 50 ? 'C' : perc >= 40 ? 'D' : 'F';
         const gradeColor = perc >= 80 ? '#16a34a' : perc >= 65 ? '#2563eb' : perc >= 50 ? '#ca8a04' : perc >= 40 ? '#d97706' : '#dc2626';
         const timeSpent = examState.timeTaken ? `${Math.floor(examState.timeTaken/60)}m ${examState.timeTaken%60}s` : '—';
+        const quizTitle = examState.subjects?.map(s => s.title).join(', ') || 'Quiz';
+        const timeLimitMin = examState.timeLimit ? Math.floor(examState.timeLimit / 60) : '—';
+        const modeLabel = examState.mode === 'practice' ? 'Practice' : 'Exam Mode';
         
         if (rTitle) rTitle.innerHTML = `<span style="font-size:2.5rem;font-weight:900;color:${gradeColor};">${perc}%</span>`;
         const ri2 = $id('result-icon'); if (ri2) ri2.textContent = perc >= 80 ? 'emoji_events' : perc >= 50 ? 'check_circle' : 'assignment';
         const ric2 = $id('result-icon'); if (ric2) ric2.style.color = gradeColor;
-        safeHTML('subject-scores-container', `
+        // Add quiz info bar at the top
+        const quizInfoHTML = `
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;">
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:700;color:var(--text);">
+                    <span class="material-icons-round" style="font-size:1rem;color:var(--brand);">book</span>
+                    ${quizTitle}
+                </div>
+                <div style="flex:1;"></div>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <span style="display:flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">
+                        <span class="material-icons-round" style="font-size:0.85rem;">timer</span>
+                        ${timeLimitMin} min
+                    </span>
+                    <span style="display:flex;align-items:center;gap:4px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">
+                        <span class="material-icons-round" style="font-size:0.85rem;">${examState.mode === 'practice' ? 'edit_note' : 'gavel'}</span>
+                        ${modeLabel}
+                    </span>
+                </div>
+            </div>
+        `;
+        
+        safeHTML('subject-scores-container', quizInfoHTML + `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
                 <div style="background:rgba(22,163,74,0.08);border:2px solid #16a34a;border-radius:10px;padding:14px;text-align:center;">
                     <div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${globalCorrect}</div>
