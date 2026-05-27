@@ -930,9 +930,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (rTitle) rTitle.innerHTML = `<span style="font-size:2.5rem;font-weight:900;color:${gradeColor};">${perc}%</span>`;
         const ri2 = $id('result-icon'); if (ri2) ri2.textContent = perc >= 80 ? 'emoji_events' : perc >= 50 ? 'check_circle' : 'assignment';
         const ric2 = $id('result-icon'); if (ric2) ric2.style.color = gradeColor;
-        // Add quiz info bar at the top
-        const quizInfoHTML = `
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;">
+        // Insert quiz info bar BEFORE the subject-scores-container
+        const existingContainer = $id('subject-scores-container');
+        if (existingContainer) {
+            const infoDiv = document.createElement('div');
+            infoDiv.id = 'quiz-info-bar';
+            infoDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;';
+            infoDiv.innerHTML = `
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:700;color:var(--text);">
                     <span class="material-icons-round" style="font-size:1rem;color:var(--brand);">book</span>
                     ${quizTitle}
@@ -948,10 +952,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${modeLabel}
                     </span>
                 </div>
-            </div>
-        `;
+            `;
+            existingContainer.parentNode.insertBefore(infoDiv, existingContainer);
+        }
         
-        safeHTML('subject-scores-container', quizInfoHTML + `
+        safeHTML('subject-scores-container', `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
                 <div style="background:rgba(22,163,74,0.08);border:2px solid #16a34a;border-radius:10px;padding:14px;text-align:center;">
                     <div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${globalCorrect}</div>
