@@ -4029,14 +4029,6 @@ window.aupSwitch = function(tab) {
                         <input type="checkbox" id="aup-sub-advice" ${u.subscriptions?.advice!==false?'checked':''} style="width:16px;height:16px;accent-color:var(--brand);">
                         ExamForge Advice subscription
                     </label>
-                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.82rem;font-weight:700;">
-                        <input type="checkbox" id="aup-sub-mock" ${u.subscriptions?.biweeklyMock===true?'checked':''} style="width:16px;height:16px;accent-color:var(--brand);">
-                        Bi-Weekly Mock Exam access
-                    </label>
-                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.82rem;font-weight:700;">
-                        <input type="checkbox" id="aup-sub-tutorial" ${u.subscriptions?.tutorial2026===true?'checked':''} onchange="if(this.checked) document.getElementById('aup-sub-mock').checked=true;" style="width:16px;height:16px;accent-color:var(--brand);">
-                        2026 100L Second Semester Tutorial access
-                    </label>
                 </div>
             </div>
 
@@ -4195,8 +4187,6 @@ window.aupSaveProfile = async function() {
             subscriptions: {
                 dailyQuiz: document.getElementById('aup-sub-daily').checked,
                 advice:    document.getElementById('aup-sub-advice').checked,
-                biweeklyMock: document.getElementById('aup-sub-mock').checked,
-                tutorial2026: document.getElementById('aup-sub-tutorial').checked,
             }
         });
         btn.innerHTML = '<span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">check_circle</span> Saved!';
