@@ -2,6 +2,13 @@ import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, addDoc, doc, getDoc, setDoc, updateDoc, serverTimestamp, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+// ── Safe DOM helpers - prevent null reference errors on mobile ──
+const $id = (id) => document.getElementById(id);
+const safeStyle = (id, prop, val) => { const e = $id(id); if (e) e.style[prop] = val; };
+const safeText = (id, val) => { const e = $id(id); if (e) e.textContent = val; };
+const safeDisplay = (id, val) => { const e = $id(id); if (e) e.style.display = val; };
+const safeHTML = (id, val) => { const e = $id(id); if (e) e.innerHTML = val; };
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- FIREBASE AUTHENTICATION CHECK ---
@@ -242,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (examState.subjects.every(s => s.questions.length === 0)) {
                     showLoadError(new Error('No questions found for selected courses.')); return;
                 }
-                document.getElementById('rule-timer').style.display = 'block';
+                safeDisplay('rule-timer', 'block');
                 switchView('warning');
             } catch (e) { showLoadError(e); }
             return;
@@ -322,13 +329,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function showLoadError(err) {
         console.error(err);
         switchView('loading');
-        document.getElementById('loading-view').innerHTML = `
+        safeHTML('loading-view', `
             <div style="text-align:center;padding:60px 24px;">
                 <span class="material-icons-round" style="font-size:3rem;color:var(--brand);margin-bottom:16px;display:block;">error_outline</span>
                 <div style="font-weight:900;font-size:1.1rem;margin-bottom:8px;color:var(--text);">Failed to load quiz</div>
                 <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;">${err.message}</div>
                 <button class="btn btn-primary" onclick="history.back()">Go Back</button>
-            </div>`;
+            </div>`);
     }
 
     // Legacy JSON builder — kept for backward compatibility
@@ -833,7 +840,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Switch to result view immediately but show loading animation - NO score data visible during sync
-        document.getElementById('subject-scores-container').innerHTML = `
+        safeHTML('subject-scores-container', `
             <div style="text-align:center;padding:32px;color:var(--text-muted);">
                 <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
                     <div style="width:12px;height:12px;background:var(--brand);border-radius:50%;animation:ef-dot-bounce 0.5s infinite alternate;"></div>
@@ -843,11 +850,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="font-size:0.85rem;font-weight:700;color:var(--text-muted);">Submitting your exam...</div>
                 <div style="font-size:0.7rem;font-weight:500;color:var(--text-muted);margin-top:4px;">Please do not close this window.</div>
             </div>
-        `;
+        `);
         const rTitle = document.getElementById('result-title');
-        rTitle.textContent = 'Submitting Exam...';
-        document.getElementById('result-icon').textContent = 'sync';
-        document.getElementById('result-icon').style.color = 'var(--brand)';
+        if (rTitle) rTitle.textContent = 'Submitting Exam...';
+        const ri = $id('result-icon'); if (ri) ri.textContent = 'sync';
+        const ric = $id('result-icon'); if (ric) ric.style.color = 'var(--brand)';
         btnReview.disabled = true; // Disable until save is done
         if (!canReviewAny) btnReview.style.display = 'none';
         
@@ -858,7 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await saveResultsToFirebase(perc, globalCorrect, globalTotal);
             } catch (e) {
                 console.error("Save failed:", e);
-                rTitle.innerHTML = '<span style="color:var(--brand);">⚠️ Sync Error. Please contact admin.</span>';
+                if (rTitle) rTitle.innerHTML = '<span style="color:var(--brand);">⚠️ Sync Error. Please contact admin.</span>';
             }
         }
 
@@ -868,10 +875,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const gradeColor = perc >= 80 ? '#16a34a' : perc >= 65 ? '#2563eb' : perc >= 50 ? '#ca8a04' : perc >= 40 ? '#d97706' : '#dc2626';
         const timeSpent = examState.timeTaken ? `${Math.floor(examState.timeTaken/60)}m ${examState.timeTaken%60}s` : '—';
         
-        rTitle.innerHTML = `<span style="font-size:2.5rem;font-weight:900;color:${gradeColor};">${perc}%</span>`;
-        document.getElementById('result-icon').textContent = perc >= 80 ? 'emoji_events' : perc >= 50 ? 'check_circle' : 'assignment';
-        document.getElementById('result-icon').style.color = gradeColor;
-        document.getElementById('subject-scores-container').innerHTML = `
+        if (rTitle) rTitle.innerHTML = `<span style="font-size:2.5rem;font-weight:900;color:${gradeColor};">${perc}%</span>`;
+        const ri2 = $id('result-icon'); if (ri2) ri2.textContent = perc >= 80 ? 'emoji_events' : perc >= 50 ? 'check_circle' : 'assignment';
+        const ric2 = $id('result-icon'); if (ric2) ric2.style.color = gradeColor;
+        safeHTML('subject-scores-container', `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
                 <div style="background:rgba(22,163,74,0.08);border:2px solid #16a34a;border-radius:10px;padding:14px;text-align:center;">
                     <div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${globalCorrect}</div>
@@ -1172,9 +1179,9 @@ document.addEventListener('DOMContentLoaded', () => {
         examState.isReviewMode = true;
         examState.subjects = examState.subjects.filter(s => s.isCorrection);
         if (examState.subjects.length === 0) return;
-        document.getElementById('timer-display').style.display = 'none';
-        document.getElementById('btn-submit-early').style.display = 'none';
-        document.getElementById('q-progress').textContent = 'Review Mode';
+        safeDisplay('timer-display', 'none');
+        safeDisplay('btn-submit-early', 'none');
+        safeText('q-progress', 'Review Mode');
         // Close the sidebar/map drawer if open
         const sidebar = document.querySelector('.cbt-sidebar');
         const overlay = document.querySelector('.sidebar-overlay');
