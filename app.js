@@ -705,7 +705,7 @@ function renderMaster() {
         <style>
             /* ── Tab Bar (scrollable on mobile) ── */
             .mc-tab-bar {
-                display:flex; gap:4px; margin-bottom:24px; background:var(--bg-inset);
+                display:flex; gap:4px; margin-bottom:16px; background:var(--bg-inset);
                 padding:4px; border-radius:12px; border:1px solid var(--border);
                 width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;
             }
@@ -730,21 +730,21 @@ function renderMaster() {
             .mc-card-grid {
                 display:grid;
                 grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
-                gap:14px;
+                gap:8px;
             }
-            @media(max-width:600px){ .mc-card-grid { gap:10px; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); } }
+            @media(max-width:600px){ .mc-card-grid { gap:8px; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); } }
             @media(max-width:400px){ .mc-card-grid { grid-template-columns:1fr; } }
             
             .mc-card {
                 background:var(--bg-card); border:2px solid var(--border);
-                border-radius:12px; padding:16px; cursor:pointer;
+                border-radius:12px; padding:10px; cursor:pointer;
                 display:flex; flex-direction:column;
                 min-height:120px; box-sizing:border-box;
                 transition:transform 0.12s, border-color 0.12s;
                 position:relative; overflow:hidden;
             }
             .mc-card:hover { transform:translate(-2px,-2px); border-color:var(--text); }
-            @media(max-width:600px){ .mc-card { padding:12px; min-height:100px; } }
+            @media(max-width:600px){ .mc-card { padding:8px; min-height:100px; } }
             
             .mc-card-icon {
                 width:36px; height:36px; border-radius:8px;
@@ -766,11 +766,11 @@ function renderMaster() {
             .mc-stat-bar {
                 display:grid;
                 grid-template-columns:repeat(auto-fit,minmax(100px,1fr));
-                gap:12px; margin-bottom:24px;
+                gap:8px; margin-bottom:16px;
             }
             @media(max-width:400px){ .mc-stat-bar { grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px; } }
-            .mc-stat { background:var(--bg-card); border:2px solid var(--border); border-radius:10px; padding:14px 16px; }
-            @media(max-width:600px){ .mc-stat { padding:10px 12px; } }
+            .mc-stat { background:var(--bg-card); border:2px solid var(--border); border-radius:10px; padding:10px 12px; }
+            @media(max-width:600px){ .mc-stat { padding:8px 10px; } }
             .mc-stat-val { font-size:clamp(1.2rem,5vw,1.6rem); font-weight:900; color:var(--text); line-height:1; }
             .mc-stat-lbl { font-size:clamp(0.55rem,1.5vw,0.65rem); font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-top:4px; }
             
@@ -1356,22 +1356,22 @@ async function mcRenderDailyQuizTab() {
     if (!panel) return;
 
     panel.innerHTML = `
-        <div style="max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
+        <div style="max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
             <!-- Header section -->
-            <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:16px;margin-bottom:8px;">
+            <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:10px;margin-bottom:8px;">
                 <div>
-                        <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Quizzes Hub</span>
+                        <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.3rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Quizzes Hub</span>
                     <div id="mc-dq-sub-count" style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Loading subscriber count…</div>
                 </div>
-                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyQuizModal()" style="font-weight:900;border:3px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
+                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyQuizModal()" style="font-weight:900;border:3px solid var(--text);padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE DAILY QUIZ
                 </button>
             </div>
 
             <!-- Quiz Grid -->
             <div>
-                <h2 style="font-weight:900;font-size:1.15rem;text-transform:uppercase;color:var(--text);margin:0 0 16px 0;">Active Daily Challenges</h2>
-                <div id="mc-dq-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px;">
+                <h2 style="font-weight:900;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Active Daily Challenges</h2>
+                <div id="mc-dq-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
                     <div style="grid-column:1/-1;text-align:center;padding:56px;color:var(--text-muted);">
                         <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;margin-bottom:8px;">autorenew</span>
                         <div style="font-size:0.8rem;font-weight:700;">Loading quizzes…</div>
@@ -1381,7 +1381,7 @@ async function mcRenderDailyQuizTab() {
 
             <!-- Broadcast History section -->
             <div style="margin-top:24px;border-top:3px solid var(--text);padding-top:24px;">
-                <h2 style="font-weight:900;font-size:1.15rem;text-transform:uppercase;color:var(--text);margin:0 0 16px 0;">Recent Subscriber Broadcasts</h2>
+                <h2 style="font-weight:900;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Recent Subscriber Broadcasts</h2>
                 <div id="mc-dq-history">
                     <div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:24px;">Loading history…</div>
                 </div>
@@ -1507,22 +1507,22 @@ async function mcRenderDailyAdviceTab() {
     if (!panel) return;
 
     panel.innerHTML = `
-        <div style="max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
+        <div style="max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
             <!-- Header section -->
-            <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:16px;margin-bottom:8px;">
+            <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:10px;margin-bottom:8px;">
                 <div>
-                    <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Advice Hub</span>
+                    <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.3rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Advice Hub</span>
                     <div id="mc-advice-sub-count" style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Draft and broadcast cleanly formatted study advices directly to student feeds.</div>
                 </div>
-                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyAdviceModal()" style="font-weight:900;border:3px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
+                <button class="btn btn-primary" onclick="window.mcOpenCreateDailyAdviceModal()" style="font-weight:900;border:3px solid var(--text);padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE DAILY ADVICE
                 </button>
             </div>
 
             <!-- Advice Grid -->
             <div>
-                <h2 style="font-weight:900;font-size:1.15rem;text-transform:uppercase;color:var(--text);margin:0 0 16px 0;">Sent Advices History</h2>
-                <div id="mc-advice-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px;">
+                <h2 style="font-weight:900;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Sent Advices History</h2>
+                <div id="mc-advice-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
                     <div style="grid-column:1/-1;text-align:center;padding:56px;color:var(--text-muted);">
                         <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;margin-bottom:8px;">autorenew</span>
                         <div style="font-size:0.8rem;font-weight:700;">Loading advices…</div>
@@ -6569,20 +6569,20 @@ window.mcRenderSubEventsTab = async function() {
     if (!panel) return;
 
     panel.innerHTML = `
-        <div style="max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
-            <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:16px;margin-bottom:8px;">
+        <div style="max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+            <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:10px;margin-bottom:8px;">
                 <div>
-                    <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.6rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Subscription Events</span>
+                    <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.3rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Subscription Events</span>
                     <div style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Manage dynamic registrations, subjects, and event-based mock exams.</div>
                 </div>
-                <button class="btn btn-primary" onclick="window.mcOpenCreateSubEventModal()" style="font-weight:900;border:3px solid var(--text);padding:10px 20px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
+                <button class="btn btn-primary" onclick="window.mcOpenCreateSubEventModal()" style="font-weight:900;border:3px solid var(--text);padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE EVENT
                 </button>
             </div>
 
             <div>
-                <h2 style="font-weight:900;font-size:1.15rem;text-transform:uppercase;color:var(--text);margin:0 0 16px 0;">Active Subscription Events</h2>
-                <div id="mc-subevents-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px;">
+                <h2 style="font-weight:900;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Active Subscription Events</h2>
+                <div id="mc-subevents-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
                     <div style="grid-column:1/-1;text-align:center;padding:56px;color:var(--text-muted);">
                         <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;margin-bottom:8px;">autorenew</span>
                         <div style="font-size:0.8rem;font-weight:700;">Loading events...</div>
