@@ -4630,9 +4630,9 @@ window.adminPromptNotification = function(userId) {
     async function renderDashboard() {
         renderLoading(" ");
         
-        // ─── Fetch fresh user data for accurate stats ───
+        // ─── Fetch fresh user data for accurate stats and schedule ───
         try {
-            const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const { getDoc, doc, collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
             if (userSnap.exists()) {
                 const freshData = userSnap.data();
@@ -4640,7 +4640,12 @@ window.adminPromptNotification = function(userId) {
                     userData.stats = { ...userData.stats, ...freshData.stats };
                 }
             }
-        } catch (e) { console.error("Failed to fetch user stats:", e); }
+            // Fetch schedule items
+            const schedSnap = await getDocs(query(collection(db, `users/${auth.currentUser.uid}/schedule`), orderBy('timestamp', 'asc')));
+            if (!schedSnap.empty) {
+                userData.schedule = schedSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+            }
+        } catch (e) { console.error("Failed to fetch user data:", e); }
         
         // ─── Data & Analytics ───
         const analytics = getAnalytics();

@@ -30,10 +30,6 @@ self.addEventListener('fetch', (event) => {
   if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
     event.respondWith(cacheFirst(event.request));
   }
-  // Also cache Material Icons
-  if (url.href.includes('materialiconsround') || url.href.includes('materialicons')) {
-    event.respondWith(cacheFirst(event.request));
-  }
 });
 
 // Handle all notification clicks
