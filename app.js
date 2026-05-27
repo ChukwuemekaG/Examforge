@@ -1360,8 +1360,8 @@ async function mcRenderDailyQuizTab() {
             <!-- Header section -->
             <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:10px;margin-bottom:8px;">
                 <div>
-                        <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.3rem);font-weight:800;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Quizzes Hub</span>
-                    <div id="mc-dq-sub-count" style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Loading subscriber count…</div>
+                        <span class="mc-section-title" style="font-size:clamp(0.85rem,4vw,1.1rem);font-weight:700;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Daily Quizzes Hub</span>
+                    <div id="mc-dq-sub-count" style="font-size:0.7rem;font-weight:700;color:var(--text-muted);margin-top:4px;">Loading subscriber count…</div>
                 </div>
                 <button class="btn btn-primary" onclick="window.mcOpenCreateDailyQuizModal()" style="font-weight:800;border:2px solid var(--text);padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE DAILY QUIZ
@@ -1370,9 +1370,9 @@ async function mcRenderDailyQuizTab() {
 
             <!-- Quiz Grid -->
             <div>
-                <h2 style="font-weight:800;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Active Daily Challenges</h2>
+                <h2 style="font-weight:700;font-size:0.85rem;text-transform:uppercase;color:var(--text);margin:0 0 8px 0;">Active Daily Challenges</h2>
                 <div id="mc-dq-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
-                    <div style="grid-column:1/-1;text-align:center;padding:56px;color:var(--text-muted);">
+                    <div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text-muted);">
                         <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;margin-bottom:8px;">autorenew</span>
                         <div style="font-size:0.8rem;font-weight:700;">Loading quizzes…</div>
                     </div>
@@ -1380,10 +1380,10 @@ async function mcRenderDailyQuizTab() {
             </div>
 
             <!-- Broadcast History section -->
-            <div style="margin-top:24px;border-top:3px solid var(--text);padding-top:24px;">
-                <h2 style="font-weight:800;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Recent Subscriber Broadcasts</h2>
+            <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:14px;">
+                <h2 style="font-weight:700;font-size:0.85rem;text-transform:uppercase;color:var(--text);margin:0 0 8px 0;">Recent Subscriber Broadcasts</h2>
                 <div id="mc-dq-history">
-                    <div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:24px;">Loading history…</div>
+                    <div style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:16px;">Loading history…</div>
                 </div>
             </div>
         </div>
@@ -1874,75 +1874,37 @@ window.mcOpenCreateDailyQuizModal = function() {
     
     const modal = document.createElement('div');
     modal.id = 'ef-dq-builder-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;animation:popIn 0.3s ease;';
+    modal.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:3000;animation:fadeIn 0.2s ease;';
     modal.innerHTML = `
         <style>
-            /* Dynamic responsive styles encapsulated */
-            .dq-modal-card {
-                width: min(920px, 95vw); 
-                height: 88vh;
-            }
-            .dq-meta-grid {
-                display: grid;
-                grid-template-columns: 2fr 1fr;
-                gap: 16px;
-            }
-            .dq-question-grid-split {
-                display: grid;
-                grid-template-columns: 1fr 2fr;
-                gap: 14px;
-                align-items: start;
-            }
-            
+            .dq-modal-card { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+            .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+            .dq-question-grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; align-items: start; }
+            .dq-toggle-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
             @media (max-width: 600px) {
-                .dq-modal-card {
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    max-height: 100vh !important;
-                    border: none !important;
-                    border-radius: 0 !important;
-                    }
-                .dq-meta-grid {
-                    grid-template-columns: 1fr !important;
-                    gap: 12px !important;
-                }
-                .dq-question-grid-split {
-                    grid-template-columns: 1fr !important;
-                    gap: 12px !important;
-                }
-                .dq-footer-actions {
-                    flex-direction: column !important;
-                    gap: 10px !important;
-                    width: 100%;
-                }
-                .dq-footer-actions button {
-                    width: 100% !important;
-                }
-                .dq-header-actions-btn {
-                    padding: 6px 8px !important;
-                    font-size: 0.68rem !important;
-                }
+                .dq-meta-grid, .dq-question-grid-split, .dq-toggle-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+                .dq-header-actions-btn { padding: 4px 8px !important; font-size: 0.65rem !important; }
             }
         </style>
         <div class="card dq-modal-card" style="display:flex; flex-direction:column; overflow:hidden; border:none; background:transparent;">
             <!-- Modal Header -->
-            <div style="display:flex; align-items:center; gap:14px; padding:12px 16px; border-bottom:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
+            <div style="display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
                 <button onclick="document.getElementById('ef-dq-builder-modal').remove()"
-                    style="width:36px;height:36px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-                    <span class="material-icons-round">arrow_back</span>
+                    style="width:34px;height:34px;border-radius:6px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round" style="font-size:1rem;">arrow_back</span>
                 </button>
-                <div style="width:36px;height:36px;border-radius:8px;background:var(--brand-dim);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <div style="width:34px;height:34px;border-radius:6px;background:var(--brand-dim);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <span class="material-icons-round" style="color:var(--brand);font-size:1rem;">today</span>
                 </div>
-                <div style="font-weight:800; font-size:1rem; color:var(--text); text-transform:uppercase; flex:1;">Create Daily Quiz</div>
+                <div style="font-weight:800; font-size:0.95rem; color:var(--text); text-transform:uppercase; flex:1;">Create Daily Quiz</div>
                 <button onclick="document.getElementById('ef-dq-builder-modal').remove()"
-                    style="width:36px;height:36px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-                    <span class="material-icons-round">close</span>
+                    style="width:34px;height:34px;border-radius:6px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                    <span class="material-icons-round" style="font-size:1rem;">close</span>
                 </button>
             </div>
             
             <!-- Modal Body -->
-            <div style="flex:1; overflow-y:auto; padding:16px; background:var(--bg); display:flex; flex-direction:column; gap:14px;">
+            <div style="flex:1; overflow-y:auto; padding:12px; background:var(--bg); display:flex; flex-direction:column; gap:12px;">
                 <!-- Quiz Meta Row -->
                 <div class="dq-meta-grid">
                     <div class="mc-field" style="margin-bottom:0;">
@@ -2005,11 +1967,9 @@ window.mcOpenCreateDailyQuizModal = function() {
             </div>
             
             <!-- Modal Footer -->
-            <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:12px 16px; border-top:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
-                <div class="dq-footer-actions" style="display:flex; align-items:center; gap:10px; width:auto;">
-                    <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:2px solid var(--border); font-weight:800; padding:8px 16px;">CANCEL</button>
-                    <button class="btn btn-primary" onclick="window.mcSaveCreatedDailyQuiz()" style="font-weight:800; border:2px solid var(--text); padding:8px 20px;">SAVE & PUBLISH</button>
-                </div>
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:10px 16px; border-top:2px solid var(--border); background:var(--bg-card); flex-shrink:0;">
+                <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:2px solid var(--border); font-weight:700; padding:6px 14px; font-size:0.75rem;">CANCEL</button>
+                <button class="btn btn-primary" onclick="window.mcSaveCreatedDailyQuiz()" style="font-weight:700; border:2px solid var(--text); padding:6px 16px; font-size:0.75rem;">SAVE & PUBLISH</button>
             </div>
         </div>
     `;
