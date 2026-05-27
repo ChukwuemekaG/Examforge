@@ -722,7 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (resultsCard) {
                 resultsCard.innerHTML = `
                     <span class="material-icons-round result-icon" id="result-icon" style="color: var(--brand); font-size: 64px;">lock</span>
-                    <h2 class="card-title" id="result-title" style="margin-top: 16px;">Syncing results...</h2>
+                    <h2 class="card-title" id="result-title" style="margin-top: 16px;">Submitting...</h2>
                     <div id="subject-scores-container" style="margin: 24px 0; text-align: center; border: 2px dashed var(--border); padding: 24px; border-radius: 12px; background: rgba(127, 86, 217, 0.04);">
                         <div style="font-size: 1.5rem; margin-bottom: 12px; color: var(--text);">🔒 Secure Submission</div>
                         <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5;">
@@ -767,10 +767,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Switch to result view immediately but show pulsing loading animation
-        document.getElementById('subject-scores-container').innerHTML = breakdownHTML;
+        // Switch to result view immediately but show loading animation - NO score data visible during sync
+        document.getElementById('subject-scores-container').innerHTML = `
+            <div style="text-align:center;padding:32px;color:var(--text-muted);">
+                <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
+                    <div style="width:12px;height:12px;background:var(--brand);border-radius:50%;animation:ef-dot-bounce 0.5s infinite alternate;"></div>
+                    <div style="width:12px;height:12px;background:var(--brand);border-radius:50%;animation:ef-dot-bounce 0.5s infinite alternate;animation-delay:0.15s;"></div>
+                    <div style="width:12px;height:12px;background:var(--brand);border-radius:50%;animation:ef-dot-bounce 0.5s infinite alternate;animation-delay:0.3s;"></div>
+                </div>
+                <div style="font-size:0.85rem;font-weight:700;color:var(--text-muted);">Submitting your exam...</div>
+                <div style="font-size:0.7rem;font-weight:500;color:var(--text-muted);margin-top:4px;">Please do not close this window.</div>
+            </div>
+        `;
         const rTitle = document.getElementById('result-title');
-        rTitle.innerHTML = 'Submitting Exam <span style="display:inline-block;animation:pulse 1s infinite;">...</span>';
+        rTitle.textContent = 'Submitting Exam...';
         document.getElementById('result-icon').textContent = 'sync';
         document.getElementById('result-icon').style.color = 'var(--brand)';
         btnReview.disabled = true; // Disable until save is done
