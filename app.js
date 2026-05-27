@@ -3890,6 +3890,7 @@ window.openAdminUserModal = async function(uid) {
             <!-- Tab bar -->
             <div class="aup-tab-bar">
                 <button class="aup-tab active" id="aup-tab-profile" onclick="window.aupSwitch('profile')">👤 Profile</button>
+                <button class="aup-tab" id="aup-tab-results" onclick="window.aupSwitch('results')">📊 Results</button>
                 <button class="aup-tab" id="aup-tab-sched"   onclick="window.aupSwitch('sched')">📅 Schedule</button>
                 <button class="aup-tab" id="aup-tab-notif"   onclick="window.aupSwitch('notif')">🔔 Inbox</button>
             </div>
@@ -3932,6 +3933,7 @@ window.openAdminUserModal = async function(uid) {
 
         ADM.state = {
             uid, u,
+            results: resultsSnap.docs.map(d=>({_id:d.id,...d.data()})),
             schedItems: schedSnap.docs.map(d=>({_id:d.id,...d.data()})),
             notifItems: notifSnap.docs.map(d=>({_id:d.id,...d.data()})),
             tab: 'profile'
@@ -3945,6 +3947,7 @@ window.openAdminUserModal = async function(uid) {
         // Update tab counts
         document.getElementById('aup-tab-sched').textContent = `📅 Schedule (${ADM.state.schedItems.length})`;
         document.getElementById('aup-tab-notif').textContent  = `🔔 Inbox (${ADM.state.notifItems.length})`;
+        document.getElementById('aup-tab-results').textContent = `📊 Results (${ADM.state.results.length})`;
 
         // Store stats for profile tab
         ADM.state.stats = { totalExams, avgScore, avgGrade, weeklyBest };
@@ -3959,7 +3962,7 @@ window.openAdminUserModal = async function(uid) {
 };
 
 window.aupSwitch = function(tab) {
-    ['profile','sched','notif'].forEach(t => {
+    ['profile','results','sched','notif'].forEach(t => {
         document.getElementById(`aup-tab-${t}`)?.classList.toggle('active', t===tab);
     });
     ADM.state.tab = tab;
@@ -4093,6 +4096,50 @@ window.aupSwitch = function(tab) {
                 </div>
             </div>`;
         }).join('');
+
+    } else if (tab === 'results') {
+        const res = ADM.state.results || [];
+        if (res.length === 0) {
+            body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:0.8rem;">No exam results for this user.</div>`;
+            return;
+        }
+        
+        const scoreColor = (s) => s >= 80 ? '#16a34a' : s >= 65 ? '#2563eb' : s >= 50 ? '#ca8a04' : s >= 40 ? '#d97706' : '#dc2626';
+        const gradeLetter = (s) => s >= 80 ? 'A' : s >= 65 ? 'B' : s >= 50 ? 'C' : s >= 40 ? 'D' : 'F';
+        
+        const totalAvg = Math.round(res.reduce((sum, r) => sum + (r.score || 0), 0) / res.length);
+        const bestRes = res.reduce((max, r) => r.score > max.score ? r : max, res[0]);
+        
+        body.innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+                <div class="stat-chip"><div class="stat-chip-val">${totalAvg}%</div><div class="stat-chip-lbl">Avg Score</div></div>
+                <div class="stat-chip"><div class="stat-chip-val" style="color:${scoreColor(totalAvg)};">${gradeLetter(totalAvg)}</div><div class="stat-chip-lbl">Grade</div></div>
+                <div class="stat-chip"><div class="stat-chip-val">${res.length}</div><div class="stat-chip-lbl">Exams</div></div>
+                <div class="stat-chip"><div class="stat-chip-val" style="color:#16a34a;">${bestRes.score}%</div><div class="stat-chip-lbl">Best</div></div>
+            </div>
+            <div style="overflow-x:auto;border:2px solid var(--text);border-radius:8px;">
+                <table style="width:100%;min-width:400px;border-collapse:collapse;font-size:0.72rem;">
+                    <thead>
+                        <tr style="background:var(--bg-inset);">
+                            <th style="padding:8px 10px;text-align:left;font-size:0.6rem;font-weight:800;text-transform:uppercase;border-bottom:2px solid var(--text);">Course</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:0.6rem;font-weight:800;text-transform:uppercase;border-bottom:2px solid var(--text);">Score</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:0.6rem;font-weight:800;text-transform:uppercase;border-bottom:2px solid var(--text);">Grade</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:0.6rem;font-weight:800;text-transform:uppercase;border-bottom:2px solid var(--text);">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${res.slice(0, 50).map(r => `
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:8px 10px;font-weight:700;color:var(--text);">${r.course || '—'}</td>
+                                <td style="padding:8px 10px;text-align:center;font-weight:900;color:${scoreColor(r.score)};">${r.score}%</td>
+                                <td style="padding:8px 10px;text-align:center;"><span style="font-weight:900;color:${scoreColor(r.score)};">${r.grade || gradeLetter(r.score)}</span></td>
+                                <td style="padding:8px 10px;text-align:center;font-size:0.65rem;color:var(--text-muted);">${r.date || '—'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            ${res.length > 50 ? `<div style="font-size:0.6rem;color:var(--text-muted);text-align:center;padding:8px;font-weight:600;">Showing last 50 of ${res.length} results</div>` : ''}`;
 
     } else {
         const addBtn = `
