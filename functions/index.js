@@ -77,7 +77,6 @@ exports.sendPushNotification = functions.firestore
             };
             
             await admin.messaging().send(message);
-            console.log(`Push sent to ${uid}: ${title}`);
             
         } catch (error) {
             // If token is invalid, remove it

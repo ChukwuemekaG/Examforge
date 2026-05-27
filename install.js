@@ -197,7 +197,6 @@ button {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to install: ${outcome}`);
             deferredPrompt = null;
         }
     };
@@ -370,7 +369,6 @@ button {
 
 // 5. Handle actual installation completion
 window.addEventListener('appinstalled', () => {
-    console.log('EXAMFORGE successfully forged into the system.');
     const modal = document.getElementById('forge-install-modal');
     if (modal) modal.remove();
 });

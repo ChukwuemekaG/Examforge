@@ -2428,9 +2428,6 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         const attemptsSnap = await getDocs(attemptsQuery);
         const attempts = attemptsSnap.docs.map(d => d.data());
 
-        console.log('DQ Attempts query returned', attempts.length, 'attempts:');
-        attempts.forEach(a => console.log('  -', a.displayName, a.score + '%', 'uid:', a.uid));
-
         const attemptCount = attempts.length;
         let avgScore = 0;
         if (attemptCount > 0) {
@@ -2560,9 +2557,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         `;
 
         // ── Real-time attempts listener ──
-        console.log('Setting up real-time listener for DQ attempts');
         let attemptsListener = onSnapshot(attemptsQuery, (snap) => {
-            console.log('DQ attempts snapshot updated:', snap.docs.length, 'attempts');
             const newAttempts = snap.docs.map(d => d.data());
             const newCount = newAttempts.length;
             let newAvg = 0;

@@ -1196,18 +1196,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     timestamp: serverTimestamp()
                 });
 
-                // ── DQ SAVE DIAGNOSTIC ──
-                console.log('DQ Save Check:', { 
-                    quizId: examState.quizId, 
-                    startsWithDq: examState.quizId?.startsWith('dq_'),
-                    isMock: examState.isMockExam,
-                    mode: examState.mode,
-                    hasUser: !!currentUser,
-                    score: finalScore,
-                    correct, 
-                    total
-                });
-
                 if (examState.quizId && examState.quizId.startsWith('dq_')) {
                     const attemptRef = collection(db, "daily_quizzes", examState.quizId, "attempts");
                     try {
@@ -1221,7 +1209,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             timeTaken: examState.timeTaken,
                             timestamp: serverTimestamp()
                         });
-                        console.log('DQ attempt saved successfully to:', `daily_quizzes/${examState.quizId}/attempts`);
+
                     } catch(e) { console.error('DQ attempt save FAILED:', e); }
                     
                     // Save to localStorage for browser-based retake detection
