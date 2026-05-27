@@ -100,44 +100,81 @@ document.addEventListener('DOMContentLoaded', () => {
                 const d = dqDoc.data();
                 const maxAttempts = d.maxAttempts || 1;
                 
-                // Check browser storage for previous attempt
-                const storageKey = 'examforge_dq_' + dqid;
-                const previousAttempt = localStorage.getItem(storageKey);
+                // Check Firestore for existing attempt (account-based tracking)
+                const allQuestions = d.questions || [];
+                let existingAttempt = null;
+                try {
+                    const attemptQuery = query(collection(db, "daily_quizzes", dqid, "attempts"), where('uid', '==', currentUser.uid));
+                    const attemptSnap = await getDocs(attemptQuery);
+                    if (!attemptSnap.empty) {
+                        existingAttempt = attemptSnap.docs[0].data();
+                    }
+                } catch(e) {}
                 
-                if (previousAttempt) {
-                    const prev = JSON.parse(previousAttempt);
-                    // Show results directly - no retake (with null safety)
-                    const safe = (id) => document.getElementById(id);
-                    const elIcon = safe('result-icon');
-                    const elTitle = safe('result-title');
-                    const elContainer = safe('subject-scores-container');
-                    const elReview = safe('btn-review');
-                    const elSubmit = safe('btn-submit-early');
-                    const elTimer = safe('timer-display');
-                    const elHeader = safe('quiz-header-actions');
+                if (existingAttempt) {
+                    // Show existing results - allow review
+                    const scoreColor = existingAttempt.score >= 80 ? '#16a34a' : existingAttempt.score >= 50 ? '#2563eb' : 'var(--brand)';
+                    const timeStr = existingAttempt.timeTaken ? `${Math.floor(existingAttempt.timeTaken/60)}m ${existingAttempt.timeTaken%60}s` : '—';
+                    const wrong = (existingAttempt.totalQuestions || 0) - (existingAttempt.correct || 0);
+                    const gradeChar = existingAttempt.score >= 80 ? 'A' : existingAttempt.score >= 65 ? 'B' : existingAttempt.score >= 50 ? 'C' : existingAttempt.score >= 40 ? 'D' : 'F';
+                    const gradeColor = existingAttempt.score >= 80 ? '#16a34a' : existingAttempt.score >= 65 ? '#2563eb' : existingAttempt.score >= 50 ? '#ca8a04' : existingAttempt.score >= 40 ? '#d97706' : '#dc2626';
                     
-                    if (elIcon) { elIcon.textContent = 'assignment'; elIcon.style.color = '#2563eb'; }
-                    if (elTitle) elTitle.textContent = prev.title || 'Daily Quiz Completed';
-                    if (elContainer) elContainer.innerHTML = prev.html || '';
-                    if (elReview) {
-                        // Inject cached answers into examState so the original review handler works
-                        if (prev.questions && prev.questions.length > 0 && examState.subjects?.[0]) {
-                            examState.subjects[0].questions = prev.questions;
-                            if (prev.userAnswers && prev.userAnswers.length > 0) {
-                                examState.subjects[0].userAnswers = prev.userAnswers;
+                    safeHTML('subject-scores-container', `
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+                            <div style="background:rgba(22,163,74,0.08);border:2px solid #16a34a;border-radius:10px;padding:14px;text-align:center;">
+                                <div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${existingAttempt.correct || 0}</div>
+                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Correct</div>
+                            </div>
+                            <div style="background:rgba(220,38,38,0.06);border:2px solid #dc2626;border-radius:10px;padding:14px;text-align:center;">
+                                <div style="font-size:1.3rem;font-weight:900;color:#dc2626;">${wrong}</div>
+                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Wrong</div>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+                                <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Grade</div>
+                                <div style="font-size:1.5rem;font-weight:900;color:${gradeColor};">${gradeChar}</div>
+                            </div>
+                            <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+                                <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Time</div>
+                                <div style="font-size:1.1rem;font-weight:800;color:var(--text);">${timeStr}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px;background:var(--bg-inset);border-radius:6px;padding:6px 10px;">
+                            <div style="display:flex;justify-content:space-between;font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">
+                                <span>Score</span>
+                                <span>${existingAttempt.score}%</span>
+                            </div>
+                            <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
+                                <div style="height:100%;width:${existingAttempt.score}%;background:${gradeColor};border-radius:4px;"></div>
+                            </div>
+                        </div>
+                    `);
+                    
+                    const ri = $id('result-icon'); if (ri) { ri.textContent = 'assignment'; ri.style.color = '#2563eb'; }
+                    const rt = $id('result-title'); if (rt) rt.textContent = `${existingAttempt.score}% - Completed`;
+                    
+                    // Enable review button with existing attempt data
+                    const rb = $id('btn-review');
+                    if (rb) {
+                        rb.style.display = '';
+                        rb.textContent = 'REVIEW CORRECTIONS';
+                        // Inject attempt data into examState for the original review handler
+                        if (allQuestions.length > 0 && examState.subjects?.[0]) {
+                            examState.subjects[0].questions = allQuestions;
+                            // Reconstruct userAnswers from the attempt's answers if available
+                            if (existingAttempt.answers) {
+                                examState.subjects[0].userAnswers = existingAttempt.answers.map(a => a.selectedIndex !== undefined ? a.selectedIndex : null);
                             }
                         }
-                        elReview.style.display = '';
-                        elReview.textContent = 'REVIEW CORRECTIONS';
                     }
-                    if (elSubmit) elSubmit.style.display = 'none';
-                    if (elTimer) elTimer.style.display = 'none';
-                    if (elHeader) elHeader.style.display = 'none';
+                    
+                    safeDisplay('timer-display', 'none');
+                    safeDisplay('btn-submit-early', 'none');
+                    safeDisplay('quiz-header-actions', 'none');
                     switchView('results');
                     return;
                 }
-                
-                const allQuestions = d.questions || [];
                 if (allQuestions.length === 0) throw new Error('No questions available in this daily quiz.');
                 
                 examState.isStrict = true;
@@ -1129,49 +1166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.log('DQ attempt saved successfully to:', `daily_quizzes/${examState.quizId}/attempts`);
                     } catch(e) { console.error('DQ attempt save FAILED:', e); }
                     
-                    // Save to localStorage for browser-based retake prevention
-                    try {
-                        const wrong = total - correct;
-                        const gradeChar = finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F';
-                        const gradeColor = finalScore >= 80 ? '#16a34a' : finalScore >= 65 ? '#2563eb' : finalScore >= 50 ? '#ca8a04' : finalScore >= 40 ? '#d97706' : '#dc2626';
-                        const timeStr = examState.timeTaken ? `${Math.floor(examState.timeTaken/60)}m ${examState.timeTaken%60}s` : '—';
-                        const storageKey = 'examforge_dq_' + examState.quizId;
-                        localStorage.setItem(storageKey, JSON.stringify({
-                            title: `${finalScore}% - Completed`,
-                            html: `
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-                            <div style="background:rgba(22,163,74,0.08);border:2px solid #16a34a;border-radius:10px;padding:14px;text-align:center;">
-                                <div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${correct}</div>
-                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Correct</div>
-                            </div>
-                            <div style="background:rgba(220,38,38,0.06);border:2px solid #dc2626;border-radius:10px;padding:14px;text-align:center;">
-                                <div style="font-size:1.3rem;font-weight:900;color:#dc2626;">${wrong}</div>
-                                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Wrong</div>
-                            </div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                            <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-                                <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Grade</div>
-                                <div style="font-size:1.5rem;font-weight:900;color:${gradeColor};">${gradeChar}</div>
-                            </div>
-                            <div style="background:var(--bg-inset);border:2px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-                                <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">Time</div>
-                                <div style="font-size:1.1rem;font-weight:800;color:var(--text);">${timeStr}</div>
-                            </div>
-                        </div>
-                        <div style="margin-top:12px;background:var(--bg-inset);border-radius:6px;padding:6px 10px;">
-                            <div style="display:flex;justify-content:space-between;font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">
-                                <span>Score</span>
-                                <span>${finalScore}%</span>
-                            </div>
-                            <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
-                                <div style="height:100%;width:${finalScore}%;background:${gradeColor};border-radius:4px;"></div>
-                            </div>
-                        </div>`,
-                        questions: examState.subjects?.[0]?.questions || [],
-                        userAnswers: examState.subjects?.[0]?.userAnswers || []
-                        }));
-                    } catch(e) { console.error("DQ localStorage save failed:", e); }
+
                 }
 
                 const updatePayload = {
