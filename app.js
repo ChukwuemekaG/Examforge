@@ -95,18 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { codes: ['CSC301'], title: 'Database Management Systems', level: '300L', description: 'Relational model, SQL, normalization, transactions, indexing, and database design.', link: '?json=csc301.json' },
         { codes: ['STA301'], title: 'Probability & Statistics', level: '300L', description: 'Probability distributions, hypothesis testing, regression analysis, and statistical inference.', link: '?json=sta301.json' },
     ];
-    function renderLoading(message = " ") {
-        workspace.innerHTML = `
-    <div class="loader-container">
-        <div class="dot-loader">
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-        </div>
-        <div class="loader-text">${message}</div>
-    </div>
-    `;
+    function renderLoading(_message = " ") {
+        // No-op — loading spinner removed for instant page loads
     }
     async function loadCourseBrowser() {
     const coursesListDiv = document.getElementById("courses-list");
@@ -382,7 +372,7 @@ function setupAdminListeners() {
             currentUser = user;
             localStorage.setItem('ef_logged_in', 'true');
             updateUIWithUserProfile(user);
-            renderLoading(" ");
+            // Content renders instantly — no loading spinner
 
             const userDocRef = doc(db, "users", user.uid);
             try {
@@ -4665,7 +4655,7 @@ window.adminPromptNotification = function(userId) {
 };
 
     async function renderDashboard() {
-        renderLoading(" ");
+        // Instant render — no loading spinner
         
         // ─── Use cached data for instant render ───
         const cached = dcGet();
@@ -6352,7 +6342,7 @@ window.adminPromptNotification = function(userId) {
 
         document.getElementById('btnDeleteAccountTrigger').onclick = () => {
             window.showEFModal("Final Farewell?", "Delete your account permanently? This cannot be undone.", "DELETE", async () => {
-                try { renderLoading("Purging..."); await deleteDoc(doc(db, "users", currentUser.uid)); await deleteUser(currentUser); window.location.href = '/'; }
+                try { await deleteDoc(doc(db, "users", currentUser.uid)); await deleteUser(currentUser); window.location.href = '/'; }
                 catch (e) { if (e.code === 'auth/requires-recent-login') signOut(auth); else renderSettings(); }
             });
         };

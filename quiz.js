@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
      *   Legacy JSON:    quiz.html?files=path/to/file.json&title=Title  (still works)
      */
     async function init() {
-        switchView('loading');
+        // Skip loading view — content shows instantly
         const p = new URLSearchParams(window.location.search);
 
         // ── DAILY QUIZ INTERCEPTOR ───────────────────────────────────────────
