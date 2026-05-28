@@ -4655,8 +4655,6 @@ window.adminPromptNotification = function(userId) {
 };
 
     async function renderDashboard() {
-        // Instant render — no loading spinner
-        
         // ─── Use cached data for instant render ───
         const cached = dcGet();
         if (cached) {
@@ -4665,30 +4663,7 @@ window.adminPromptNotification = function(userId) {
             userData.schedule = cached.schedule || userData.schedule;
         }
         
-        // ─── Fetch fresh user data for accurate stats and schedule ───
-        try {
-            const { getDoc, doc, collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
-            if (userSnap.exists()) {
-                const freshData = userSnap.data();
-                if (freshData.stats) {
-                    userData.stats = { ...userData.stats, ...freshData.stats };
-                }
-            }
-            // Fetch schedule items
-            const schedSnap = await getDocs(query(collection(db, `users/${auth.currentUser.uid}/schedule`), orderBy('timestamp', 'asc')));
-            if (!schedSnap.empty) {
-                userData.schedule = schedSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
-            }
-        } catch (e) { console.error("Failed to fetch user data:", e); }
-        
-        // ─── Save to cache for next time ──
-        try {
-            const ranking = await getNationalRanking(userData.stats.exaRating || 800);
-            dcSet({ results: userData.results, stats: userData.stats, schedule: userData.schedule, ranking });
-        } catch(e) {}
-        
-        // ─── Data & Analytics ───
+        // ─── Render immediately with available data (cached or defaults) ───
         const analytics = getAnalytics();
         const firstName = currentUser.displayName ? currentUser.displayName.split(' ')[0] : 'Student';
         const streakData = computeStreakDisplay(userData.stats);
@@ -4697,193 +4672,120 @@ window.adminPromptNotification = function(userId) {
         const trend = getAccuracyTrend(userData.results);
         const exaRating = userData.stats.exaRating || 800;
         const exaTitle = getExaTitle(exaRating);
-
-        // Fetch National Positioning
-        const nationalStats = cached?.ranking || await getNationalRanking(exaRating);
-
-        // Create the percentile tag only if it's 60% or better
-        const percentileTag = nationalStats.percentile <= 60
-            ? `<div class="tag tag-green" style="font-size: 0.7rem; font-weight: 900; padding: 2px 8px;">TOP ${nationalStats.percentile}%</div>`
-            : '';
-
+        
         // UI Helpers for Trends
-        const trendIcon = trend.direction === 'up' ? 'trending_up' : trend.direction === 'down' ? 'trending_down' : 'trending_flat';
         const trendColor = trend.direction === 'up' ? '#16a34a' : trend.direction === 'down' ? 'var(--brand)' : 'var(--text-muted)';
         const trendLabel = trend.direction === 'up' ? `+${trend.delta}%` : trend.direction === 'down' ? `-${trend.delta}%` : '0%';
-
+        
+        // Use cached ranking or empty placeholder
+        let percentileTag = cached?.ranking ? 
+            (cached.ranking.percentile <= 60 ? `<div class="tag tag-green" style="font-size: 0.7rem; font-weight: 900; padding: 2px 8px;">TOP ${cached.ranking.percentile}%</div>` : '') 
+            : '';
+        
         workspace.innerHTML = `
-        <div class="page-header">
-            <div class="page-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+        <style>
+            .dash-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; margin-bottom:16px; }
+            .dash-stat { background:var(--bg-card); border:2px solid var(--border); border-radius:var(--r-md); padding:16px; display:flex; flex-direction:column; }
+            .dash-stat .val { font-family:poppins; font-size:clamp(1.4rem,5vw,2.2rem); font-weight:800; color:var(--text); line-height:1; }
+            .dash-stat .lbl { font-family:poppins; font-size:0.62rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em; margin-top:4px; display:flex; align-items:center; gap:4px; }
+            @media(max-width:480px){ .dash-grid { grid-template-columns:1fr 1fr; gap:8px; } }
+        </style>
+        <div class="page-header" style="margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; flex-wrap:wrap; gap:8px;">
                 <div>
-                    <div class="page-title" style="font-size: 1.75rem; font-weight: 800;">Dashboard</div>
-                    <div class="page-sub" style="color: var(--text-muted);">Welcome back, ${firstName}</div>
-                </div>
-                <button class="btn btn-primary" onclick="efNavigate('library')" style="display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons-round">add</span> Start Exam
-                </button>
-            </div>
-        </div>
-
-        <div class="card" style="padding: 0; margin-bottom: 24px; border: 1px solid var(--border); border-left: 6px solid var(--brand); background: var(--bg-card); overflow: hidden;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 24px; gap: 24px;">
-                
-                <div style="flex: 1; min-width: 280px;">
-                    <div style="font-weight: 800; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.12em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                        <span class="material-icons-round" style="font-size: 0.9rem; color: var(--brand);">analytics</span> EXA RATING
-                    </div>
-                    <div style="font-family: poppins; font-size: clamp(3.5rem, 8vw, 4.8rem); font-weight: 900; color: var(--text); line-height: 0.9; margin-bottom: 8px;">
-                        ${exaRating}
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-sub);">National Standing</span>
-                        ${percentileTag}
-                    </div>
-                </div>
-
-                <div style="padding: 20px 24px; background: var(--bg-inset); border-radius: 16px; border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; min-width: 260px; flex-shrink: 0;">
-                    <div style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border: 2px solid var(--brand); border-radius: 14px;">
-                         <span class="material-icons-round" style="font-size: 2.2rem; color: var(--brand);">${exaTitle.icon}</span>
-                    </div>
-                    <div>
-                        <div style="font-weight: 900; font-size: 1.1rem; text-transform: uppercase; color: var(--text); line-height: 1.1;">
-                            ${exaTitle.name}
-                        </div>
-                        <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px; letter-spacing: 0.05em;">
-                            RANK ${exaTitle.roman}
-                        </div>
-                    </div>
+                    <div class="page-title" style="font-size:clamp(1rem,4vw,1.4rem);">Good ${new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, ${firstName}.</div>
+                    <div class="page-sub" style="font-size:0.65rem;">${streakData.broken ? 'Resume your streak' : streak > 0 ? streak + ' day streak' : 'Start your streak'} · ${weeklyBest.score !== null ? 'Best: ' + weeklyBest.score + '%' : 'Take your first exam'}</div>
                 </div>
             </div>
         </div>
-
-        <div style="margin-bottom: 32px;">
-            <div style="font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                <span class="material-icons-round" style="font-size: 1rem;">map</span> Progress Roadmap
+        
+        <div class="dash-grid">
+            <div class="dash-stat">
+                <div class="lbl"><span class="material-icons-round" style="font-size:0.8rem;">gps_fixed</span> Accuracy</div>
+                <div class="val">${analytics.avg}%</div>
             </div>
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;">
-    ${EXA_TITLES.map(t => {
-            const isAchieved = exaRating >= t.min;
-            const isCurrent = exaRating >= t.min && exaRating <= t.max;
-            const isPassed = isAchieved && !isCurrent;
-
-            // Visual Logic
-            let cardBg = 'var(--bg-inset)';
-            let border = '1px solid var(--border)';
-            let opacity = '0.5';
-            let icon = t.icon;
-            let iconColor = 'var(--text-muted)';
-
-            if (isCurrent) {
-                cardBg = 'var(--brand)';
-                border = '2px solid var(--brand)';
-                opacity = '1';
-                iconColor = '#ffffff';
-            } else if (isPassed) {
-                cardBg = 'var(--bg-card)';
-                border = '1px solid var(--brand-glow)';
-                opacity = '1';
-                icon = 'check_circle'; // Show checkmark for passed ranks
-                iconColor = 'var(--brand)';
-            }
-
-            return `
-            <div class="card" style="padding: 14px; border-radius: 12px; border: ${border}; background: ${cardBg}; opacity: ${opacity}; transition: all 0.3s ease; position: relative; overflow: hidden;">
-                ${isCurrent ? `<div style="position:absolute; top:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.4); animation: pulse 2s infinite;"></div>` : ''}
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                    <span class="material-icons-round" style="font-size: 1.1rem; color: ${iconColor}">${icon}</span>
-                    <span style="font-size: 0.6rem; font-weight: 800; font-family: var(--font-mono); color: ${isCurrent ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'};">${t.roman}</span>
-                </div>
-                <div style="font-size: 0.7rem; font-weight: 800; line-height: 1.2; color: ${isCurrent ? '#fff' : 'var(--text)'}">${t.name}</div>
-                <div style="font-size: 0.6rem; font-weight: 600; color: ${isCurrent ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)'}; margin-top: 4px;">${isPassed ? 'Achieved' : t.min + '+'}</div>
+            <div class="dash-stat">
+                <div class="lbl"><span class="material-icons-round" style="font-size:0.8rem;">assignment</span> Exams</div>
+                <div class="val">${analytics.count}</div>
             </div>
+            <div class="dash-stat">
+                <div class="lbl"><span class="material-icons-round" style="font-size:0.8rem;">analytics</span> EXA Rating</div>
+                <div class="val">${exaRating}</div>
+                <div style="font-size:0.6rem;font-weight:700;color:var(--text-muted);margin-top:2px;">${exaTitle.name}</div>
+            </div>
+            <div class="dash-stat">
+                <div class="lbl"><span class="material-icons-round" style="font-size:0.8rem;">trending_up</span> Trend</div>
+                <div class="val" style="color:${trendColor};">${trendLabel}</div>
+            </div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div style="background:var(--bg-card);border:2px solid var(--border);border-radius:var(--r-md);padding:14px;">
+                <div style="font-weight:700;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;color:var(--text-muted);">Coming Up</div>
+                ${userData.schedule.length === 0 ? `
+                    <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.7rem;background:var(--bg-inset);border-radius:6px;border:1px dashed var(--border);">
+                        <div style="font-weight:600;">Clear schedule</div>
+                    </div>
+                ` : userData.schedule.slice(0, 3).map(s => `
+                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+                        <span class="material-icons-round" style="font-size:0.9rem;color:var(--text-muted);">calendar_today</span>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:0.75rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.course || s.title || 'Exam'}</div>
+                            <div style="font-size:0.62rem;color:var(--text-muted);">${s.date || ''}${s.date && s.time ? ' · ' : ''}${s.time || 'Available'}</div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <div style="background:var(--bg-card);border:2px solid var(--border);border-radius:var(--r-md);padding:14px;">
+                <div style="font-weight:700;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;color:var(--text-muted);">Recent</div>
+                ${userData.results.length === 0 ? `
+                    <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.7rem;background:var(--bg-inset);border-radius:6px;border:1px dashed var(--border);">
+                        <div style="font-weight:600;">No exams taken yet</div>
+                    </div>
+                ` : userData.results.slice(0, 3).map(r => `
+                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="efNavigate('results')">
+                        <div style="width:24px;height:24px;border-radius:4px;background:${r.score >= 80 ? 'rgba(22,163,74,0.08)' : r.score >= 50 ? 'var(--bg-inset)' : 'rgba(220,38,38,0.06)'};border:1px solid ${r.score >= 80 ? '#16a34a' : r.score >= 50 ? 'var(--border)' : '#dc2626'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <span class="material-icons-round" style="font-size:0.7rem;color:${r.score >= 80 ? '#16a34a' : r.score >= 50 ? 'var(--text-muted)' : '#dc2626'};">${r.score >= 80 ? 'check_circle' : 'radio_button_checked'}</span>
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:0.75rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.course || 'Exam'}</div>
+                            <div style="font-size:0.62rem;color:var(--text-muted);">${r.date || ''}</div>
+                        </div>
+                        <div style="font-weight:800;font-size:0.85rem;color:${r.score >= 80 ? '#16a34a' : 'var(--text)'};">${r.score}%</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        
+        <div style="font-size:0.65rem;font-weight:600;color:var(--text-muted);text-align:center;padding:8px;">
+            ${percentileTag || `<span>National rank loading...</span>`}
+        </div>
         `;
-        }).join('')}
-</div>
-        </div>
-
-        <div class="card-grid card-grid-strict" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-            <div class="card stat-card card-accent" style="background: var(--brand); border-color: var(--brand);margin: 0; min-width: 0;">
-                <div class="stat-label" style="color: #ffffff !important;"><span class="material-icons-round" style="color: #ffffff !important;">public</span> National Rank</div>
-                <div class="stat-value" style="color: #ffffff !important; word-wrap: break-word;">#${nationalStats.rank}</div>
-                <div style="font-size: 0.62rem; color: rgba(255,255,255,0.85) !important; margin-top: 4px; font-weight: 600;">Out of ${nationalStats.total} Examforgites</div>
-            </div>
-
-            <div class="card stat-card" style="margin: 0; min-width: 0;">
-                <div class="stat-label"><span class="material-icons-round">gps_fixed</span> Accuracy</div>
-                <div class="stat-value" style="word-wrap: break-word;">${analytics.avg}%</div>
-                <div class="stat-delta" style="color:${trendColor}; display:flex; align-items:center; gap:3px; font-size:0.62rem; margin-top:4px; font-weight:700;">
-                    <span class="material-icons-round" style="font-size:0.9rem;">${trendIcon}</span>
-                    ${trendLabel} vs last
-                </div>
-            </div>
-
-            <div class="card stat-card" style="margin: 0; min-width: 0;">
-                <div class="stat-label"><span class="material-icons-round">local_fire_department</span> Streak</div>
-                <div class="stat-value" style="word-wrap: break-word;">${streak}d</div>
-                <div class="stat-delta" style="font-size:0.62rem; font-weight:600;">Best: ${userData.stats.highestStreak || 0}d</div>
-            </div>
-
-            <div class="card stat-card" style="margin: 0; min-width: 0;">
-                <div class="stat-label"><span class="material-icons-round">stars</span> Weekly Best</div>
-                <div class="stat-value" style="word-wrap: break-word;">${weeklyBest.score !== null ? weeklyBest.score + '%' : '—'}</div>
-                <div style="font-size: 0.6rem; color: var(--text-muted); margin-top: 4px; font-weight:600; word-wrap: break-word;">${weeklyBest.course || 'None yet'}</div>
-            </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start;" id="dashboard-lower-grid">
-            <div class="card" style="padding: 20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                    <span style="font-weight:800; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.04em;">Recent History</span>
-                    <button class="btn btn-ghost btn-sm" onclick="efNavigate('results')">View All</button>
-                </div>
-                <div class="feed">
-                    ${userData.results.length === 0 ? `
-                        <div style="text-align:center; padding: 24px 8px; color: var(--text-muted); background: var(--bg-inset); border-radius: 8px; border: 1px dashed var(--border);">
-                            <span class="material-icons-round" style="font-size: 1.5rem; margin-bottom: 8px;opacity:0.6;">assignment</span>
-                            <div style="font-size: 0.72rem; font-weight: 600;">No exams taken yet</div>
-                            <div style="font-size: 0.65rem; margin-top: 2px;">Your recent results will appear here.</div>
-                        </div>
-                    ` : userData.results.slice(0, 4).map(r => `
-                    <div class="feed-item" onclick="efNavigate('results')" style="cursor:pointer; border-radius:8px; padding:8px; margin:0 -8px; transition: background 0.2s;">
-                        <div class="feed-icon ${r.score >= 80 ? 'green' : r.score >= 65 ? '' : 'red'}">
-                            <span class="material-icons-round">${r.score >= 80 ? 'check_circle' : 'radio_button_checked'}</span>
-                        </div>
-                        <div class="feed-body">
-                            <div class="feed-title" style="font-weight:700; font-size:0.85rem;">${r.course}</div>
-                            <div class="feed-meta">${r.date}</div>
-                        </div>
-                        <div class="feed-score" style="color: var(--text); font-weight:800;">${r.score}%</div>
-                    </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            <div class="card" style="padding: 20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                    <span style="font-weight:800; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.04em;">Coming Up</span>
-                    <button class="btn btn-ghost btn-sm" onclick="efNavigate('schedule')">Full Schedule</button>
-                </div>
-                <div class="feed">
-                    ${userData.schedule.length === 0 ? `
-                        <div style="text-align:center; padding: 24px 8px; color: var(--text-muted); background: var(--bg-inset); border-radius: 8px; border: 1px dashed var(--border);">
-                            <span class="material-icons-round" style="font-size: 1.5rem; margin-bottom: 8px;opacity:0.6;">event_busy</span>
-                            <div style="font-size: 0.72rem; font-weight: 600;">Clear schedule</div>
-                            <div style="font-size: 0.65rem; margin-top: 2px;">No upcoming exams or study sessions.</div>
-                        </div>
-                    ` : userData.schedule.slice(0, 4).map(s => `
-                    <div class="feed-item">
-                        <div class="feed-icon"><span class="material-icons-round">calendar_today</span></div>
-                        <div class="feed-body">
-                            <div class="feed-title" style="font-weight:700; font-size:0.85rem;">${s.course || s.title || 'Mock Exam'}</div>
-                            <div class="feed-meta">${s.date ? s.date + (s.time ? ' · ' + s.time : '') : (s.time ? s.time : 'Available now')}</div>
-                        </div>
-                    </div>
-                    `).join('')}
-                </div>
-            </div>
-        </div>
-    `;
-        fixTwoCol();
+        
+        // ─── Now fetch fresh data in the background and update ───
+        try {
+            const { getDoc, doc, collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+            if (userSnap.exists()) {
+                const freshData = userSnap.data();
+                if (freshData.stats) userData.stats = { ...userData.stats, ...freshData.stats };
+            }
+            const schedSnap = await getDocs(query(collection(db, `users/${auth.currentUser.uid}/schedule`), orderBy('timestamp', 'asc')));
+            if (!schedSnap.empty) userData.schedule = schedSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+            
+            // Re-fetch results for accuracy
+            const resultsSnap = await getDocs(query(collection(db, `users/${auth.currentUser.uid}/results`), orderBy('timestamp', 'desc'), limit(50)));
+            userData.results = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            // Save to cache
+            try {
+                const ranking = await getNationalRanking(userData.stats.exaRating || 800);
+                dcSet({ results: userData.results, stats: userData.stats, schedule: userData.schedule, ranking });
+            } catch(e) {}
+            
+            // Re-render with fresh data
+            renderDashboard();
+        } catch (e) { console.error("Failed to fetch user data:", e); }
     }
 
     function fixTwoCol() {
