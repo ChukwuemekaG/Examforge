@@ -487,6 +487,11 @@ function setupAdminListeners() {
         userData.results = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
+    // ─── Dashboard Cache ─────────────────────────────────────────
+    const DC_KEY = 'ef_dash';
+    function dcGet() { try { const c = JSON.parse(localStorage.getItem(DC_KEY)); if (c && Date.now() - c.ts < 300000) return c.d; } catch(e){} return null; }
+    function dcSet(d) { try { localStorage.setItem(DC_KEY, JSON.stringify({ ts: Date.now(), d })); } catch(e){} }
+
     function updateUIWithUserProfile(user) {
         let initials = "EF";
         if (user.displayName) {
@@ -4662,6 +4667,14 @@ window.adminPromptNotification = function(userId) {
     async function renderDashboard() {
         renderLoading(" ");
         
+        // ─── Use cached data for instant render ───
+        const cached = dcGet();
+        if (cached) {
+            userData.results = cached.results || userData.results;
+            if (cached.stats) userData.stats = { ...userData.stats, ...cached.stats };
+            userData.schedule = cached.schedule || userData.schedule;
+        }
+        
         // ─── Fetch fresh user data for accurate stats and schedule ───
         try {
             const { getDoc, doc, collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
@@ -4679,6 +4692,12 @@ window.adminPromptNotification = function(userId) {
             }
         } catch (e) { console.error("Failed to fetch user data:", e); }
         
+        // ─── Save to cache for next time ──
+        try {
+            const ranking = await getNationalRanking(userData.stats.exaRating || 800);
+            dcSet({ results: userData.results, stats: userData.stats, schedule: userData.schedule, ranking });
+        } catch(e) {}
+        
         // ─── Data & Analytics ───
         const analytics = getAnalytics();
         const firstName = currentUser.displayName ? currentUser.displayName.split(' ')[0] : 'Student';
@@ -4690,7 +4709,7 @@ window.adminPromptNotification = function(userId) {
         const exaTitle = getExaTitle(exaRating);
 
         // Fetch National Positioning
-        const nationalStats = await getNationalRanking(exaRating);
+        const nationalStats = cached?.ranking || await getNationalRanking(exaRating);
 
         // Create the percentile tag only if it's 60% or better
         const percentileTag = nationalStats.percentile <= 60
