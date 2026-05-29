@@ -402,8 +402,8 @@ function setupAdminListeners() {
                         highestStreak: 0,
                         createdAt: serverTimestamp(),
                         role: 'student'
-                    }
-                });
+                    });
+                }
             }
 
                 init();
