@@ -481,6 +481,10 @@ function setupAdminListeners() {
                 }
 
                 init();
+                // ─── Warm caches in background for instant view loads ───
+                sync.collection('unicourses').catch(() => {});
+                sync.collection('users/' + user.uid + '/schedule').catch(() => {});
+                sync.collection('subscription_events').catch(() => {});
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
                     if (Notification.permission === 'default') {
@@ -4645,7 +4649,7 @@ window.adminPromptNotification = function(userId) {
         
         // ─── Fetch fresh user data for accurate stats and schedule ───
         try {
-            const freshData = await sync.doc('users/' + auth.currentUser.uid);
+            const freshData = userData || await sync.doc('users/' + auth.currentUser.uid);
             if (freshData) {
                 // Map flat Firestore doc to userData structure
                 userData.stats = {
