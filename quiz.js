@@ -1031,7 +1031,18 @@ document.addEventListener('DOMContentLoaded', () => {
             speedFactor = fraction * 0.5; 
         }
         const rawChange = (accuracyFactor * 30) + (speedFactor * 10);
-        return Math.max(-30, Math.min(40, Math.round(rawChange)));
+        
+        // Add +40 to all increments, -20 to all decrements, 0 stays 0
+        let adjusted;
+        if (rawChange > 0) {
+            adjusted = rawChange + 40;
+        } else if (rawChange < 0) {
+            adjusted = rawChange - 20;
+        } else {
+            adjusted = 0;
+        }
+        
+        return Math.round(adjusted);
     }
 
     function computeNewStreak(existingData) {
@@ -1092,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isRetake = retakeResults && retakeResults.length > 0;
 
             let exaChange = computeExaChange(finalScore, examState.timeTaken, examState.timeLimit);
-            if (isRetake && exaChange > 2) exaChange = 2;
+            if (isRetake && exaChange > 5) exaChange = 5;
 
             const oldExa = existingData.exaRating || 800;
             const newExa = Math.max(400, oldExa + exaChange); 
