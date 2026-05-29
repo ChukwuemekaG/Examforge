@@ -1,5 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { SyncManager } from './sync.js';
 import { collection, addDoc, doc, getDoc, setDoc, updateDoc, serverTimestamp, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // ── Safe DOM helpers - prevent null reference errors on mobile ──
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FIREBASE AUTHENTICATION CHECK ---
     let currentUser = null;
+    let sync = null;
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user;
@@ -88,6 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function init() {
         switchView('loading');
+        // Initialize cache-first Firestore sync
+        sync = new SyncManager(db);
         const p = new URLSearchParams(window.location.search);
 
         // ── DAILY QUIZ INTERCEPTOR ───────────────────────────────────────────
@@ -95,9 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dqid) {
             examState.quizId = dqid;
             try {
-                const dqDoc = await getDoc(doc(db, 'daily_quizzes', dqid));
-                if (!dqDoc.exists()) throw new Error(`Daily Quiz not found.`);
-                const d = dqDoc.data();
+                const d = await sync.doc('daily_quizzes/' + dqid);
+                if (!d) throw new Error(`Daily Quiz not found.`);
                 const maxAttempts = d.maxAttempts || 1;
                 
                 // Check for existing attempt (browser tracking + account tracking)
@@ -108,10 +111,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Always check Firestore first (more reliable)
                 try {
-                    const attemptQuery = query(collection(db, "daily_quizzes", dqid, "attempts"), where('uid', '==', currentUser.uid));
-                    const attemptSnap = await getDocs(attemptQuery);
-                    if (!attemptSnap.empty) {
-                        existingAttempt = attemptSnap.docs[0].data();
+                    const attemptData = await sync.query('daily_quizzes/' + dqid + '/attempts', [where('uid', '==', currentUser.uid)]);
+                    if (attemptData && attemptData.length > 0) {
+                        existingAttempt = attemptData[0];
                     }
                 } catch(e) {}
                 
@@ -236,9 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
             examState.quizId = mockid;
             examState.isMockExam = true;
             try {
-                const mockDoc = await getDoc(doc(db, 'mock_exams', mockid));
-                if (!mockDoc.exists()) throw new Error(`Mock Exam not found.`);
-                const d = mockDoc.data();
+                const d = await sync.doc('mock_exams/' + mockid);
+                if (!d) throw new Error(`Mock Exam not found.`);
                 
                 const allQuestions = d.questions || [];
                 if (allQuestions.length === 0) throw new Error('No questions available in this mock exam.');
@@ -293,11 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const subjects = await Promise.all(courseIds.map(async (courseId, i) => {
-                    const topicsSnap = await getDocs(collection(db, 'unicourses', courseId, 'topics'));
+                    const topicsData = await sync.collection('unicourses/' + courseId + '/topics');
                     let allQuestions = [], totalTimeLimit = 0;
                     let anyNoCorrection = false;
-                    topicsSnap.forEach(tDoc => {
-                        const d = tDoc.data();
+                    topicsData.forEach(d => {
                         allQuestions.push(...(d.questions || []));
                         totalTimeLimit += (d.timeLimit || 0);
                         if (d.isCorrection === false) anyNoCorrection = true;
@@ -305,8 +305,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     let courseTitle = rawTitles[i] || courseId.toUpperCase();
                     try {
-                        const cDoc = await getDoc(doc(db, 'unicourses', courseId));
-                        if (cDoc.exists()) courseTitle = rawTitles[i] || cDoc.data().title || courseId.toUpperCase();
+                        const courseData = await sync.doc('unicourses/' + courseId);
+                        if (courseData) courseTitle = rawTitles[i] || courseData.title || courseId.toUpperCase();
                     } catch (_) {}
 
                     const selected = [...allQuestions].sort(() => 0.5 - Math.random()).slice(0, Math.min(40, allQuestions.length));
@@ -345,10 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let subjectTitle = rawTitle || courseId.toUpperCase();
 
             if (topicId === '__full__') {
-                const topicsSnap = await getDocs(collection(db, 'unicourses', courseId, 'topics'));
+                const topicsData = await sync.collection('unicourses/' + courseId + '/topics');
                 let anyStrict = false, anyMock = false, anyNoCorrection = false;
-                topicsSnap.forEach(tDoc => {
-                    const d = tDoc.data();
+                topicsData.forEach(d => {
                     allQuestions.push(...(d.questions || []));
                     totalTimeLimit += (d.timeLimit || 0);
                     if (d.isStrict)            anyStrict      = true;
@@ -360,14 +359,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 examState._isCorrection = !anyNoCorrection;
                 if (!rawTitle) {
                     try {
-                        const cDoc = await getDoc(doc(db, 'unicourses', courseId));
-                        if (cDoc.exists()) subjectTitle = (cDoc.data().title || courseId.toUpperCase()) + ' — Full Exam';
+                        const courseData = await sync.doc('unicourses/' + courseId);
+                        if (courseData) subjectTitle = (courseData.title || courseId.toUpperCase()) + ' — Full Exam';
                     } catch (_) {}
                 }
             } else {
-                const tDoc = await getDoc(doc(db, 'unicourses', courseId, 'topics', topicId));
-                if (!tDoc.exists()) throw new Error(`Topic '${topicId}' not found.`);
-                const d = tDoc.data();
+                const d = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
+                if (!d) throw new Error(`Topic '${topicId}' not found.`);
                 allQuestions            = d.questions || [];
                 totalTimeLimit          = d.timeLimit || 40;
                 examState.isStrict      = !!(d.isStrict || d.isMock);
@@ -1078,13 +1076,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const userRef = doc(db, "users", currentUser.uid);
-            const userSnap = await getDoc(userRef);
-            const existingData = userSnap.exists() ? userSnap.data() : {};
+            const userData = await sync.doc('users/' + currentUser.uid);
+            const existingData = userData || {};
 
             const resultsRef = collection(db, `users/${currentUser.uid}/results`);
-            const qRetake = query(resultsRef, where("quizId", "==", examState.quizId), limit(1));
-            const querySnapshot = await getDocs(qRetake);
-            const isRetake = !querySnapshot.empty;
+            const retakeResults = await sync.query('users/' + currentUser.uid + '/results', [
+                where("quizId", "==", examState.quizId),
+                limit(1)
+            ]);
+            const isRetake = retakeResults && retakeResults.length > 0;
 
             let exaChange = computeExaChange(finalScore, examState.timeTaken, examState.timeLimit);
             if (isRetake && exaChange > 2) exaChange = 2;
@@ -1176,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastExamDate: streakUpdate.lastExamDate,
                     exaRating: newExa,
                 };
-                if (userSnap.exists()) await updateDoc(userRef, updatePayload);
+                if (userData) await updateDoc(userRef, updatePayload);
                 else await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
 
             } else {
@@ -1232,7 +1232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastExamDate: streakUpdate.lastExamDate,
                     exaRating: newExa,
                 };
-                if (userSnap.exists()) await updateDoc(userRef, updatePayload);
+                if (userData) await updateDoc(userRef, updatePayload);
                 else await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
             }
 
