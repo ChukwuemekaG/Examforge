@@ -400,6 +400,11 @@ function setupAdminListeners() {
                         role: userDataFromSync.role || 'student'
                     };
                     userData.recentResults = userDataFromSync.recentResults || [];
+                    // Show admin nav if user is admin
+                    const masterNav = document.getElementById('nav-master');
+                    if (masterNav) {
+                        masterNav.style.display = (userDataFromSync.role === 'admin') ? '' : 'none';
+                    }
                 }
 
                 if (!userDataFromSync) {
@@ -429,10 +434,51 @@ function setupAdminListeners() {
                             role: data.role || 'student'
                         };
                         userData.recentResults = data.recentResults || [];
+                        // Show admin nav if user is admin
+                        const masterNav = document.getElementById('nav-master');
+                        if (masterNav) {
+                            masterNav.style.display = (data.role === 'admin') ? '' : 'none';
+                        }
                         // Refresh UI if on dashboard
                         if (typeof updateDashboardUI === 'function') updateDashboardUI();
                     }
                 });
+
+                // ─── One-time migration: copy old subcollection results to recentResults ───
+                if (userData.recentResults && userData.recentResults.length === 0) {
+                    (async () => {
+                        try {
+                            const oldResults = await sync.query('users/' + user.uid + '/results', [
+                                orderBy('timestamp', 'desc'),
+                                limit(50)
+                            ]);
+                            if (oldResults && oldResults.length > 0) {
+                                const migrated = oldResults.map(r => ({
+                                    id: r.id || Date.now().toString(36),
+                                    quizId: r.quizId || '',
+                                    course: r.course || 'Exam',
+                                    date: r.date || new Date(r.timestamp?.toMillis?.() || Date.now()).toLocaleDateString(),
+                                    score: r.score || 0,
+                                    total: r.total || 100,
+                                    grade: r.grade || 'F',
+                                    correct: r.correct || 0,
+                                    totalQuestions: r.totalQuestions || 0,
+                                    timeTaken: r.timeTaken || 0,
+                                    exaChange: r.exaChange || 0,
+                                    isRetake: r.isRetake || false,
+                                    corrections: r.corrections || [],
+                                    isMock: r.isMock || false
+                                }));
+                                // Write migrated results to user doc (1 write, one-time cost)
+                                await setDoc(doc(db, 'users', user.uid), { recentResults: migrated }, { merge: true });
+                                // Update local state
+                                userData.recentResults = migrated;
+                                // Refresh UI
+                                if (typeof updateDashboardUI === 'function') updateDashboardUI();
+                            }
+                        } catch(e) { console.error('Migration check error:', e); }
+                    })();
+                }
 
                 init();
                 // ─── Push Notification Setup ─────────────────────────
@@ -465,7 +511,7 @@ function setupAdminListeners() {
     function getAnalytics() {
         const results = userData.recentResults || [];
         if (results.length === 0) {
-            return { avg: 0, count: 0, bestScore: 0, bestCourse: 'N/A' };
+            return { avg: '—', count: 0, bestScore: '—', bestCourse: 'N/A' };
         }
         const totalScore = results.reduce((sum, r) => sum + r.score, 0);
         const bestResult = results.reduce((max, r) => r.score > max.score ? r : max, results[0]);
@@ -686,7 +732,11 @@ function setupAdminListeners() {
 window.masterAllUsers = [];
 let masterTab = 'users'; // 'users' | 'courses'
 
-function renderMaster() {
+async function renderMaster() {
+    if (userData.stats?.role !== 'admin') {
+        efNavigate('dashboard');
+        return;
+    }
     workspace.innerHTML = `
         <style>
             /* ── Tab Bar (scrollable on mobile) ── */
