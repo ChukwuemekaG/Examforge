@@ -1039,8 +1039,7 @@ function mcRenderUsersTab() {
         }
 
         try {
-            const snap = await getDocs(collection(db, 'users'));
-            window.masterAllUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            window.masterAllUsers = await sync.collection('users');
             renderFilteredUsers();
         } catch (err) {
             console.error("Error loading users:", err);
@@ -1303,8 +1302,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const tDoc = await getDoc(doc(db,'unicourses',courseId,'topics',topicId));
-            const tData = tDoc.exists() ? tDoc.data() : {};
+            const tData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId) || {};
             const questions = tData.questions || [];
             const list = document.getElementById('mc-question-list');
             if (!list) return;
@@ -1430,9 +1428,9 @@ async function mcLoadDailyQuizzes() {
     const grid = document.getElementById('mc-dq-list');
     if (!grid) return;
 
-    try {
-        const snap = await getDocs(collection(db, 'daily_quizzes'));
-        const quizzes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        try {
+            const quizzes = await sync.collection('daily_quizzes');
+            quizzes.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
         if (quizzes.length === 0) {
             grid.innerHTML = `
@@ -1491,13 +1489,12 @@ async function mcLoadDailyQuizzes() {
 async function mcLoadDailyQuizSubCount() {
     const el = document.getElementById('mc-dq-sub-count');
     if (!el) return;
-    try {
-        const snap = await getDocs(collection(db, 'users'));
-        const subs = snap.docs.filter(d => {
-            const subs = d.data().subscriptions;
-            return !subs || subs.dailyQuiz !== false;
-        });
-        el.textContent = `${subs.length} subscriber${subs.length !== 1 ? 's' : ''} will receive broadcasts`;
+        try {
+            const users = await sync.collection('users');
+            const subs = users.filter(d => {
+                return !d.subscriptions || d.subscriptions.dailyQuiz !== false;
+            });
+            el.textContent = `${subs.length} subscriber${subs.length !== 1 ? 's' : ''} will receive broadcasts`;
         el.style.color = '#16a34a';
     } catch (e) {
         el.textContent = 'Could not count subscribers';
@@ -1507,14 +1504,13 @@ async function mcLoadDailyQuizSubCount() {
 async function mcLoadDQHistory() {
     const container = document.getElementById('mc-dq-history');
     if (!container) return;
-    try {
-        const snap = await getDocs(query(collection(db, 'daily_quiz_broadcasts'), orderBy('timestamp', 'desc'), limit(10)));
-        if (snap.empty) {
-            container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:24px;">No broadcasts yet.</div>';
-            return;
-        }
-        container.innerHTML = snap.docs.map(d => {
-            const b = d.data();
+        try {
+            const broadcasts = await sync.query('daily_quiz_broadcasts', [orderBy('timestamp', 'desc'), limit(10)]);
+            if (!broadcasts.length) {
+                container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:24px;">No broadcasts yet.</div>';
+                return;
+            }
+            container.innerHTML = broadcasts.map(b => {
             const ts = b.timestamp?.toDate ? b.timestamp.toDate().toLocaleString() : 'Unknown';
             return `
             <div style="display:flex;align-items:center;gap:14px;padding:10px 14px;background:var(--bg-card);border:2px solid var(--text);border-radius:8px;margin-bottom:8px;">
@@ -1569,9 +1565,9 @@ async function mcLoadDailyAdvices() {
     const grid = document.getElementById('mc-advice-list');
     if (!grid) return;
 
-    try {
-        const snap = await getDocs(query(collection(db, 'daily_advices'), orderBy('createdAt', 'desc')));
-        if (snap.empty) {
+        try {
+            const advices = await sync.query('daily_advices', [orderBy('createdAt', 'desc')]);
+            if (!advices.length) {
             grid.innerHTML = `
                 <div style="grid-column:1/-1;text-align:center;padding:48px;border:3px dashed var(--border);border-radius:16px;color:var(--text-muted);">
                     <span class="material-icons-round" style="font-size:3rem;display:block;margin-bottom:12px;opacity:0.35;">tips_and_updates</span>
@@ -1589,9 +1585,8 @@ async function mcLoadDailyAdvices() {
             general: { label: 'General Advice', bg: '#f3f4f6', color: '#374151' }
         };
 
-        grid.innerHTML = snap.docs.map(docSnap => {
-            const adv = docSnap.data();
-            const id = docSnap.id;
+        grid.innerHTML = advices.map(adv => {
+            const id = adv.id;
             const dateStr = adv.createdAt?.toDate ? adv.createdAt.toDate().toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' }) : 'Recently';
             const cat = catMap[adv.category] || { label: 'General Advice', bg: '#f3f4f6', color: '#374151' };
             const snippet = adv.content.length > 120 ? adv.content.substring(0, 120) + '…' : adv.content;
@@ -1659,9 +1654,8 @@ window.mcViewDailyAdviceDetails = async function(id) {
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
 
     try {
-        const advSnap = await getDoc(doc(db, 'daily_advices', id));
-        if (!advSnap.exists()) throw new Error("Advice document not found.");
-        const adv = advSnap.data();
+        const adv = await sync.doc('daily_advices/' + id);
+        if (!adv) throw new Error("Advice document not found.");
 
         const catMap = {
             motivation: { label: 'Motivation & Mindset', bg: '#fef3c7', color: '#b45309' },
@@ -1829,13 +1823,13 @@ window.mcPublishDailyAdvice = async function() {
     btn.textContent = 'PUBLISHING…';
 
     try {
-        const usersSnap = await getDocs(collection(db, 'users'));
+        const targetUsersData = await sync.collection('users');
         let targetUsers = [];
         if (audience === 'all') {
-            targetUsers = usersSnap.docs;
+            targetUsers = targetUsersData;
         } else {
-            targetUsers = usersSnap.docs.filter(d => {
-                const subs = d.data().subscriptions;
+            targetUsers = targetUsersData.filter(d => {
+                const subs = d.subscriptions;
                 return !subs || subs.dailyQuiz !== false;
             });
         }
@@ -2392,21 +2386,18 @@ window.mcViewDailyQuizDetails = async function(dqid) {
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
     
     try {
-        const dqDoc = await getDoc(doc(db, 'daily_quizzes', dqid));
-        if (!dqDoc.exists()) {
+        const q = await sync.doc('daily_quizzes/' + dqid);
+        if (!q) {
             document.getElementById('ef-dq-det-body').innerHTML = `<div style="text-align:center;padding:32px;color:var(--brand);font-weight:900;">Quiz not found.</div>`;
             return;
         }
-        const q = dqDoc.data();
         document.getElementById('ef-dq-det-title').textContent = q.title;
         document.getElementById('ef-dq-det-title').style.fontSize = '0.75rem';
         document.getElementById('ef-dq-det-meta').innerHTML = `${q.questions?.length || 0} questions · ${q.timeLimit || 10} min`;
         
         const quizShareUrl = window.location.origin + '/quiz?dqid=' + dqid;
         
-        const attemptsQuery = query(collection(db, "daily_quizzes", dqid, "attempts"), orderBy('timestamp', 'desc'));
-        const attemptsSnap = await getDocs(attemptsQuery);
-        const attempts = attemptsSnap.docs.map(d => d.data());
+        const attempts = await sync.query('daily_quizzes/' + dqid + '/attempts', [orderBy('timestamp', 'desc')]);
 
         const attemptCount = attempts.length;
         let avgScore = 0;
@@ -2462,10 +2453,9 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         
         let subscriberCount = 0;
         try {
-            const usersSnap = await getDocs(collection(db, 'users'));
-            subscriberCount = usersSnap.docs.filter(d => {
-                const subs = d.data().subscriptions;
-                return !subs || subs.dailyQuiz !== false;
+            const usersArr = await sync.collection('users');
+            subscriberCount = usersArr.filter(d => {
+                return !d.subscriptions || d.subscriptions.dailyQuiz !== false;
             }).length;
         } catch (_) {}
         
@@ -2729,9 +2719,8 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
     btn.innerHTML = `<span class="material-icons-round" style="font-size:1.1rem;animation:spin 1s linear infinite;display:inline-block;vertical-align:middle;">autorenew</span> BROADCASTING…`;
     
     try {
-        const dqDoc = await getDoc(doc(db, 'daily_quizzes', dqid));
-        if (!dqDoc.exists()) throw new Error("Quiz not found.");
-        const q = dqDoc.data();
+        const q = await sync.doc('daily_quizzes/' + dqid);
+        if (!q) throw new Error("Quiz not found.");
         
         const messageInput = document.getElementById('dq-broadcast-msg')?.value.trim();
         const customMessage = messageInput || `Your Daily Quiz '${q.title}' is ready. You have ${q.timeLimit} minutes. Good luck!`;
@@ -2744,10 +2733,9 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
         
         const quizUrl = `quiz.html?dqid=${dqid}`;
         
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const subscribers = usersSnap.docs.filter(d => {
-            const subs = d.data().subscriptions;
-            return !subs || subs.dailyQuiz !== false;
+        const usersArr = await sync.collection('users');
+        const subscribers = usersArr.filter(d => {
+            return !d.subscriptions || d.subscriptions.dailyQuiz !== false;
         });
         
         if (!subscribers.length) {
@@ -2839,11 +2827,10 @@ window.mcDeleteDailyQuiz = function(dqid, title) {
 // ── Edit an existing daily quiz ──
 window.mcOpenEditDailyQuizModal = async function(dqid) {
     try {
-        const dqDoc = await getDoc(doc(db, 'daily_quizzes', dqid));
-        if (!dqDoc.exists()) {
+        const data = await sync.doc('daily_quizzes/' + dqid);
+        if (!data) {
             return window.showEFModal("Not Found", "Daily quiz not found.", "OK", null, true);
         }
-        const data = dqDoc.data();
         
         // Open the builder modal
         window.mcOpenCreateDailyQuizModal();
@@ -2999,9 +2986,8 @@ window.mcViewTopicResults = async function(courseId, topicId) {
         const userNames = {};
         await Promise.all(uids.map(async uid => {
             try {
-                const uSnap = await getDoc(doc(db,'users',uid));
-                if (uSnap.exists()) {
-                    const d = uSnap.data();
+                const d = await sync.doc('users/' + uid);
+                if (d) {
                     userNames[uid] = d.displayName || d.username || d.email?.split('@')[0] || uid.slice(0,8);
                 } else { userNames[uid] = uid.slice(0,8); }
             } catch { userNames[uid] = uid.slice(0,8); }
@@ -3295,8 +3281,7 @@ window.mcOpenEditTopicModal = async function(courseId, topicId) {
     // Fetch current values first
     let data = {};
     try {
-        const snap = await getDoc(doc(db,'unicourses',courseId,'topics',topicId));
-        if (snap.exists()) data = snap.data();
+        data = await sync.doc('unicourses/' + courseId + '/topics/' + topicId) || {};
     } catch(e) { alert('Could not load topic: ' + e.message); return; }
 
     const overlay = document.createElement('div');
@@ -3347,8 +3332,8 @@ window.mcOpenEditTopicModal = async function(courseId, topicId) {
 window.mcOpenEditQuestionModal = async function(courseId, topicId, questionIndex) {
     let questions = [];
     try {
-        const snap = await getDoc(doc(db,'unicourses',courseId,'topics',topicId));
-        if (snap.exists()) questions = snap.data().questions || [];
+        const subData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
+        if (subData) questions = subData.questions || [];
     } catch(e) { alert('Could not load questions: ' + e.message); return; }
 
     const q = questions[questionIndex];
@@ -3409,8 +3394,8 @@ window.mcOpenEditQuestionModal = async function(courseId, topicId, questionIndex
         try {
             // Read latest questions array, splice the edited one in, write back
             const tRef = doc(db,'unicourses',courseId,'topics',topicId);
-            const latest = await getDoc(tRef);
-            const qs = [...(latest.data().questions || [])];
+            const latest = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
+            const qs = [...((latest && latest.questions) || [])];
             qs[questionIndex] = { ...qs[questionIndex], question, options, correctIndex, explanation };
             await updateDoc(tRef, { questions: qs });
             overlay.remove();
@@ -3749,9 +3734,8 @@ window.mcOpenBulkImportModal = function(courseId, topicId) {
 
         try {
             // Fetch existing questions, append new ones (avoid arrayUnion limit issues)
-            const tRef = doc(db, 'unicourses', courseId, 'topics', topicId);
-            const tDoc = await getDoc(tRef);
-            const existing = tDoc.exists() ? (tDoc.data().questions || []) : [];
+            const tData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
+            const existing = tData ? (tData.questions || []) : [];
 
             // Give each question a stable unique id
             const stamped = parsedQuestions.map(q => ({
@@ -4385,12 +4369,11 @@ window.udtDeleteUser = async function(uid) {
 
 window.mcDeleteQuestion = async function(courseId, topicId, questionIndex) {
     try {
-        const tRef = doc(db,'unicourses',courseId,'topics',topicId);
-        const tDoc = await getDoc(tRef);
-        if (!tDoc.exists()) return;
-        const questions = [...(tDoc.data().questions || [])];
+        const tData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
+        if (!tData) return;
+        const questions = [...(tData.questions || [])];
         questions.splice(questionIndex, 1);
-        await updateDoc(tRef, { questions });
+        await updateDoc(doc(db,'unicourses',courseId,'topics',topicId), { questions });
         mcRenderCoursesTab(courseId, topicId);
         mcLoadStats();
     } catch (e) { alert('Error: ' + e.message); }
@@ -4398,10 +4381,9 @@ window.mcDeleteQuestion = async function(courseId, topicId, questionIndex) {
 
 window.mcDeleteAllQuestions = async function(courseId, topicId) {
     try {
-        const tRef = doc(db,'unicourses',courseId,'topics',topicId);
-        const tDoc = await getDoc(tRef);
-        if (!tDoc.exists()) return;
-        const questions = tDoc.data().questions || [];
+        const tData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
+        if (!tData) return;
+        const questions = tData.questions || [];
         if (!questions.length) {
             window.showEFModal("Delete Questions", "There are no questions in this quiz to delete.", "OKAY", null, true);
             return;
@@ -4887,9 +4869,8 @@ window.adminPromptNotification = function(userId) {
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
             // Fetch dynamic events
-            const { getDocs, collection, getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const snap = await getDocs(collection(db, 'subscription_events'));
-            const events = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            const events = await sync.collection('subscription_events');
+            events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
             // Check registrations for the current user
             const uid = auth.currentUser?.uid;
@@ -4897,9 +4878,9 @@ window.adminPromptNotification = function(userId) {
 
             if (events.length > 0 && uid) {
                 for (const ev of events) {
-                    const regDoc = await getDoc(doc(db, 'subscription_events', ev.id, 'registrations', uid));
-                    const isRegistered = regDoc.exists();
-                    const subjects = isRegistered ? regDoc.data().subjects : [];
+                    const regData = await sync.doc('subscription_events/' + ev.id + '/registrations/' + uid);
+                    const isRegistered = !!regData;
+                    const subjects = isRegistered ? regData.subjects : [];
 
                     let actionBtn = isRegistered ? 
                         `<button class="btn btn-outline btn-sm" style="border-color:#f59e0b; color:#f59e0b; pointer-events:none;" disabled>Registered</button>` : 
@@ -5072,11 +5053,8 @@ window.adminPromptNotification = function(userId) {
             
             try {
                 // Check if user is allowed to register
-                const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                const evRef2 = fDoc(db, 'subscription_events', eventId);
-                const evDoc2 = await getDoc(evRef2);
-                if (evDoc2.exists()) {
-                    const evData = evDoc2.data();
+                const evData = await sync.doc('subscription_events/' + eventId);
+                if (evData) {
                     const allowed = evData.allowedParticipants || [];
                     if (allowed.length > 0 && !allowed.includes(auth.currentUser.uid)) {
                         btn.disabled = false; btn.textContent = 'CONFIRM REGISTRATION';
@@ -6024,9 +6002,8 @@ window.adminPromptNotification = function(userId) {
 
     window.viewNotificationDetails = async function(notifId) {
         try {
-            const docSnap = await getDoc(doc(db, `users/${auth.currentUser.uid}/notifications`, notifId));
-            if (!docSnap.exists()) return;
-            const n = docSnap.data();
+            const n = await sync.doc('users/' + auth.currentUser.uid + '/notifications/' + notifId);
+            if (!n) return;
             
             // If notification has result data, open the PDF result sheet directly
             if (n.resultData) {
@@ -6362,10 +6339,8 @@ window.adminPromptNotification = function(userId) {
  * Checks if a username already exists in Firestore.
  */
     async function isUsernameUnique(username) {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("username", "==", username));
-        const snap = await getDocs(q);
-        return snap.empty; // Returns true if no user has this name
+        const users = await sync.query('users', [where("username", "==", username)]);
+        return users.length === 0; // Returns true if no user has this name
     }
 
 
@@ -6819,8 +6794,8 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        const snap = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js").then(m => m.getDocs(m.collection(db, 'subscription_events')));
-        const events = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        const events = await sync.collection('subscription_events');
+        events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
         if (events.length === 0) {
             grid.innerHTML = `
@@ -6985,10 +6960,8 @@ window.mcLoadAllowedParticipants = async function(eventId) {
     const list = document.getElementById('ap-current-list');
     if (!list) return;
     try {
-        const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
-        if (!evDoc.exists()) return;
-        const ev = evDoc.data();
+        const ev = await sync.doc('subscription_events/' + eventId);
+        if (!ev) return;
         const allowed = ev.allowedParticipants || [];
         
         const badge = document.getElementById('ap-status-badge');
@@ -7041,17 +7014,16 @@ window.mcSearchAllowedUser = async function(eventId) {
     resultsDiv.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.8rem;"><span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.2rem;vertical-align:middle;margin-right:6px;">autorenew</span> Searching...</div>';
     
     try {
-        const { getDocs, collection, query, where } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         
         // Search by username or email
-        const [usernameSnap, emailSnap] = await Promise.all([
-            getDocs(query(collection(db, 'users'), where('username', '==', query_str))),
-            getDocs(query(collection(db, 'users'), where('email', '==', query_str)))
+        const [usernameResults, emailResults] = await Promise.all([
+            sync.query('users', [where('username', '==', query_str)]),
+            sync.query('users', [where('email', '==', query_str)])
         ]);
         
         const foundUsers = [];
-        usernameSnap.forEach(d => { if (!foundUsers.find(u => u.uid === d.id)) foundUsers.push({ uid: d.id, ...d.data() }); });
-        emailSnap.forEach(d => { if (!foundUsers.find(u => u.uid === d.id)) foundUsers.push({ uid: d.id, ...d.data() }); });
+        usernameResults.forEach(u => { if (!foundUsers.find(f => f.uid === u.id)) foundUsers.push({ uid: u.id, ...u }); });
+        emailResults.forEach(u => { if (!foundUsers.find(f => f.uid === u.id)) foundUsers.push({ uid: u.id, ...u }); });
         
         if (foundUsers.length === 0) {
             resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.78rem;border:2px dashed var(--border);border-radius:8px;">No user found with that username or email.</div>';
@@ -7083,18 +7055,16 @@ window.mcSearchAllowedUser = async function(eventId) {
 
 window.mcAddAllowedUser = async function(eventId, uid) {
     try {
-        const { getDoc, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const evRef = doc(db, 'subscription_events', eventId);
-        const evDoc = await getDoc(evRef);
-        if (!evDoc.exists()) throw new Error("Event not found");
-        const ev = evDoc.data();
+        const ev = await sync.doc('subscription_events/' + eventId);
+        if (!ev) throw new Error("Event not found");
         let allowed = ev.allowedParticipants || [];
         if (allowed.includes(uid)) {
             window.showEFModal("Already Added", "This user is already in the allowed list.", "OK", null, true);
             return;
         }
         allowed.push(uid);
-        await updateDoc(evRef, { allowedParticipants: allowed });
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: allowed });
         document.getElementById('ap-search-results').innerHTML = '';
         document.getElementById('ap-search-input').value = '';
         window.mcLoadAllowedParticipants(eventId);
@@ -7106,13 +7076,11 @@ window.mcAddAllowedUser = async function(eventId, uid) {
 
 window.mcRemoveAllowedUser = async function(eventId, uid) {
     try {
-        const { getDoc, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const evRef = doc(db, 'subscription_events', eventId);
-        const evDoc = await getDoc(evRef);
-        if (!evDoc.exists()) throw new Error("Event not found");
-        const ev = evDoc.data();
+        const ev = await sync.doc('subscription_events/' + eventId);
+        if (!ev) throw new Error("Event not found");
         let allowed = (ev.allowedParticipants || []).filter(id => id !== uid);
-        await updateDoc(evRef, { allowedParticipants: allowed });
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: allowed });
         window.mcLoadAllowedParticipants(eventId);
     } catch(e) {
         console.error(e);
@@ -7141,26 +7109,22 @@ window.mcBroadcastEventMocks = function(eventId, title) {
         "BROADCAST ALL",
         async () => {
             try {
-                const { getDocs, collection, query, where, doc, getDoc, setDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                
                 // 1. Find all mocks for this event
-                const mockSnap = await getDocs(query(collection(db, 'mock_exams'), where('eventId', '==', eventId)));
-                const mocks = mockSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const mocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
                 
                 if (mocks.length === 0) {
                     return window.showEFModal("No Mocks", "No mock exams found for this event. Create them first via MANAGE EVENT.", "OK", null, true);
                 }
                 
                 // 2. Find all registrations for this event
-                const regSnap = await getDocs(collection(db, 'subscription_events', eventId, 'registrations'));
+                const regDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
                 const regData = {};
-                regSnap.forEach(d => {
-                    const r = d.data();
-                    regData[d.id] = r.subjects || [];
+                regDocs.forEach(r => {
+                    regData[r.id] = r.subjects || [];
                 });
                 
-                const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
-                const evTitle = evDoc.exists() ? evDoc.data().title : title;
+                const ev = await sync.doc('subscription_events/' + eventId);
+                const evTitle = ev ? ev.title : title;
                 
                 let totalNotifs = 0;
                 const subjectsBroadcasted = new Set();
@@ -7264,23 +7228,20 @@ window.mcViewSubEventDetails = async function(eventId) {
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
     
     try {
-        const { getDoc, doc, collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
-        if (!evDoc.exists()) throw new Error("Event not found");
-        const ev = evDoc.data();
+        const ev = await sync.doc('subscription_events/' + eventId);
+        if (!ev) throw new Error("Event not found");
         
         document.getElementById('ef-se-det-title').textContent = ev.title;
         
         // Fetch Registrations
-        const regSnap = await getDocs(collection(db, 'subscription_events', eventId, 'registrations'));
-        const totalRegistrations = regSnap.size;
+        const regData = await sync.collection('subscription_events/' + eventId + '/registrations');
+        const totalRegistrations = regData.length;
         
         // Subject breakdown
         const normalizedSubjects = (ev.availableSubjects || []).map(s => mcNormalizeSubject(s));
         const subjectCounts = {};
         normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
-        regSnap.forEach(d => {
-            const r = d.data();
+        regData.forEach(r => {
             if (r.subjects) r.subjects.forEach(s => {
                 const sn = typeof s === 'string' ? s : (s.name || s);
                 if (subjectCounts[sn] !== undefined) subjectCounts[sn]++;
@@ -7389,14 +7350,9 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
     if (!container) return;
     
     try {
-        const { getDocs, collection, getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        
         // 1. Fetch all registrations
-        const regSnap = await getDocs(collection(db, 'subscription_events', eventId, 'registrations'));
-        const registrations = [];
-        regSnap.forEach(d => {
-            registrations.push({ uid: d.id, ...d.data() });
-        });
+        const registrationDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
+        const registrations = registrationDocs.map(r => ({ uid: r.id, ...r }));
         
         if (registrations.length === 0) {
             container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:0.8rem;">No students registered yet.</div>';
@@ -7414,20 +7370,16 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
             // Check mock attempts for each subject
             const subjectScores = {};
             for (const sub of (reg.subjects || [])) {
-                const { query, where, collection: col, getDocs: gd, doc: d, getDoc: gdoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                const mockQuery = await gd(
-                    query(col(db, 'mock_exams'), where('eventId', '==', eventId), where('subject', '==', sub))
-                );
+                const mockResults = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)]);
                 
-                if (!mockQuery.empty) {
-                    const mockId = mockQuery.docs[0].id;
-                    const attemptSnap = await gdoc(d(db, 'mock_exams', mockId, 'attempts', reg.uid));
-                    if (attemptSnap.exists()) {
-                        const att = attemptSnap.data();
+                if (mockResults.length > 0) {
+                    const mockId = mockResults[0].id;
+                    const attempt = await sync.doc('mock_exams/' + mockId + '/attempts/' + reg.uid);
+                    if (attempt) {
                         subjectScores[sub] = {
-                            correct: att.correct || 0,
-                            total: att.totalQuestions || 0,
-                            percentage: att.score || 0
+                            correct: attempt.correct || 0,
+                            total: attempt.totalQuestions || 0,
+                            percentage: attempt.score || 0
                         };
                     } else {
                         subjectScores[sub] = null;
@@ -7687,11 +7639,9 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
 
 window.mcPreloadEventMock = async function(eventId, subject) {
     try {
-        const { getDocs, query, collection, where } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const q = query(collection(db, 'mock_exams'), where('eventId', '==', eventId), where('subject', '==', subject));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-            const m = snap.docs[0].data();
+        const mockResults = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)]);
+        if (mockResults.length > 0) {
+            const m = mockResults[0];
             document.getElementById('dq-builder-title').value = m.title;
             document.getElementById('dq-builder-time').value = m.timeLimit;
             window.currentBuilderQuestions = m.questions || [];
@@ -7740,12 +7690,11 @@ window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=fal
     saveBtn.disabled = true;
     
     try {
-        const { getDocs, query, collection, where, setDoc, doc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const qSnap = await getDocs(query(collection(db, 'mock_exams'), where('eventId', '==', eventId), where('subject', '==', subject)));
+        const existingMocks = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)]);
         
         let mockId;
-        if (!qSnap.empty) {
-            mockId = qSnap.docs[0].id;
+        if (existingMocks.length > 0) {
+            mockId = existingMocks[0].id;
         } else {
             mockId = 'mock_' + doc(collection(db, 'mock_exams')).id;
         }
@@ -7785,14 +7734,11 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
 
     window.showEFModal("Release Mock", `Are you sure you want to release the ${subject} mock to all registered students?`, "RELEASE", async () => {
         try {
-            const { getDocs, collection, doc, setDoc, getDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            
             // 1. Find all students who registered for this subject
-            const regSnap = await getDocs(collection(db, 'subscription_events', eventId, 'registrations'));
+            const regDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
             const uids = [];
-            regSnap.forEach(d => {
-                const r = d.data();
-                if (r.subjects && r.subjects.includes(subject)) uids.push(d.id);
+            regDocs.forEach(r => {
+                if (r.subjects && r.subjects.includes(subject)) uids.push(r.id);
             });
             
             if (uids.length === 0) {
@@ -7800,12 +7746,11 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
             }
 
             // 2. Get event and mock details
-            const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
-            const evTitle = evDoc.exists() ? evDoc.data().title : 'Mock Exam';
+            const ev = await sync.doc('subscription_events/' + eventId);
+            const evTitle = ev ? ev.title : 'Mock Exam';
             
-            const mockDoc = await getDoc(doc(db, 'mock_exams', mockId));
-            const mockData = mockDoc.exists() ? mockDoc.data() : {};
-            const timeLimit = mockData.timeLimit || 45;
+            const mockData = await sync.doc('mock_exams/' + mockId);
+            const timeLimit = (mockData && mockData.timeLimit) || 45;
 
             // 3. Send notification + schedule item to each student
             for (const uid of uids) {
@@ -7856,20 +7801,17 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
 window.mcBroadcastEventResults = async function(eventId) {
     window.showEFModal("Broadcast Results", "This will calculate GPA, generate result sheets, and send them to all students who took the exams.", "BROADCAST NOW", async () => {
         try {
-            const { getDocs, query, collection, where, doc, updateDoc, getDoc, setDoc, deleteDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            
             // Mark event as broadcasted
+            const { doc, updateDoc, setDoc, deleteDoc, serverTimestamp, collection } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             await updateDoc(doc(db, 'subscription_events', eventId), { resultsReleased: true });
-            const evDoc = await getDoc(doc(db, 'subscription_events', eventId));
-            const evData = evDoc.exists() ? evDoc.data() : {};
+            const evData = await sync.doc('subscription_events/' + eventId) || {};
             const evTitle = evData.title || 'Mock Exam';
             
             // Normalize subjects with CUs
             const subjects = (evData.availableSubjects || []).map(s => mcNormalizeSubject(s));
             
             // Find all mocks linked to this event
-            const mocksSnap = await getDocs(query(collection(db, 'mock_exams'), where('eventId', '==', eventId)));
-            const mocks = mocksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const mocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
             
             // Group students by UID across all mocks
             const studentResults = {};
@@ -7879,10 +7821,9 @@ window.mcBroadcastEventResults = async function(eventId) {
                 const subjNorm = subjects.find(s => s.name === subject);
                 const creditUnit = subjNorm ? subjNorm.creditUnit : 1;
                 
-                const attemptsSnap = await getDocs(collection(db, 'mock_exams', mock.id, 'attempts'));
+                const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
                 
-                attemptsSnap.forEach(aDoc => {
-                    const attempt = aDoc.data();
+                attempts.forEach(attempt => {
                     const uid = attempt.uid;
                     
                     if (!studentResults[uid]) {
@@ -7962,10 +7903,8 @@ window.mcBroadcastEventResults = async function(eventId) {
                 
                 // Delete any existing result notifications for this event
                 try {
-                    const oldNotifs = await getDocs(
-                        query(collection(db, 'users', uid, 'notifications'), where('resultData.eventId', '==', eventId))
-                    );
-                    const delPromises = oldNotifs.docs.map(d => deleteDoc(d.ref));
+                    const oldNotifs = await sync.query('users/' + uid + '/notifications', [where('resultData.eventId', '==', eventId)]);
+                    const delPromises = oldNotifs.map(n => deleteDoc(doc(db, 'users', uid, 'notifications', n.id)));
                     await Promise.all(delPromises);
                 } catch (e) { /* ignore cleanup errors */ }
                 
@@ -8140,17 +8079,15 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
         return;
     }
     try {
-        const { getDoc, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const evRef = doc(db, 'subscription_events', eventId);
-        const evDoc = await getDoc(evRef);
-        if (!evDoc.exists()) throw new Error("Event not found");
-        const ev = evDoc.data();
+        const ev = await sync.doc('subscription_events/' + eventId);
+        if (!ev) throw new Error("Event not found");
         const subjects = (ev.availableSubjects || []).map(s => {
             const n = mcNormalizeSubject(s);
             if (n.name === subjectName) n.creditUnit = cu;
             return n;
         });
-        await updateDoc(evRef, { availableSubjects: subjects });
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        await updateDoc(doc(db, 'subscription_events', eventId), { availableSubjects: subjects });
         
         // Update the display in real-time
         const displayEl = document.getElementById(`cu-display-${subjectName.replace(/\s+/g,'-')}`);
