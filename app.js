@@ -4689,10 +4689,15 @@ window.adminPromptNotification = function(userId) {
         const trendLabel = trend.direction === 'up' ? `+${trend.delta}%` : trend.direction === 'down' ? `-${trend.delta}%` : '0%';
 
         workspace.innerHTML = `
+<style>
+@media (max-width: 600px) {
+    .dashboard-title { display: none; }
+}
+</style>
         <div class="page-header">
             <div class="page-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
                 <div>
-                    <div class="page-title" style="font-size: 1.75rem; font-weight: 800;">Dashboard</div>
+                    <div class="page-title dashboard-title" style="font-size: 1.75rem; font-weight: 800;">Dashboard</div>
                     <div class="page-sub" style="color: var(--text-muted);">Welcome back, ${firstName}</div>
                 </div>
                 <button class="btn btn-primary" onclick="efNavigate('library')" style="display: flex; align-items: center; gap: 8px;">
