@@ -3399,6 +3399,7 @@ window.mcOpenEditQuestionModal = async function(courseId, topicId, questionIndex
             const qs = [...((latest && latest.questions) || [])];
             qs[questionIndex] = { ...qs[questionIndex], question, options, correctIndex, explanation };
             await updateDoc(tRef, { questions: qs });
+            await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
             overlay.remove();
             mcRenderCoursesTab(courseId, topicId);
         } catch (e) { btn.disabled = false; btn.textContent = 'Save Changes'; alert('Error: ' + e.message); }
@@ -3744,7 +3745,9 @@ window.mcOpenBulkImportModal = function(courseId, topicId) {
                 id: Date.now() + Math.floor(Math.random() * 1e6)
             }));
 
+            const tRef = doc(db, 'unicourses', courseId, 'topics', topicId);
             await updateDoc(tRef, { questions: [...existing, ...stamped] });
+            await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
             overlay.remove();
             mcRenderCoursesTab(courseId, topicId);
             mcLoadStats();
@@ -4402,7 +4405,9 @@ window.mcDeleteAllQuestions = async function(courseId, topicId) {
                     "ERASE ALL QUESTIONS",
                     async () => {
                         try {
+                            const tRef = doc(db, 'unicourses', courseId, 'topics', topicId);
                             await updateDoc(tRef, { questions: [] });
+                            await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
                             window.mcRenderCoursesTab(courseId, topicId);
                             await mcLoadStats();
                             window.showEFModal("Success", `Wiped out all ${questions.length} questions successfully!`, "OKAY", null, true);
@@ -6937,6 +6942,7 @@ window.mcSaveSubEvent = async function() {
             allowedParticipants: [],
             createdAt: serverTimestamp()
         });
+        await sync.refresh('subscription_events');
         document.getElementById('ef-subevent-modal')?.remove();
         window.showEFModal("Event Created", "Subscription event created successfully.", "OK", null, true);
         window.mcLoadSubEvents();
@@ -6955,6 +6961,7 @@ window.mcDeleteSubEvent = function(eventId, title) {
             try {
                 const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                 await deleteDoc(doc(db, 'subscription_events', eventId));
+                await sync.refresh('subscription_events');
                 window.mcLoadSubEvents();
             } catch (e) {
                 console.error(e);
@@ -7075,6 +7082,7 @@ window.mcAddAllowedUser = async function(eventId, uid) {
         allowed.push(uid);
         const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: allowed });
+        await sync.refresh('subscription_events');
         document.getElementById('ap-search-results').innerHTML = '';
         document.getElementById('ap-search-input').value = '';
         window.mcLoadAllowedParticipants(eventId);
@@ -7091,6 +7099,7 @@ window.mcRemoveAllowedUser = async function(eventId, uid) {
         let allowed = (ev.allowedParticipants || []).filter(id => id !== uid);
         const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: allowed });
+        await sync.refresh('subscription_events');
         window.mcLoadAllowedParticipants(eventId);
     } catch(e) {
         console.error(e);
@@ -7102,6 +7111,7 @@ window.mcAllowAllStudents = async function(eventId) {
         try {
             const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: [] });
+            await sync.refresh('subscription_events');
             document.getElementById('ap-search-results').innerHTML = '';
             document.getElementById('ap-search-input').value = '';
             window.mcLoadAllowedParticipants(eventId);
@@ -7814,6 +7824,7 @@ window.mcBroadcastEventResults = async function(eventId) {
             // Mark event as broadcasted
             const { doc, updateDoc, setDoc, deleteDoc, serverTimestamp, collection } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             await updateDoc(doc(db, 'subscription_events', eventId), { resultsReleased: true });
+            await sync.refresh('subscription_events');
             const evData = await sync.doc('subscription_events/' + eventId) || {};
             const evTitle = evData.title || 'Mock Exam';
             
@@ -8098,6 +8109,7 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
         });
         const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         await updateDoc(doc(db, 'subscription_events', eventId), { availableSubjects: subjects });
+        await sync.refresh('subscription_events');
         
         // Update the display in real-time
         const displayEl = document.getElementById(`cu-display-${subjectName.replace(/\s+/g,'-')}`);
