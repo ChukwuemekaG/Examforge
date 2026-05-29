@@ -12,7 +12,12 @@ import {
 import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, arrayUnion, arrayRemove, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
 import { app as firebaseApp } from './firebase-config.js';
+import { LocalCache } from './cache.js';
+import { SyncManager } from './sync.js';
 
+// Global cache and sync instances
+let sync = null;
+let localCache = null;
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -386,10 +391,15 @@ function setupAdminListeners() {
 
             const userDocRef = doc(db, "users", user.uid);
             try {
-                const userSnap = await getDoc(userDocRef);
+                // Initialize sync manager for cache-first access
+                sync = new SyncManager(db);
+
                 const provider = user.providerData[0]?.providerId || 'password';
 
-                if (!userSnap.exists()) {
+                // Cache-first user document access
+                const userDataFromSync = await sync.doc('users/' + user.uid);
+
+                if (!userDataFromSync) {
                     const uniqueUsername = await generateUniqueUsername(user.email, user.displayName);
                     await setDoc(userDocRef, {
                         email: user.email.toLowerCase(),
@@ -402,28 +412,37 @@ function setupAdminListeners() {
                         createdAt: serverTimestamp(),
                         role: 'student'
                     });
+                    // Re-fetch after creation
+                    await sync.refresh('users/' + user.uid);
                 } else {
-                    const data = userSnap.data();
-                    if (!data.provider || !data.displayName) {
+                    if (!userDataFromSync.provider || !userDataFromSync.displayName) {
                         await updateDoc(userDocRef, {
                             provider: provider,
-                            displayName: user.displayName || data.displayName
+                            displayName: user.displayName || userDataFromSync.displayName
                         });
                     }
                 }
 
-                if (userListenerUnsubscribe) userListenerUnsubscribe();
-                userListenerUnsubscribe = onSnapshot(userDocRef, (doc) => {
-                    if (doc.exists()) {
-                        const data = doc.data();
+                // Remove old listener if any
+                if (userListenerUnsubscribe) { userListenerUnsubscribe(); userListenerUnsubscribe = null; }
+
+                // Subscribe to real-time user data updates via sync (replaces manual onSnapshot)
+                sync.subscribe('users/' + user.uid, (data) => {
+                    if (data) {
                         userData.stats = { ...userData.stats, ...data };
                         const masterBtn = document.getElementById('nav-master');
                         if (masterBtn) masterBtn.style.display = data.role === 'admin' ? 'flex' : 'none';
                     }
                 });
 
-                // Fetch user results from Firestore before rendering
-                try { await fetchResultsOnce(user.uid); } catch (e) { console.error("Failed to load results:", e); }
+                // Cache-first results access (0 reads if cached)
+                const resultsData = await sync.query('users/' + user.uid + '/results', [
+                    orderBy("timestamp", "desc"),
+                    limit(50)
+                ]);
+                if (resultsData && resultsData.length > 0) {
+                    userData.results = resultsData;
+                }
 
                 init();
                 // ─── Push Notification Setup ─────────────────────────
@@ -479,14 +498,6 @@ function setupAdminListeners() {
         }
     });
 
-    // Helper to get results (Results don't usually need real-time as much as stats)
-    async function fetchResultsOnce(uid) {
-        const resultsRef = collection(db, `users/${uid}/results`);
-        const resultsQ = query(resultsRef, orderBy("timestamp", "desc"), limit(50));
-        const resultsSnap = await getDocs(resultsQ);
-        userData.results = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    }
-
     function updateUIWithUserProfile(user) {
         let initials = "EF";
         if (user.displayName) {
@@ -496,30 +507,6 @@ function setupAdminListeners() {
                 : parts[0].substring(0, 2).toUpperCase();
         }
         if (profileBtn) profileBtn.textContent = initials;
-    }
-
-    async function fetchFirebaseData(uid) {
-        try {
-            const userDocRef = doc(db, "users", uid);
-            const userSnap = await getDoc(userDocRef);
-            if (userSnap.exists()) {
-                userData.stats = { ...userData.stats, ...userSnap.data() };
-            }
-
-            // Fetch last 50 results only
-            const resultsRef = collection(db, `users/${uid}/results`);
-            const resultsQ = query(resultsRef, orderBy("timestamp", "desc"), limit(50));
-            const resultsSnap = await getDocs(resultsQ);
-            userData.results = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            const scheduleRef = collection(db, `users/${uid}/schedule`);
-            const scheduleQ = query(scheduleRef, orderBy("timestamp", "asc"));
-            const scheduleSnap = await getDocs(scheduleQ);
-            userData.schedule = scheduleSnap.docs.map(d => d.data());
-
-        } catch (error) {
-            console.error("Error fetching user data:", error);
-        }
     }
 
     // ─── Analytics Engine ─────────────────────────────────────────
