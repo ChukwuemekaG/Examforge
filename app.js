@@ -2525,6 +2525,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         `;
 
         // ── Real-time attempts listener ──
+        const attemptsQuery = query(collection(db, 'daily_quizzes', dqid, 'attempts'), orderBy('timestamp', 'desc'));
         let attemptsListener = onSnapshot(attemptsQuery, (snap) => {
             const newAttempts = snap.docs.map(d => d.data());
             const newCount = newAttempts.length;
