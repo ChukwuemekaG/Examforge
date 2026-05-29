@@ -95,6 +95,18 @@ service cloud.firestore {
         allow read: if isSignedIn(); // students can read their own or others' if they want, but typically just theirs. Admins can read all.
         allow write: if isOwner(registrationId) || isAdmin(); 
       }
+
+      // Keys subcollection — 10-digit key system for subscription activation
+      match /keys/{keyId} {
+        allow read: if isSignedIn();          // Students can read a specific key to validate it
+        allow list: if isAdmin();             // Only admins can list all keys
+        allow create: if isAdmin();           // Only admins can generate new keys
+        allow update: if (isAdmin()) ||       // Admins can update any key
+          (resource.data.used == false &&      // Student can claim an unused key
+           request.resource.data.used == true &&
+           request.resource.data.usedBy == request.auth.uid);
+        allow delete: if isAdmin();           // Only admins can delete keys
+      }
     }
 
     // ─── 7. UNIVERSITY COURSES & LECTURES ─────────────────────────
