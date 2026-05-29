@@ -5013,14 +5013,45 @@ window.adminPromptNotification = function(userId) {
             const name = typeof s === 'string' ? s : (s.name || String(s));
             return `
             <label style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--bg-inset); border:2px solid var(--border); border-radius:8px; cursor:pointer;">
-                <input type="checkbox" class="reg-subject-cb" value="${name.replace(/\"/g, '&quot;')}" style="width:18px;height:18px;accent-color:var(--brand);">
+                <input type="checkbox" class="reg-subject-cb" value="${name.replace(/\"/g, '"')}" style="width:18px;height:18px;accent-color:var(--brand);">
                 <span>${name}</span>
             </label>
         `;
         }).join('');
 
+        // Step 1: Key entry UI (shown first)
         modal.innerHTML = `
-            <div class="card" style="width:min(440px, 90vw); display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
+            <div class="card" id="ef-reg-step1" style="width:min(440px, 90vw); display:flex; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card);">
+                    <div style="font-weight:900; font-size:1.1rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em;">Enter Registration Key</div>
+                    <button onclick="document.getElementById('ef-reg-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
+                        <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
+                    </button>
+                </div>
+                <div style="padding:20px; display:flex; flex-direction:column; gap:16px;">
+                    <div>
+                        <div style="font-weight:800; font-size:0.95rem; color:var(--text);">${title}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Please enter your unique 10-digit registration key to continue.</div>
+                    </div>
+                    <div>
+                        <label style="font-weight:700;font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:6px;">10-Digit Key</label>
+                        <input type="text" id="ef-reg-key-input" maxlength="10" placeholder="e.g. 1234567890"
+                            style="width:100%;padding:12px 14px;border:3px solid var(--text);border-radius:8px;background:var(--bg-inset);color:var(--text);font-size:1.2rem;font-weight:900;font-family:var(--font-mono);text-align:center;letter-spacing:0.15em;outline:none;box-sizing:border-box;"
+                            oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)">
+                        <div id="ef-reg-key-error" style="font-size:0.7rem;color:#dc2626;font-weight:700;margin-top:6px;display:none;"></div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card);">
+                    <button class="btn btn-primary" id="btn-validate-key" style="font-weight:900; border:3px solid var(--text);padding:10px 24px; width:100%;">VALIDATE KEY</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Step 2: Subject selection (shown after key validation)
+        // This is generated dynamically but stored for later use
+        const step2HTML = `
+            <div class="card" id="ef-reg-step2" style="width:min(440px, 90vw); display:none; flex-direction:column; overflow:hidden; border:4px solid var(--text);background:var(--bg-card); border-radius:16px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card);">
                     <div style="font-weight:900; font-size:1.1rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em;">Register</div>
                     <button onclick="document.getElementById('ef-reg-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
@@ -5041,7 +5072,64 @@ window.adminPromptNotification = function(userId) {
                 </div>
             </div>
         `;
-        document.body.appendChild(modal);
+
+        // Append step 2 HTML (hidden)
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = step2HTML;
+        modal.appendChild(tempDiv.firstElementChild);
+
+        // Variable to store the validated key
+        let validatedKey = null;
+
+        // Step 1: Validate Key
+        document.getElementById('btn-validate-key').onclick = async () => {
+            const input = document.getElementById('ef-reg-key-input');
+            const errorEl = document.getElementById('ef-reg-key-error');
+            const key = input.value.trim();
+
+            if (key.length !== 10) {
+                errorEl.textContent = 'Please enter a valid 10-digit key.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const btn = document.getElementById('btn-validate-key');
+            btn.disabled = true; btn.textContent = 'VALIDATING...';
+            errorEl.style.display = 'none';
+
+            try {
+                const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                const keyDoc = await getDoc(doc(db, 'subscription_events', eventId, 'keys', key));
+
+                if (!keyDoc.exists()) {
+                    errorEl.textContent = 'Invalid key. This key was not found.';
+                    errorEl.style.display = 'block';
+                    btn.disabled = false; btn.textContent = 'VALIDATE KEY';
+                    return;
+                }
+
+                const keyData = keyDoc.data();
+                if (keyData.used === true) {
+                    errorEl.textContent = 'This key has already been used. Please use a different key.';
+                    errorEl.style.display = 'block';
+                    btn.disabled = false; btn.textContent = 'VALIDATE KEY';
+                    return;
+                }
+
+                // Key is valid and unused!
+                validatedKey = key;
+
+                // Hide step 1, show step 2
+                document.getElementById('ef-reg-step1').style.display = 'none';
+                document.getElementById('ef-reg-step2').style.display = 'flex';
+
+            } catch (e) {
+                console.error(e);
+                errorEl.textContent = 'Error validating key: ' + e.message;
+                errorEl.style.display = 'block';
+                btn.disabled = false; btn.textContent = 'VALIDATE KEY';
+            }
+        };
 
         // Enforce max selections
         const cbs = modal.querySelectorAll('.reg-subject-cb');
@@ -5055,41 +5143,81 @@ window.adminPromptNotification = function(userId) {
             });
         });
 
+        // Submit registration with key claim
         document.getElementById('btn-submit-reg').onclick = async () => {
             const selected = Array.from(cbs).filter(c => c.checked).map(c => c.value);
             if (selected.length === 0) {
                 return window.showEFModal("Validation", "Please select at least one subject.", "OK", null, true);
             }
-            
+
+            if (!validatedKey) {
+                return window.showEFModal("Error", "Session expired. Please start again.", "OK", null, true);
+            }
+
             const btn = document.getElementById('btn-submit-reg');
             btn.disabled = true; btn.textContent = 'SAVING...';
-            
+
             try {
-                // Check if user is allowed to register
-                const evData = await sync.doc('subscription_events/' + eventId);
-                if (evData) {
-                    const allowed = evData.allowedParticipants || [];
-                    if (allowed.length > 0 && !allowed.includes(auth.currentUser.uid)) {
-                        btn.disabled = false; btn.textContent = 'CONFIRM REGISTRATION';
-                        return window.showEFModal("Access Denied", "You are not on the allowed participants list for this event. Contact your admin.", "OK", null, true);
-                    }
-                }
-                
+                const { runTransaction, doc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                 const uid = auth.currentUser.uid;
-                const { setDoc, doc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                await setDoc(doc(db, 'subscription_events', eventId, 'registrations', uid), {
-                    uid,
-                    subjects: selected,
-                    registeredAt: serverTimestamp()
+
+                // Use a transaction to atomically claim the key AND create registration
+                await runTransaction(db, async (transaction) => {
+                    const keyRef = doc(db, 'subscription_events', eventId, 'keys', validatedKey);
+                    const keySnap = await transaction.get(keyRef);
+
+                    if (!keySnap.exists()) {
+                        throw new Error("Key no longer exists.");
+                    }
+
+                    const keyData = keySnap.data();
+                    if (keyData.used === true) {
+                        throw new Error("This key has already been used by someone else.");
+                    }
+
+                    // Claim the key
+                    transaction.update(keyRef, {
+                        used: true,
+                        usedBy: uid,
+                        usedAt: serverTimestamp()
+                    });
+
+                    // Create registration
+                    const regRef = doc(db, 'subscription_events', eventId, 'registrations', uid);
+                    transaction.set(regRef, {
+                        uid,
+                        subjects: selected,
+                        registeredAt: serverTimestamp()
+                    });
                 });
-                
+
                 modal.remove();
                 window.showEFModal("Success", "Registration successful! You will be notified when your exams are ready.", "AWESOME", null, true);
-                renderSubscriptions();
+
+                // Re-render subscriptions page if it exists
+                if (typeof renderSubscriptions === 'function') {
+                    renderSubscriptions();
+                }
+
             } catch (e) {
                 console.error(e);
                 btn.disabled = false; btn.textContent = 'CONFIRM REGISTRATION';
-                window.showEFModal("Error", e.message, "OK", null, true);
+
+                let errorMsg = e.message;
+                if (errorMsg.includes("already been used")) {
+                    // Key was taken between validation and submission - go back to step 1
+                    validatedKey = null;
+                    document.getElementById('ef-reg-step2').style.display = 'none';
+                    document.getElementById('ef-reg-step1').style.display = 'flex';
+                    document.getElementById('ef-reg-key-input').value = '';
+                    const errorEl = document.getElementById('ef-reg-key-error');
+                    errorEl.textContent = errorMsg + ' Please try a different key.';
+                    errorEl.style.display = 'block';
+                    const validateBtn = document.getElementById('btn-validate-key');
+                    validateBtn.disabled = false; validateBtn.textContent = 'VALIDATE KEY';
+                } else {
+                    window.showEFModal("Error", errorMsg, "OK", null, true);
+                }
             }
         };
     };
@@ -6939,7 +7067,6 @@ window.mcSaveSubEvent = async function() {
             availableSubjects,
             maxSubjects: maxSubs,
             resultsReleased: false,
-            allowedParticipants: [],
             createdAt: serverTimestamp()
         });
         await sync.refresh('subscription_events');
@@ -6971,156 +7098,105 @@ window.mcDeleteSubEvent = function(eventId, title) {
     );
 };
 
-// ── Allowed Participants Functions ──
-
-window.mcLoadAllowedParticipants = async function(eventId) {
-    const list = document.getElementById('ap-current-list');
-    if (!list) return;
-    try {
-        const ev = await sync.doc('subscription_events/' + eventId);
-        if (!ev) return;
-        const allowed = ev.allowedParticipants || [];
-        
-        const badge = document.getElementById('ap-status-badge');
-        if (badge) {
-            badge.textContent = allowed.length === 0 ? '(All students allowed)' : `(${allowed.length} student${allowed.length !== 1 ? 's' : ''} allowed)`;
-        }
-        
-        if (allowed.length === 0) {
-            list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.78rem;border:2px dashed var(--border);border-radius:8px;">All students are allowed to participate. Use the search above to restrict access.</div>';
-            return;
-        }
-        
-        // Fetch user details for each allowed UID
-        const users = await Promise.all(allowed.map(async uid => {
-            try {
-                const uSnap = await sync.doc('users/' + uid);
-                if (uSnap) return { uid, ...uSnap };
-                return { uid, displayName: uid, email: '', username: '' };
-            } catch(e) { return { uid, displayName: uid, email: '', username: '' }; }
-        }));
-        
-        const name = u => u.displayName || u.email?.split('@')[0] || u.uid;
-        
-        list.innerHTML = users.map(u => `
-            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-card);border:2px solid var(--border);border-radius:8px;">
-                <div style="width:32px;height:32px;border-radius:6px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.6rem;border:1.5px solid var(--text);flex-shrink:0;">
-                    ${name(u).split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}
-                </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-weight:700;font-size:0.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name(u)}</div>
-                    <div style="font-size:0.65rem;color:var(--text-muted);">${u.username || ''}${u.email ? ' \u00b7 ' + u.email : ''}</div>
-                </div>
-                <button class="btn btn-danger btn-sm" onclick="window.mcRemoveAllowedUser('${eventId}','${u.uid}')" style="font-size:0.65rem;padding:4px 10px;border:2px solid var(--text);display:flex;align-items:center;gap:4px;">
-                    <span class="material-icons-round" style="font-size:0.8rem;">remove</span> REMOVE
-                </button>
-            </div>
-        `).join('');
-    } catch(e) {
-        console.error(e);
+window.mcGenerateSubEventKeys = async function(eventId) {
+    const count = prompt('How many keys would you like to generate?', '10');
+    if (!count) return;
+    const numKeys = parseInt(count, 10);
+    if (isNaN(numKeys) || numKeys < 1 || numKeys > 1000) {
+        return window.showEFModal("Invalid Input", "Please enter a number between 1 and 1000.", "OK", null, true);
     }
-};
-
-window.mcSearchAllowedUser = async function(eventId) {
-    const query_str = document.getElementById('ap-search-input')?.value.trim().toLowerCase();
-    if (!query_str) return;
     
-    const resultsDiv = document.getElementById('ap-search-results');
-    if (!resultsDiv) return;
-    
-    resultsDiv.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:0.8rem;"><span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.2rem;vertical-align:middle;margin-right:6px;">autorenew</span> Searching...</div>';
+    if (!window.confirm(`Generate ${numKeys} unique 10-digit key(s) for this event?`)) return;
     
     try {
+        const { collection, doc, setDoc, writeBatch, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         
-        // Search by username or email
-        const [usernameResults, emailResults] = await Promise.all([
-            sync.query('users', [where('username', '==', query_str)]),
-            sync.query('users', [where('email', '==', query_str)])
-        ]);
+        // Check existing keys count to estimate if we need many more
+        const existingSnapshot = await sync.collection('subscription_events/' + eventId + '/keys');
+        const existingCount = existingSnapshot.length;
         
-        const foundUsers = [];
-        usernameResults.forEach(u => { if (!foundUsers.find(f => f.uid === u.id)) foundUsers.push({ uid: u.id, ...u }); });
-        emailResults.forEach(u => { if (!foundUsers.find(f => f.uid === u.id)) foundUsers.push({ uid: u.id, ...u }); });
+        // Generate unique keys
+        const keysRef = collection(db, 'subscription_events', eventId, 'keys');
+        const batch = writeBatch(db);
+        let generated = 0;
+        let attempts = 0;
+        const maxAttempts = numKeys * 10; // Avoid infinite loops
         
-        if (foundUsers.length === 0) {
-            resultsDiv.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.78rem;border:2px dashed var(--border);border-radius:8px;">No user found with that username or email.</div>';
-            return;
+        // Collect existing keys for uniqueness check
+        const existingKeys = new Set(existingSnapshot.map(d => d.id));
+        
+        while (generated < numKeys && attempts < maxAttempts) {
+            attempts++;
+            // Generate random 10-digit string, padded with leading zeros
+            const key = String(Math.floor(Math.random() * 10000000000)).padStart(10, '0');
+            
+            if (!existingKeys.has(key)) {
+                existingKeys.add(key);
+                const keyRef = doc(keysRef, key);
+                batch.set(keyRef, {
+                    key: key,
+                    used: false,
+                    usedBy: null,
+                    usedAt: null,
+                    createdAt: serverTimestamp()
+                });
+                generated++;
+            }
         }
         
-        const name = u => u.displayName || u.email?.split('@')[0] || u.uid;
+        await batch.commit();
+        await sync.refresh('subscription_events/' + eventId + '/keys');
         
-        resultsDiv.innerHTML = foundUsers.map(u => {
-            const initials = name(u).split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-            return `
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-card);border:2px solid var(--border);border-radius:8px;margin-bottom:6px;">
-                <div style="width:36px;height:36px;border-radius:6px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.65rem;border:1.5px solid var(--text);flex-shrink:0;">${initials}</div>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-weight:700;font-size:0.85rem;color:var(--text);">${name(u)}</div>
-                    <div style="font-size:0.68rem;color:var(--text-muted);">@${u.username || '\u2014'} \u00b7 ${u.email || ''}</div>
-                </div>
-                <button class="btn btn-primary btn-sm" onclick="window.mcAddAllowedUser('${eventId}','${u.uid}')" style="font-size:0.65rem;padding:4px 12px;border:2px solid var(--text);display:flex;align-items:center;gap:4px;">
-                    <span class="material-icons-round" style="font-size:0.8rem;">add</span> ALLOW
-                </button>
-            </div>`;
-        }).join('');
+        window.showEFModal("Keys Generated", `Successfully generated ${generated} key(s) for this event.`, "AWESOME", null, true);
         
-    } catch(e) {
-        console.error(e);
-        resultsDiv.innerHTML = `<div style="text-align:center;padding:12px;color:var(--brand);font-size:0.78rem;">Error: ${e.message}</div>`;
-    }
-};
-
-window.mcAddAllowedUser = async function(eventId, uid) {
-    try {
-        const ev = await sync.doc('subscription_events/' + eventId);
-        if (!ev) throw new Error("Event not found");
-        let allowed = ev.allowedParticipants || [];
-        if (allowed.includes(uid)) {
-            window.showEFModal("Already Added", "This user is already in the allowed list.", "OK", null, true);
-            return;
+        // Refresh the event details view
+        const overlay = document.getElementById('ef-se-details-overlay');
+        if (overlay) {
+            overlay.remove();
+            window.mcViewSubEventDetails(eventId);
         }
-        allowed.push(uid);
-        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: allowed });
-        await sync.refresh('subscription_events');
-        document.getElementById('ap-search-results').innerHTML = '';
-        document.getElementById('ap-search-input').value = '';
-        window.mcLoadAllowedParticipants(eventId);
-    } catch(e) {
+    } catch (e) {
         console.error(e);
         window.showEFModal("Error", e.message, "OK", null, true);
     }
 };
 
-window.mcRemoveAllowedUser = async function(eventId, uid) {
+window.mcCopyKeysToClipboard = async function(eventId) {
     try {
-        const ev = await sync.doc('subscription_events/' + eventId);
-        if (!ev) throw new Error("Event not found");
-        let allowed = (ev.allowedParticipants || []).filter(id => id !== uid);
-        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: allowed });
-        await sync.refresh('subscription_events');
-        window.mcLoadAllowedParticipants(eventId);
-    } catch(e) {
+        const keys = await sync.collection('subscription_events/' + eventId + '/keys');
+        const keyList = keys.map(k => k.id).join('\n');
+        await navigator.clipboard.writeText(keyList);
+        window.showEFModal("Copied", `${keys.length} key(s) copied to clipboard.`, "OK", null, true);
+    } catch (e) {
         console.error(e);
+        window.showEFModal("Error", "Failed to copy keys: " + e.message, "OK", null, true);
     }
 };
 
-window.mcAllowAllStudents = async function(eventId) {
-    window.showEFModal("Allow All Students", "This will clear the allowed participants list and let all students register.", "ALLOW ALL", async () => {
-        try {
-            const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            await updateDoc(doc(db, 'subscription_events', eventId), { allowedParticipants: [] });
-            await sync.refresh('subscription_events');
-            document.getElementById('ap-search-results').innerHTML = '';
-            document.getElementById('ap-search-input').value = '';
-            window.mcLoadAllowedParticipants(eventId);
-        } catch(e) {
-            console.error(e);
-            window.showEFModal("Error", e.message, "OK", null, true);
-        }
-    });
+window.mcExportKeysCSV = async function(eventId) {
+    try {
+        const keys = await sync.collection('subscription_events/' + eventId + '/keys');
+        const rows = [['Key', 'Status', 'Used By', 'Used At']];
+        keys.forEach(k => {
+            const status = k.used ? 'Used' : 'Available';
+            const usedBy = k.usedBy || '';
+            const usedAt = k.usedAt?.toDate ? k.usedAt.toDate().toISOString() : '';
+            rows.push([k.id, status, usedBy, usedAt]);
+        });
+        const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `subscription-keys-${eventId}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error(e);
+        window.showEFModal("Error", "Failed to export keys: " + e.message, "OK", null, true);
+    }
 };
+
 
 window.mcBroadcastEventMocks = function(eventId, title) {
     window.showEFModal(
@@ -7314,24 +7390,27 @@ window.mcViewSubEventDetails = async function(eventId) {
                 ${subjectHTML}
             </div>
 
-            <!-- Allowed Participants -->
+            <!-- Registration Keys -->
             <div>
                 <h3 style="font-weight:900;font-size:1.05rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;margin-top:24px;border-top:3px solid var(--text);padding-top:20px;">
-                    Allowed Participants
-                    <span id="ap-status-badge" style="font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-left:8px;"></span>
+                    Registration Keys
+                    <span id="keys-status-badge" style="font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-left:8px;"></span>
                 </h3>
                 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                    <input type="text" id="ap-search-input" placeholder="Search by username or email..." 
-                        style="flex:1;min-width:200px;padding:8px 12px;border:2px solid var(--border);border-radius:8px;background:var(--bg-inset);color:var(--text);font-size:0.78rem;font-weight:600;outline:none;font-family:inherit;"
-                        onkeydown="if(event.key==='Enter')window.mcSearchAllowedUser('${eventId}')">
-                    <button class="btn btn-outline btn-sm" onclick="window.mcSearchAllowedUser('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;border:2px solid var(--text);">SEARCH</button>
-                    <button class="btn btn-primary btn-sm" onclick="window.mcAllowAllStudents('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;background:#16a34a;border:2px solid var(--text);">ALLOW ALL STUDENTS</button>
+                    <button class="btn btn-primary btn-sm" onclick="window.mcGenerateSubEventKeys('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;background:#7c3aed;border:2px solid var(--text);display:flex;align-items:center;gap:4px;">
+                        <span class="material-icons-round" style="font-size:0.85rem;">vpn_key</span> GENERATE KEYS
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="window.mcCopyKeysToClipboard('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;border:2px solid var(--text);">
+                        COPY ALL
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="window.mcExportKeysCSV('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;border:2px solid var(--text);">
+                        EXPORT CSV
+                    </button>
                 </div>
-                <div id="ap-search-results" style="margin-bottom:8px;"></div>
-                <div id="ap-current-list" style="display:flex;flex-direction:column;gap:6px;">
+                <div id="mc-keys-list" style="display:flex;flex-direction:column;gap:4px;">
                     <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:0.8rem;">
                         <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.2rem;vertical-align:middle;margin-right:6px;">autorenew</span>
-                        Loading participants...
+                        Loading keys...
                     </div>
                 </div>
             </div>
@@ -7356,11 +7435,76 @@ window.mcViewSubEventDetails = async function(eventId) {
         
         // Fetch and render student details table
         window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
-        window.mcLoadAllowedParticipants(eventId);
+        window.mcRenderEventKeysTable(eventId);
         
     } catch (e) {
         console.error(e);
         document.getElementById('ef-se-det-body').innerHTML = `<div style="text-align:center;padding:32px;color:var(--brand);font-weight:900;">Error: ${e.message}</div>`;
+    }
+};
+
+window.mcRenderEventKeysTable = async function(eventId) {
+    const container = document.getElementById('mc-keys-list');
+    const badge = document.getElementById('keys-status-badge');
+    if (!container) return;
+    
+    try {
+        const keys = await sync.collection('subscription_events/' + eventId + '/keys');
+        const total = keys.length;
+        const used = keys.filter(k => k.used).length;
+        const available = total - used;
+        
+        if (badge) {
+            badge.textContent = `${available} available / ${used} used / ${total} total`;
+        }
+        
+        if (total === 0) {
+            container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:0.8rem;border:2px dashed var(--border);border-radius:8px;">
+                <div style="font-weight:700;margin-bottom:4px;">No keys generated yet</div>
+                <div style="font-size:0.7rem;">Click "Generate Keys" to create 10-digit registration keys.</div>
+            </div>`;
+            return;
+        }
+        
+        // Sort: available first, then used
+        const sorted = [...keys].sort((a, b) => {
+            if (a.used && !b.used) return 1;
+            if (!a.used && b.used) return -1;
+            return 0;
+        });
+        
+        container.innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr;gap:4px;max-height:400px;overflow-y:auto;border:2px solid var(--text);border-radius:8px;">
+                <div style="display:grid;grid-template-columns:2fr 1fr 1.5fr 1.5fr;gap:0;background:var(--bg-inset);padding:8px 12px;font-size:0.6rem;font-weight:900;text-transform:uppercase;color:var(--text-muted);border-bottom:2px solid var(--text);position:sticky;top:0;background:var(--bg-card);">
+                    <span>Key</span>
+                    <span style="text-align:center;">Status</span>
+                    <span style="text-align:center;">Used By</span>
+                    <span style="text-align:center;">Used At</span>
+                </div>
+                ${sorted.map(k => {
+                    const statusColor = k.used ? '#dc2626' : '#16a34a';
+                    const statusText = k.used ? 'USED' : 'AVAILABLE';
+                    const usedBy = k.usedBy ? k.usedBy.substring(0, 8) + '...' : '\u2014';
+                    const usedAt = k.usedAt?.toDate ? k.usedAt.toDate().toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : '\u2014';
+                    return `
+                        <div style="display:grid;grid-template-columns:2fr 1fr 1.5fr 1.5fr;gap:0;padding:6px 12px;font-size:0.7rem;font-weight:600;border-bottom:1px solid var(--border);align-items:center;font-family:var(--font-mono);">
+                            <span style="font-weight:800;color:var(--text);letter-spacing:0.1em;">${k.id}</span>
+                            <span style="text-align:center;color:${statusColor};font-weight:800;font-size:0.6rem;">${statusText}</span>
+                            <span style="text-align:center;color:var(--text-muted);font-size:0.65rem;overflow:hidden;text-overflow:ellipsis;">${usedBy}</span>
+                            <span style="text-align:center;color:var(--text-muted);font-size:0.65rem;">${usedAt}</span>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg-inset);border:2px solid var(--text);border-top:0;border-radius:0 0 8px 8px;font-size:0.6rem;font-weight:700;color:var(--text-muted);">
+                <span><span style="color:#16a34a;">\u25cf</span> ${available} available</span>
+                <span><span style="color:#dc2626;">\u25cf</span> ${used} used</span>
+                <span>${total} total</span>
+            </div>
+        `;
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--brand);font-size:0.8rem;">Error loading keys: ${e.message}</div>`;
     }
 };
 
