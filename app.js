@@ -1402,13 +1402,6 @@ async function mcRenderDailyQuizTab() {
                 </div>
             </div>
 
-            <!-- Broadcast History section -->
-            <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:14px;">
-                <h2 style="font-weight:700;font-size:0.85rem;text-transform:uppercase;color:var(--text);margin:0 0 8px 0;">Recent Subscriber Broadcasts</h2>
-                <div id="mc-dq-history">
-                    <div style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:16px;">Loading history…</div>
-                </div>
-            </div>
         </div>
     `;
 
@@ -1417,9 +1410,6 @@ async function mcRenderDailyQuizTab() {
 
     // Load quizzes into grid
     mcLoadDailyQuizzes();
-
-    // Load broadcast history
-    mcLoadDQHistory();
 }
 
 async function mcLoadDailyQuizzes() {
@@ -1496,31 +1486,6 @@ async function mcLoadDailyQuizSubCount() {
         el.style.color = '#16a34a';
     } catch (e) {
         el.textContent = 'Could not count subscribers';
-    }
-}
-
-async function mcLoadDQHistory() {
-    const container = document.getElementById('mc-dq-history');
-    if (!container) return;
-        try {
-            const broadcasts = await sync.query('daily_quiz_broadcasts', [orderBy('timestamp', 'desc'), limit(10)]);
-            if (!broadcasts.length) {
-                container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:24px;">No broadcasts yet.</div>';
-                return;
-            }
-            container.innerHTML = broadcasts.map(b => {
-            const ts = b.timestamp?.toDate ? b.timestamp.toDate().toLocaleString() : 'Unknown';
-            return `
-            <div style="display:flex;align-items:center;gap:14px;padding:10px 14px;background:var(--bg-card);border:2px solid var(--text);border-radius:8px;margin-bottom:8px;">
-                <span class="material-icons-round" style="color:#2563eb;flex-shrink:0;">today</span>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-weight:800;font-size:0.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.title}</div>
-                    <div style="font-size:0.68rem;color:var(--text-muted);word-break:break-word;">Sent ${ts} · ${b.recipientCount} recipients · Due today at 23:59</div>
-                </div>
-            </div>`;
-        }).join('');
-    } catch (e) {
-        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:24px;">Could not load history.</div>';
     }
 }
 
@@ -7423,9 +7388,12 @@ window.mcViewSubEventDetails = async function(eventId) {
         }).join('');
 
         const broadcastBtn = `
-            <div style="display:flex;gap:8px;width:100%;">
-                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:10px;text-align:center;background:#7c3aed;">
+            <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:10px;text-align:center;background:#7c3aed;min-width:160px;">
                     ${ev.resultsReleased ? 'RE-BROADCAST RESULTS' : 'BROADCAST ALL RESULTS'}
+                </button>
+                <button class="btn btn-outline" onclick="window.mcPrintAllEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:10px;text-align:center;min-width:160px;display:flex;align-items:center;justify-content:center;gap:4px;">
+                    <span class="material-icons-round" style="font-size:1rem;">print</span> PRINT ALL RESULTS
                 </button>
                 ${ev.resultsReleased ? `<span style="font-size:0.65rem;color:var(--text-muted);font-weight:700;display:flex;align-items:center;gap:4px;"><span class="material-icons-round" style="font-size:0.85rem;">info</span> Already broadcasted</span>` : ''}
             </div>`;
@@ -7956,6 +7924,163 @@ window.mcExportRegTablePDF = async function(eventId) {
     }
 };
 
+window.mcPrintAllEventResults = async function(eventId) {
+    try {
+        const evData = await sync.doc('subscription_events/' + eventId) || {};
+        const evTitle = evData.title || 'Mock Exam';
+        
+        // Normalize subjects with CUs
+        const subjects = (evData.availableSubjects || []).map(s => mcNormalizeSubject(s));
+        
+        // Find all mocks linked to this event
+        const mocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
+        
+        // Group students by UID across all mocks
+        const studentResults = {};
+        
+        for (const mock of mocks) {
+            const subject = mock.subject;
+            const subjNorm = subjects.find(s => s.name === subject);
+            const creditUnit = subjNorm ? subjNorm.creditUnit : 1;
+            
+            const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
+            
+            attempts.forEach(attempt => {
+                const uid = attempt.uid;
+                if (!studentResults[uid]) {
+                    studentResults[uid] = {
+                        uid,
+                        displayName: attempt.displayName || 'Unknown',
+                        email: attempt.email || '',
+                        subjects: []
+                    };
+                }
+                studentResults[uid].subjects.push({
+                    name: subject,
+                    creditUnit,
+                    score: attempt.score || 0,
+                    correct: attempt.correct || 0,
+                    total: attempt.totalQuestions || 0,
+                    grade: mcGradeFromScore(attempt.score || 0)
+                });
+            });
+        }
+        
+        // Fill in unattempted subjects
+        for (const [uid, data] of Object.entries(studentResults)) {
+            const attemptedSubjects = new Set(data.subjects.map(s => s.name));
+            for (const subj of subjects) {
+                if (!attemptedSubjects.has(subj.name)) {
+                    data.subjects.push({
+                        name: subj.name,
+                        creditUnit: subj.creditUnit,
+                        score: null,
+                        correct: 0,
+                        total: 0,
+                        grade: null
+                    });
+                }
+            }
+        }
+        
+        if (Object.keys(studentResults).length === 0) {
+            return window.showEFModal("No Data", "No student attempts found.", "OK", null, true);
+        }
+        
+        // Build all result sheets HTML
+        const allSheets = Object.entries(studentResults).map(([uid, data], idx) => {
+            let totalPoints = 0, totalCU = 0;
+            data.subjects.forEach(s => {
+                totalPoints += (s.grade && s.grade.points ? s.grade.points : 0) * s.creditUnit;
+                totalCU += s.creditUnit;
+            });
+            const gpa = totalCU > 0 ? Math.round((totalPoints / totalCU) * 100) / 100 : 0;
+            const gpaComment = mcGPAComment(gpa);
+            const resultHTML = buildResultSheetHTML(evTitle, data, gpa, gpaComment);
+            return resultHTML;
+        }).join('<div style="page-break-after:always;margin:0;padding:0;height:0;"></div>');
+        
+        // Build complete printable document
+        const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const printHTML = `<!DOCTYPE html>
+<html>
+<head><title>${evTitle} - All Results</title>
+<style>
+    @page { margin: 15mm 10mm; size: A4 portrait; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; color: #222; background: #fff; }
+    * { box-sizing: border-box; }
+    
+    .top-bar { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #1a1a2e; }
+    .top-bar img { max-width: 120px; max-height: 60px; object-fit: contain; }
+    .top-bar h1 { font-size: 28px; font-weight: 900; margin: 0; color: #1a1a2e; text-transform: uppercase; letter-spacing: -0.5px; }
+    .top-bar h1 span { color: #7c3aed; }
+    .top-bar .sub { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
+    
+    .event-banner { background: #1a1a2e; color: #fff; padding: 14px 20px; font-size: 18px; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; border-radius: 4px; }
+    
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .info-card { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 6px; padding: 12px 16px; }
+    .info-card .label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .info-card .value { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+    
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th { background: #1a1a2e; color: #fff; font-size: 10px; font-weight: 700; padding: 8px 10px; border: 1px solid #333; text-align: center; text-transform: uppercase; letter-spacing: 0.3px; }
+    th:first-child { text-align: left; }
+    td { padding: 7px 10px; border: 1px solid #dee2e6; font-size: 11px; text-align: center; }
+    td:first-child { text-align: left; font-weight: 600; }
+    tr:nth-child(even) { background: #f8f9fa; }
+    
+    .grade-A { color: #16a34a; font-weight: 800; }
+    .grade-B { color: #2563eb; font-weight: 800; }
+    .grade-C { color: #ca8a04; font-weight: 800; }
+    .grade-D { color: #d97706; font-weight: 800; }
+    .grade-E, .grade-F { color: #dc2626; font-weight: 800; }
+    .na-subject { color: #999; font-style: italic; }
+    
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .summary-card { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 6px; padding: 14px; text-align: center; }
+    .summary-card .s-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; letter-spacing: 0.5px; }
+    .summary-card .s-value { font-size: 24px; font-weight: 900; color: #1a1a2e; margin-top: 4px; }
+    .gpa-card .s-value { color: #7c3aed; }
+    
+    .comment-box { background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
+    .comment-box .c-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #92400e; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .comment-box .c-text { font-size: 13px; font-weight: 600; color: #78350f; }
+    
+    .grade-ref { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; font-size: 10px; font-weight: 600; color: #666; }
+    .grade-ref-item { background: #f3f4f6; padding: 4px 10px; border-radius: 4px; }
+    
+    .signature-row { display: flex; justify-content: space-between; margin-bottom: 16px; }
+    .signature-box { text-align: center; font-size: 10px; font-weight: 600; color: #666; }
+    .signature-box .line { width: 180px; height: 1px; border-top: 2px solid #333; margin-bottom: 6px; }
+    
+    .footer { text-align: center; font-size: 10px; color: #999; border-top: 2px solid #dee2e6; padding-top: 12px; margin-top: 16px; }
+    
+    .master-header { text-align: center; font-size: 14px; font-weight: 700; color: #666; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1px; padding: 8px; border-bottom: 2px solid #dee2e6; }
+</style>
+</head>
+<body>
+    <div class="master-header">${evTitle} — Complete Results for All Students</div>
+    ${allSheets}
+    <div class="footer">Generated by ExamForge on ${dateStr} &middot; Official Academic Record</div>
+    <script>window.print();<\/script>
+</body>
+</html>`;
+        
+        const printWindow = window.open('', '_blank', 'width=1200,height=800');
+        if (printWindow) {
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+        } else {
+            window.showEFModal("Pop-up Blocked", "Please allow pop-ups to print results.", "OK", null, true);
+        }
+        
+    } catch (e) {
+        console.error(e);
+        window.showEFModal("Error", e.message, "OK", null, true);
+    }
+};
+
 window.mcRenderSubEventsTab = window.mcRenderSubEventsTab;
 window.mcLoadSubEvents = window.mcLoadSubEvents;
 window.mcOpenCreateSubEventModal = window.mcOpenCreateSubEventModal;
@@ -8381,13 +8506,6 @@ window.mcBroadcastEventResults = async function(eventId) {
                     isMock: true,
                     releasedAt: serverTimestamp()
                 });
-                
-                // Delete any existing result notifications for this event
-                try {
-                    const oldNotifs = await sync.query('users/' + uid + '/notifications', [where('resultData.eventId', '==', eventId)]);
-                    const delPromises = oldNotifs.map(n => deleteDoc(doc(db, 'users', uid, 'notifications', n.id)));
-                    await Promise.all(delPromises);
-                } catch (e) { /* ignore cleanup errors */ }
                 
                 // Send new notification with result sheet (no spoilers)
                 const notifRef = doc(collection(db, 'users', uid, 'notifications'));
