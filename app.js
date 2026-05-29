@@ -480,51 +480,20 @@ function setupAdminListeners() {
                     })();
                 }
 
-                // ─── Offline overlay: full screen when user has no connection ───
-                if (!document.getElementById('ef-offline-overlay')) {
-                    const offOverlay = document.createElement('div');
-                    offOverlay.id = 'ef-offline-overlay';
-                    offOverlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:99999;padding:24px;gap:16px;';
-                    offOverlay.innerHTML = `
-                        <div style="width:80px;height:80px;border-radius:50%;background:rgba(220,38,38,0.1);display:flex;align-items:center;justify-content:center;">
-                            <span class="material-icons-round" style="font-size:2.4rem;color:#dc2626;">wifi_off</span>
-                        </div>
-                        <div style="font-size:1.4rem;font-weight:900;color:var(--text);text-align:center;">No Internet Connection</div>
-                        <div style="font-size:0.85rem;color:var(--text-muted);text-align:center;max-width:360px;line-height:1.5;">It looks like you\'re offline. Please check your internet connection and try again.</div>
-                        <button class="btn btn-primary" id="ef-retry-connection" style="margin-top:8px;font-weight:900;border:3px solid var(--text);padding:12px 32px;">
-                            <span class="material-icons-round" style="font-size:1.1rem;">refresh</span> RETRY
-                        </button>
-                        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:8px;">Your progress is saved locally and will sync automatically.</div>
-                    `;
-                    document.body.appendChild(offOverlay);
+                // ─── Offline banner (non-intrusive, no scroll interference) ───
+                if (!document.getElementById('ef-offline-banner')) {
+                    const banner = document.createElement('div');
+                    banner.id = 'ef-offline-banner';
+                    banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#dc2626;color:#fff;display:none;align-items:center;justify-content:center;gap:8px;padding:8px 16px;font-size:0.75rem;font-weight:700;z-index:9999;text-align:center;';
+                    banner.innerHTML = '<span class="material-icons-round" style="font-size:1rem;">wifi_off</span> You are offline — some features may be limited';
+                    document.body.appendChild(banner);
 
-                    const toggleOffline = (isOffline) => {
-                        offOverlay.style.display = isOffline ? 'flex' : 'none';
-                        document.body.style.overflow = isOffline ? 'hidden' : '';
-                    };
+                    const showBanner = (show) => { banner.style.display = show ? 'flex' : 'none'; };
 
-                    // Initial check after a short delay to let auth finish
-                    setTimeout(() => {
-                        if (!navigator.onLine) toggleOffline(true);
-                    }, 1000);
+                    setTimeout(() => { if (!navigator.onLine) showBanner(true); }, 3000);
 
-                    window.addEventListener('offline', () => toggleOffline(true));
-                    window.addEventListener('online', () => toggleOffline(false));
-
-                    document.getElementById('ef-retry-connection')?.addEventListener('click', () => {
-                        if (navigator.onLine) {
-                            toggleOffline(false);
-                        } else {
-                            const btn = document.getElementById('ef-retry-connection');
-                            if (btn) { btn.disabled = true; btn.textContent = 'CHECKING...'; }
-                            setTimeout(() => {
-                                if (navigator.onLine) {
-                                    toggleOffline(false);
-                                }
-                                if (btn) { btn.disabled = false; btn.textContent = 'RETRY'; }
-                            }, 2000);
-                        }
-                    });
+                    window.addEventListener('offline', () => showBanner(true));
+                    window.addEventListener('online', () => showBanner(false));
                 }
 
                 init();
