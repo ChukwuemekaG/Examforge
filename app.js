@@ -1688,12 +1688,34 @@ window.mcViewDailyAdviceDetails = async function(id) {
 window.mcDeleteDailyAdvice = function(id, title) {
     window.showEFModal(
         "Delete Daily Advice?",
-        `Are you absolutely sure you want to delete the daily advice "${title}"? This will permanently wipe it from the dashboard database.`,
+        `Are you absolutely sure you want to delete the daily advice "${title}"? This will permanently delete it from the dashboard database AND remove it from ALL students' inboxes.`,
         "YES, PURGE IT",
         async () => {
             try {
+                // Step 1: Delete the advice document
                 await deleteDoc(doc(db, 'daily_advices', id));
-                window.showEFModal("Purged Successfully", `The advice "${title}" has been deleted.`, "OKAY", null, true);
+                
+                // Step 2: Delete all user notification copies using collection group query
+                try {
+                    const { collectionGroup, getDocs, writeBatch, query, where } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                    const q = query(collectionGroup(db, 'notifications'), where('adviceId', '==', id));
+                    const snap = await getDocs(q);
+                    
+                    if (snap.size > 0) {
+                        const docs = snap.docs;
+                        const CHUNK = 250;
+                        for (let i = 0; i < docs.length; i += CHUNK) {
+                            const batch = writeBatch(db);
+                            docs.slice(i, i + CHUNK).forEach(d => batch.delete(d.ref));
+                            await batch.commit();
+                        }
+                    }
+                } catch (cleanupErr) {
+                    // Log but don't block success — the advice doc is already deleted
+                    console.warn("Notification cleanup incomplete:", cleanupErr);
+                }
+                
+                window.showEFModal("Purged Successfully", `The advice "${title}" has been deleted and removed from all students' inboxes.`, "OKAY", null, true);
                 mcLoadDailyAdvices();
             } catch(e) {
                 window.showEFModal("Delete Failed", e.message, "OK", null, true);
@@ -1857,6 +1879,7 @@ window.mcPublishDailyAdvice = async function() {
         const CHUNK = 250;
         const notifPayload = {
             type: 'advice',
+            adviceId: advId,
             title,
             message: content,
             timestamp: new Date()
