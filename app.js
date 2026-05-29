@@ -390,6 +390,18 @@ function setupAdminListeners() {
                 // Cache-first user document access
                 const userDataFromSync = await sync.doc('users/' + user.uid);
 
+                // Immediately populate userData if user doc exists
+                if (userDataFromSync) {
+                    userData.stats = {
+                        exaRating: userDataFromSync.exaRating ?? 800,
+                        streak: userDataFromSync.streak ?? 0,
+                        highestStreak: userDataFromSync.highestStreak ?? 0,
+                        lastExamDate: userDataFromSync.lastExamDate || null,
+                        role: userDataFromSync.role || 'student'
+                    };
+                    userData.recentResults = userDataFromSync.recentResults || [];
+                }
+
                 if (!userDataFromSync) {
                     const uniqueUsername = await generateUniqueUsername(user.email, user.displayName);
                     await setDoc(userDocRef, {
@@ -404,6 +416,23 @@ function setupAdminListeners() {
                         role: 'student'
                     });
                 }
+
+                // Subscribe to real-time user data changes
+                sync.subscribe('users/' + user.uid, (data) => {
+                    if (data) {
+                        userData.stats = {
+                            ...userData.stats,
+                            exaRating: data.exaRating ?? 800,
+                            streak: data.streak ?? 0,
+                            highestStreak: data.highestStreak ?? 0,
+                            lastExamDate: data.lastExamDate || null,
+                            role: data.role || 'student'
+                        };
+                        userData.recentResults = data.recentResults || [];
+                        // Refresh UI if on dashboard
+                        if (typeof updateDashboardUI === 'function') updateDashboardUI();
+                    }
+                });
 
                 init();
                 // ─── Push Notification Setup ─────────────────────────
@@ -4554,9 +4583,16 @@ window.adminPromptNotification = function(userId) {
         try {
             const freshData = await sync.doc('users/' + auth.currentUser.uid);
             if (freshData) {
-                if (freshData.stats) {
-                    userData.stats = { ...userData.stats, ...freshData.stats };
-                }
+                // Map flat Firestore doc to userData structure
+                userData.stats = {
+                    ...userData.stats,
+                    exaRating: freshData.exaRating ?? 800,
+                    streak: freshData.streak ?? 0,
+                    highestStreak: freshData.highestStreak ?? 0,
+                    lastExamDate: freshData.lastExamDate || null,
+                    role: freshData.role || 'student'
+                };
+                userData.recentResults = freshData.recentResults || [];
             }
             // Fetch schedule items
             const schedItems = await sync.collection('users/' + auth.currentUser.uid + '/schedule');
