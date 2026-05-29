@@ -2496,6 +2496,17 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                     <label style="font-weight:800;text-transform:uppercase;font-size:0.65rem;color:var(--text-muted);margin-bottom:4px;display:block;">Optional Broadcast Invitation Message</label>
                     <textarea id="dq-broadcast-msg" rows="2" placeholder="Good morning! Today's quiz is ready. You have ${q.timeLimit || 10} minutes. Good luck!" style="border:2px solid var(--text);border-radius:8px;padding:8px 12px;font-size:0.78rem;font-weight:600;width:100%;box-sizing:border-box;"></textarea>
                 </div>
+                <div class="mc-field" style="margin-bottom:0;">
+                    <label style="font-weight:800;text-transform:uppercase;font-size:0.65rem;color:var(--text-muted);margin-bottom:4px;display:block;">Valid For</label>
+                    <select id="dq-broadcast-duration" style="border:2px solid var(--text);border-radius:8px;padding:8px 12px;font-size:0.78rem;font-weight:700;width:100%;box-sizing:border-box;background:var(--bg-card);color:var(--text);">
+                        <option value="1">1 Day</option>
+                        <option value="3" selected>3 Days</option>
+                        <option value="7">1 Week</option>
+                        <option value="14">2 Weeks</option>
+                        <option value="30">1 Month</option>
+                        <option value="90">3 Months</option>
+                    </select>
+                </div>
                 <button class="btn btn-primary" id="btn-dq-broadcast" onclick="window.mcBroadcastDailyQuiz('${dqid}', '${subscriberCount}')" style="font-weight:800;border:2px solid var(--text);padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:4px;font-size:0.75rem;">
                     <span class="material-icons-round" style="font-size:0.95rem;">send</span> BROADCAST
                 </button>
@@ -2724,10 +2735,13 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
         const messageInput = document.getElementById('dq-broadcast-msg')?.value.trim();
         const customMessage = messageInput || `Your Daily Quiz '${q.title}' is ready. You have ${q.timeLimit} minutes. Good luck!`;
         
+        const durationDays = parseInt(document.getElementById('dq-broadcast-duration')?.value) || 3;
         const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
+        const expiryDate = new Date(today);
+        expiryDate.setDate(expiryDate.getDate() + durationDays);
+        const year = expiryDate.getFullYear();
+        const month = String(expiryDate.getMonth() + 1).padStart(2, '0');
+        const day = String(expiryDate.getDate()).padStart(2, '0');
         const dueTs = new Date(`${year}-${month}-${day}T23:59:00`);
         
         const quizUrl = `quiz.html?dqid=${dqid}`;
@@ -6063,10 +6077,9 @@ window.adminPromptNotification = function(userId) {
                     }
                 });
 
-                // Auto-delete expired daily quizzes
+                // Auto-delete expired notifications (all types)
                 const expired = snapshot.docs.filter(d => {
                     const n = d.data();
-                    if (n.type !== 'daily_quiz') return false;
                     const ms = n.dueTimestamp?.toMillis ? n.dueTimestamp.toMillis()
                              : n.dueDate ? new Date(n.dueDate + 'T' + (n.dueTime||'23:59')).getTime() : null;
                     return ms !== null && ms < now;
@@ -6079,7 +6092,6 @@ window.adminPromptNotification = function(userId) {
 
                 const active = snapshot.docs.filter(d => {
                     const n = d.data();
-                    if (n.type !== 'daily_quiz') return true;
                     const ms = n.dueTimestamp?.toMillis ? n.dueTimestamp.toMillis()
                              : n.dueDate ? new Date(n.dueDate + 'T' + (n.dueTime||'23:59')).getTime() : null;
                     return ms === null || ms >= now;
@@ -7068,6 +7080,7 @@ window.mcSaveSubEvent = async function() {
             availableSubjects,
             maxSubjects: maxSubs,
             resultsReleased: false,
+            durationDays: 30, // default 30 days for mocks to be valid
             createdAt: serverTimestamp()
         });
         await sync.refresh('subscription_events');
@@ -7255,6 +7268,13 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                         
                         // Schedule item
                         const schedRef = doc(collection(db, 'users', uid, 'schedule'));
+                        const now = new Date();
+                        const durDays = ev.durationDays || 30;
+                        const expDate = new Date(now);
+                        expDate.setDate(expDate.getDate() + durDays);
+                        const expYear = expDate.getFullYear();
+                        const expMonth = String(expDate.getMonth() + 1).padStart(2, '0');
+                        const expDay = String(expDate.getDate()).padStart(2, '0');
                         await setDoc(schedRef, {
                             id: schedRef.id,
                             type: 'mock_exam',
@@ -7267,6 +7287,9 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                             message: `Complete your ${subject} mock exam for "${evTitle}".`,
                             date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
                             time: 'All day',
+                            dueDate: `${expYear}-${expMonth}-${expDay}`,
+                            dueTime: '23:59',
+                            dueTimestamp: new Date(`${expYear}-${expMonth}-${expDay}T23:59:00`),
                             timestamp: serverTimestamp(),
                             read: false
                         });
@@ -7416,6 +7439,27 @@ window.mcViewSubEventDetails = async function(eventId) {
                 </div>
             </div>
 
+            <!-- Mock Duration Setting -->
+            <div>
+                <h3 style="font-weight:900;font-size:1.05rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;margin-top:24px;border-top:3px solid var(--text);padding-top:20px;">
+                    Mock Duration
+                    <span style="font-size:0.7rem;color:var(--text-muted);font-weight:700;"></span>
+                </h3>
+                <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                    <label style="font-weight:700;font-size:0.75rem;color:var(--text-muted);">Mocks are valid for</label>
+                    <select id="ev-duration-select" style="border:2px solid var(--text);border-radius:8px;padding:8px 12px;font-size:0.78rem;font-weight:700;background:var(--bg-card);color:var(--text);">
+                        <option value="7">1 Week</option>
+                        <option value="14">2 Weeks</option>
+                        <option value="30" selected>1 Month</option>
+                        <option value="60">2 Months</option>
+                        <option value="90">3 Months</option>
+                        <option value="180">6 Months</option>
+                        <option value="365">1 Year</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" onclick="window.mcSaveEventDuration('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;background:#7c3aed;border:2px solid var(--text);">SAVE DURATION</button>
+                </div>
+            </div>
+
             <div>
                 <h3 style="font-weight:900;font-size:1.05rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;margin-top:24px;border-top:3px solid var(--text);padding-top:20px;">
                     Registered Students
@@ -7438,9 +7482,27 @@ window.mcViewSubEventDetails = async function(eventId) {
         window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
         window.mcRenderEventKeysTable(eventId);
         
+        // Pre-select event duration
+        const durationSelect = document.getElementById('ev-duration-select');
+        if (durationSelect && ev.durationDays) {
+            durationSelect.value = String(ev.durationDays);
+        }
+        
     } catch (e) {
         console.error(e);
         document.getElementById('ef-se-det-body').innerHTML = `<div style="text-align:center;padding:32px;color:var(--brand);font-weight:900;">Error: ${e.message}</div>`;
+    }
+};
+
+window.mcSaveEventDuration = async function(eventId) {
+    const durationDays = parseInt(document.getElementById('ev-duration-select')?.value) || 30;
+    try {
+        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        await updateDoc(doc(db, 'subscription_events', eventId), { durationDays });
+        window.showEFModal("Duration Saved", `Mock exams will be valid for ${durationDays} day(s).`, "OK", null, true);
+    } catch (e) {
+        console.error(e);
+        window.showEFModal("Error", e.message, "OK", null, true);
     }
 };
 
@@ -8150,6 +8212,13 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
 
                 // Schedule item
                 const schedRef = doc(collection(db, 'users', uid, 'schedule'));
+                const durDays = ev.durationDays || 30;
+                const now = new Date();
+                const expDate = new Date(now);
+                expDate.setDate(expDate.getDate() + durDays);
+                const expYear = expDate.getFullYear();
+                const expMonth = String(expDate.getMonth() + 1).padStart(2, '0');
+                const expDay = String(expDate.getDate()).padStart(2, '0');
                 await setDoc(schedRef, {
                     id: schedRef.id,
                     type: 'mock_exam',
@@ -8162,6 +8231,9 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
                     message: `Complete your ${subject} mock exam for "${evTitle}".`,
                     date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
                     time: 'All day',
+                    dueDate: `${expYear}-${expMonth}-${expDay}`,
+                    dueTime: '23:59',
+                    dueTimestamp: new Date(`${expYear}-${expMonth}-${expDay}T23:59:00`),
                     timestamp: serverTimestamp(),
                     read: false
                 });
