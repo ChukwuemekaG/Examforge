@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta property="og:title" content="ExamForge - Exam Mode">
     <meta property="og:description" content="Discipline. Direction. Distinction. Practice exams, track your progress, and ace your tests with confidence.">
     <meta property="og:image" content="https://examforge.com.ng/examforge.jpeg">
@@ -19,7 +22,7 @@
     <title>ExamForge | Advanced Examination Engine</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <link rel="stylesheet" href="quiz.css">
+    <link rel="stylesheet" href="quiz.css?v=5">
     <link rel="icon" type="image/png" href="logo-examforge.png">
     <link rel="apple-touch-icon" href="logo-examforge.png">
     <link rel="manifest" href="/manifest.json">
@@ -254,7 +257,7 @@
         themeCheckboxes.forEach(cb => cb.checked = isDark);
     </script>
     
-    <script src="quiz.js" type="module"></script>
+    <script src="quiz.js?v=5" type="module"></script>
     <script>
         // Register the Service Worker
         if ('serviceWorker' in navigator) {

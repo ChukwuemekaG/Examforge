@@ -10,8 +10,6 @@ import {
     deleteUser
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, arrayUnion, arrayRemove, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
-import { app as firebaseApp } from './firebase-config.js';
 import { LocalCache } from './cache.js';
 import { SyncManager } from './sync.js';
 
@@ -443,45 +441,7 @@ function setupAdminListeners() {
                     if (Notification.permission === 'default') {
                         Notification.requestPermission().catch(() => {});
                     }
-                    // Initialize FCM silently - errors won't show in console
-                    try {
-                        const messaging = getMessaging(firebaseApp);
-                        getToken(messaging, { vapidKey: 'BIJISfaqXYe_1SglbBFHM8NChjM7TOEGGk3G26_XBerH9iK13oaRc_m_JPzuTssiNIz6CXijtGkXRRfY28PeryE' }).then(async (token) => {
-                            if (token && auth.currentUser) {
-                                try {
-                                    await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-                                        fcmToken: token,
-                                        fcmTokenUpdatedAt: serverTimestamp()
-                                    });
-                                } catch(e) {}
-                            }
-                        }).catch(() => {});
-                        
-                        onMessage(messaging, (payload) => {
-                            try {
-                                const data = payload.data || {};
-                                const title = data.title || 'ExamForge';
-                                const body = data.body || '';
-                                const url = data.url || '/';
-                                if ('Notification' in window && Notification.permission === 'granted') {
-                                    const n = new Notification(title, {
-                                        body: body,
-                                        icon: '/examforge.jpeg',
-                                        badge: '/512.png',
-                                        image: '/examforge.jpeg',
-                                        data: { url: url },
-                                        requireInteraction: true
-                                    });
-                                    n.onclick = function(e) {
-                                        e.preventDefault();
-                                        window.focus();
-                                        if (url.includes('#')) window.location.href = '/app.html' + url;
-                                        else if (url) window.location.href = url;
-                                    };
-                                }
-                            } catch(e) {}
-                        });
-                    } catch(e) { /* FCM not available - notifications work via Firestore */ }
+                    // FCM removed - notifications work via Firestore
                 }
             } catch (error) { console.error(error); init(); }
         } else {
@@ -926,8 +886,6 @@ function renderMaster() {
         <div class="mc-stat-bar" id="mc-stats">
             <div class="mc-stat"><div class="mc-stat-val" id="mc-s-users">—</div><div class="mc-stat-lbl">Students</div></div>
             <div class="mc-stat"><div class="mc-stat-val" id="mc-s-courses">—</div><div class="mc-stat-lbl">Courses</div></div>
-            <div class="mc-stat"><div class="mc-stat-val" id="mc-s-topics">—</div><div class="mc-stat-lbl">Topics</div></div>
-            <div class="mc-stat"><div class="mc-stat-val" id="mc-s-questions">—</div><div class="mc-stat-lbl">Questions</div></div>
         </div>
 
         <div class="mc-tab-bar">
@@ -994,15 +952,6 @@ async function mcLoadStats() {
         const el = id => document.getElementById(id);
         if (el('mc-s-users')) el('mc-s-users').textContent = allUsers.length;
         if (el('mc-s-courses')) el('mc-s-courses').textContent = courses.length;
-
-        let totalTopics = 0, totalQs = 0;
-        for (const course of courses) {
-            const topics = await sync.collection('unicourses/' + course.id + '/topics');
-            totalTopics += topics.length;
-            topics.forEach(t => { totalQs += (t.questions || []).length; });
-        }
-        if (el('mc-s-topics')) el('mc-s-topics').textContent = totalTopics;
-        if (el('mc-s-questions')) el('mc-s-questions').textContent = totalQs;
     } catch (e) { console.error(e); }
 }
 
@@ -3232,7 +3181,12 @@ window.mcOpenCreateQuestionModal = function(courseId, topicId) {
         if (!question || options.some(o=>!o)) return alert('Please fill in the question and all 4 options.');
         const newQ = { id: Date.now(), question, options, correctIndex, explanation };
         try {
-            await updateDoc(doc(db,'unicourses',courseId,'topics',topicId), { questions: arrayUnion(newQ) });
+            // Read current questions from sync cache (0 reads if cached), append, write back
+            const topicData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
+            const updatedQuestions = [...(topicData?.questions || []), newQ];
+            await setDoc(doc(db, 'unicourses', courseId, 'topics', topicId),
+                { questions: updatedQuestions },
+                { merge: true });
             overlay.remove();
             mcRenderCoursesTab(courseId, topicId);
             mcLoadStats();
@@ -5428,7 +5382,7 @@ window.adminPromptNotification = function(userId) {
         const expired = userData.schedule.filter(s => { const ms = getDueMs(s); return ms !== null && ms < now; });
         if (expired.length) {
             const b = writeBatch(db);
-            expired.forEach(s => b.delete(doc(db, `users/${auth.currentUser.uid}/schedule`, s._id)));
+            expired.forEach(s => b.delete(doc(db, `users/${auth.currentUser.uid}/schedule`, s.id)));
             b.commit().catch(console.error);
         }
         const active = userData.schedule.filter(s => { const ms = getDueMs(s); return ms === null || ms >= now; });

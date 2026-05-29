@@ -175,6 +175,14 @@ export class SyncManager {
     this._listeners = new Map();
 
     /**
+     * Active collection onSnapshot unsubscribers.
+     * Maps path → unsubscribe function.
+     * Set up by liveCollection().
+     * @type {Map<string, Function>}
+     */
+    this._collectionListeners = new Map();
+
+    /**
      * Subscriber callbacks for change notifications.
      * Maps cacheKey → Set<callback>
      * @type {Map<string, Set<Function>>}
@@ -475,6 +483,71 @@ export class SyncManager {
   }
 
   /**
+   * Fetches a Firestore collection with a real-time onSnapshot listener.
+   *
+   * Returns cached data immediately if available, then sets up an onSnapshot
+   * listener that updates the cache and fires the onChange callback on every
+   * snapshot change.
+   *
+   * @param {string} path - The collection path (e.g., 'unicourses').
+   * @param {Function} [onChange] - Optional callback fired with updated data on every snapshot.
+   * @returns {Promise<Array<object>>} Array of document data.
+   *
+   * @example
+   *   const courses = await sync.liveCollection('unicourses', (data) => {
+   *     console.log('Courses updated:', data);
+   *   });
+   */
+  async liveCollection(path, onChange) {
+    if (!path || typeof path !== 'string') {
+      throw new Error(`[SyncManager] Invalid collection path: "${path}"`);
+    }
+
+    // Return cached data immediately
+    const cached = await this._cache.get(path);
+    if (cached) {
+      // Set up the listener in the background
+      this._setupCollectionListener(path, onChange);
+      return cached.data;
+    }
+
+    // Fetch from Firestore
+    const data = await this._fetchCollection(path);
+
+    // Set up listener
+    this._setupCollectionListener(path, onChange);
+
+    return data;
+  }
+
+  /**
+   * Sets up an onSnapshot listener for a collection path.
+   * The listener updates the cache and fires the onChange callback on every change.
+   * Prevents duplicate listeners for the same path.
+   *
+   * @param {string} path - The collection path.
+   * @param {Function} [onChange] - Optional callback fired with updated data.
+   */
+  _setupCollectionListener(path, onChange) {
+    if (this._collectionListeners.has(path)) return;
+
+    const parts = path.split('/').filter(Boolean);
+    const colRef = collection(this._db, ...parts);
+
+    const unsubscribe = onSnapshot(colRef, async (snap) => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      await this._cache.set(path, data, 'collection');
+      this._notifySubscribers(path, data);
+      if (onChange) onChange(data);
+    }, (error) => {
+      console.error(`[SyncManager] onSnapshot error for collection "${path}":`, error);
+      this._collectionListeners.delete(path);
+    });
+
+    this._collectionListeners.set(path, unsubscribe);
+  }
+
+  /**
    * Fetches a Firestore query with constraints using a cache-first strategy.
    *
    * Like collections, queries use TTL-based refresh rather than onSnapshot.
@@ -712,6 +785,16 @@ export class SyncManager {
       }
     });
     this._listeners.clear();
+
+    // Tear down all active collection listeners
+    this._collectionListeners.forEach((unsubscribe) => {
+      try {
+        unsubscribe();
+      } catch (error) {
+        console.warn('[SyncManager] Error tearing down collection listener:', error);
+      }
+    });
+    this._collectionListeners.clear();
 
     // Clear all subscribers
     this._subscribers.clear();
