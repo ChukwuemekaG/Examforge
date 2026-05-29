@@ -2177,14 +2177,20 @@ window.mcToggleBuilderAccordion = function(qIdx) {
 };
 
 window.mcSyncBuilderStateFromDOM = function() {
+    const container = document.getElementById('dq-builder-questions-list');
+    if (!container) return;
+    
     window.currentBuilderQuestions.forEach((q, qIdx) => {
-        const qTextEl = document.querySelector(`.dq-question-text-${qIdx}`);
-        const explTextEl = document.querySelector(`.dq-explanation-text-${qIdx}`);
-        const correctSelectEl = document.querySelector(`.dq-correct-select-${qIdx}`);
-        const bodyEl = document.querySelector(`.dq-accordion-body-${qIdx}`);
-        const iconEl = document.querySelector(`.dq-accordion-icon-${qIdx}`);
+        // Scoped queries within container are much faster than document-wide
+        const qTextEl = container.querySelector(`.dq-question-text-${qIdx}`);
+        if (!qTextEl) return; // question not rendered yet
         
-        if (qTextEl) q.question = qTextEl.value;
+        const explTextEl = container.querySelector(`.dq-explanation-text-${qIdx}`);
+        const correctSelectEl = container.querySelector(`.dq-correct-select-${qIdx}`);
+        const bodyEl = container.querySelector(`.dq-accordion-body-${qIdx}`);
+        const iconEl = container.querySelector(`.dq-accordion-icon-${qIdx}`);
+        
+        q.question = qTextEl.value;
         if (explTextEl) q.explanation = explTextEl.value;
         if (correctSelectEl) q.correctIndex = parseInt(correctSelectEl.value) || 0;
         if (bodyEl) q.expanded = bodyEl.style.display !== 'none';
@@ -2192,9 +2198,13 @@ window.mcSyncBuilderStateFromDOM = function() {
             iconEl.style.transform = q.expanded ? 'rotate(0deg)' : 'rotate(-90deg)';
         }
         
-        q.options.forEach((_, optIdx) => {
-            const optEl = document.querySelector(`.dq-opt-input-${qIdx}[data-opt-idx="${optIdx}"]`);
-            if (optEl) q.options[optIdx] = optEl.value;
+        // Batch options: 1 querySelectorAll per question instead of N per option
+        const optInputs = container.querySelectorAll(`.dq-opt-input-${qIdx}`);
+        optInputs.forEach(el => {
+            const optIdx = parseInt(el.dataset.optIdx);
+            if (!isNaN(optIdx) && optIdx < q.options.length) {
+                q.options[optIdx] = el.value;
+            }
         });
     });
 };
