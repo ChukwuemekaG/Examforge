@@ -160,6 +160,13 @@ export class SyncManager {
     this._cache = new LocalCache();
 
     /**
+     * In-memory session cache (instant — no I/O).
+     * Maps cacheKey → { data, fetchedAt, ttl }
+     * @type {Map<string, {data: *, fetchedAt: number, ttl: number}>}
+     */
+    this._memCache = new Map();
+
+    /**
      * In-flight request deduplication map.
      * Maps cacheKey → Promise, so concurrent calls for the same path share one fetch.
      * @type {Map<string, Promise<any>>}
@@ -197,6 +204,46 @@ export class SyncManager {
 
     // Start the periodic stale-cache sweeper to clean up expired entries
     this._startSweeper();
+  }
+
+  // ─── In-memory session cache ───────────────────────────────────────────────
+
+  /**
+   * Retrieves data from the in-memory cache if it hasn't expired.
+   *
+   * @param {string} key - The cache key.
+   * @returns {*|null} The cached data, or null if missing/expired.
+   */
+  _getMemCache(key) {
+    const entry = this._memCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.fetchedAt > entry.ttl) {
+      this._memCache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  /**
+   * Stores data in the in-memory cache with a bounded TTL.
+   * Maximum TTL is capped at 30 seconds for memory freshness.
+   *
+   * @param {string} key - The cache key.
+   * @param {*} data - The data to cache.
+   * @param {number} [ttl] - Time-to-live in milliseconds (max 30000).
+   */
+  _setMemCache(key, data, ttl) {
+    const memTtl = ttl ? Math.min(ttl, 30000) : 30000;
+    this._memCache.set(key, { data, fetchedAt: Date.now(), ttl: memTtl });
+  }
+
+  /**
+   * Removes an entry from the in-memory cache.
+   *
+   * @param {string} key - The cache key to clear.
+   */
+  _clearMemCache(key) {
+    this._memCache.delete(key);
   }
 
   // ─── Private Internals ────────────────────────────────────────────────────
@@ -377,8 +424,10 @@ export class SyncManager {
         const data = extractData(snap);
         if (data) {
           await this._cache.set(cacheKey, data, 'doc');
+          this._clearMemCache(cacheKey);
         } else {
           await this._cache.delete(cacheKey);
+          this._clearMemCache(cacheKey);
         }
         this._notifySubscribers(cacheKey, data);
       },
@@ -429,18 +478,27 @@ export class SyncManager {
     this._validateDocPath(path);
     const cacheKey = buildCacheKey(path);
 
-    // 1. Check cache first
+    // 1. Check in-memory cache first (instant — no I/O)
+    const memData = this._getMemCache(cacheKey);
+    if (memData !== null) {
+      this._setupDocListener(path);
+      return memData;
+    }
+
+    // 2. Check IndexedDB cache
     const cached = await this._cache.get(cacheKey);
     if (cached && isFresh(cached, DEFAULT_DOC_TTL_MS)) {
+      this._setMemCache(cacheKey, cached.data, DEFAULT_DOC_TTL_MS);
       // Set up the listener in the background if not already active
       this._setupDocListener(path);
       return cached.data;
     }
 
-    // 2. Cache miss or stale — fetch from Firestore with deduplication
+    // 3. Cache miss or stale — fetch from Firestore with deduplication
     const data = await this._dedupedFetch(cacheKey, () => this._fetchDoc(path));
+    this._setMemCache(cacheKey, data, DEFAULT_DOC_TTL_MS);
 
-    // 3. Set up real-time listener (if not already active)
+    // 4. Set up real-time listener (if not already active)
     this._setupDocListener(path);
 
     return data;
@@ -462,14 +520,21 @@ export class SyncManager {
     }
     const cacheKey = buildCacheKey(path);
 
-    // 1. Check cache first
+    // 1. Check in-memory cache first (instant)
+    const memData = this._getMemCache(cacheKey);
+    if (memData !== null) return memData;
+
+    // 2. Check IndexedDB cache
     const cached = await this._cache.get(cacheKey);
     if (cached && isFresh(cached, DEFAULT_COLLECTION_TTL_MS)) {
+      this._setMemCache(cacheKey, cached.data, DEFAULT_COLLECTION_TTL_MS);
       return cached.data;
     }
 
-    // 2. Cache miss or stale — fetch from Firestore with deduplication
-    return this._dedupedFetch(cacheKey, () => this._fetchCollection(path));
+    // 3. Cache miss or stale — fetch from Firestore with deduplication
+    const data = await this._dedupedFetch(cacheKey, () => this._fetchCollection(path));
+    this._setMemCache(cacheKey, data, DEFAULT_COLLECTION_TTL_MS);
+    return data;
   }
 
   /**
@@ -537,6 +602,7 @@ export class SyncManager {
     const unsubscribe = onSnapshot(colRef, async (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       await this._cache.set(path, data, 'collection');
+      this._clearMemCache(path);
       this._notifySubscribers(path, data);
       if (onChange) onChange(data);
     }, (error) => {
@@ -573,14 +639,21 @@ export class SyncManager {
     }
     const cacheKey = buildCacheKey(path, constraints);
 
-    // 1. Check cache first
+    // 1. Check in-memory cache first (instant)
+    const memData = this._getMemCache(cacheKey);
+    if (memData !== null) return memData;
+
+    // 2. Check IndexedDB cache
     const cached = await this._cache.get(cacheKey);
     if (cached && isFresh(cached, DEFAULT_QUERY_TTL_MS)) {
+      this._setMemCache(cacheKey, cached.data, DEFAULT_QUERY_TTL_MS);
       return cached.data;
     }
 
-    // 2. Cache miss or stale — fetch from Firestore with deduplication
-    return this._dedupedFetch(cacheKey, () => this._fetchQuery(path, constraints));
+    // 3. Cache miss or stale — fetch from Firestore with deduplication
+    const data = await this._dedupedFetch(cacheKey, () => this._fetchQuery(path, constraints));
+    this._setMemCache(cacheKey, data, DEFAULT_QUERY_TTL_MS);
+    return data;
   }
 
   /**
@@ -621,14 +694,21 @@ export class SyncManager {
     }
     const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
 
-    // 1. Check cache first
+    // 1. Check in-memory cache first (instant)
+    const memData = this._getMemCache(cacheKey);
+    if (memData !== null) return memData;
+
+    // 2. Check IndexedDB cache
     const cached = await this._cache.get(cacheKey);
     if (cached && isFresh(cached, DEFAULT_QUERY_TTL_MS)) {
+      this._setMemCache(cacheKey, cached.data, DEFAULT_QUERY_TTL_MS);
       return cached.data;
     }
 
-    // 2. Cache miss or stale — fetch from Firestore with deduplication
-    return this._dedupedFetch(cacheKey, () => this._fetchCollectionGroup(collectionId, constraints));
+    // 3. Cache miss or stale — fetch from Firestore with deduplication
+    const data = await this._dedupedFetch(cacheKey, () => this._fetchCollectionGroup(collectionId, constraints));
+    this._setMemCache(cacheKey, data, DEFAULT_QUERY_TTL_MS);
+    return data;
   }
 
   /**
@@ -746,6 +826,7 @@ export class SyncManager {
 
     if (constraints && constraints.length > 0) {
       // Query refresh
+      this._clearMemCache(buildCacheKey(path, constraints));
       return this._dedupedFetch(buildCacheKey(path, constraints), () =>
         this._fetchQuery(path, constraints)
       );
@@ -754,11 +835,13 @@ export class SyncManager {
     if (segments.length % 2 === 0) {
       // Document path
       const cacheKey = buildCacheKey(path);
+      this._clearMemCache(cacheKey);
       return this._dedupedFetch(cacheKey, () => this._fetchDoc(path));
     }
 
     // Collection path
     const cacheKey = buildCacheKey(path);
+    this._clearMemCache(cacheKey);
     return this._dedupedFetch(cacheKey, () => this._fetchCollection(path));
   }
 
