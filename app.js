@@ -1889,10 +1889,10 @@ window.mcPublishDailyAdvice = async function() {
 window.mcRenderDailyAdviceTab = mcRenderDailyAdviceTab;
 window.mcLoadDailyAdvices = mcLoadDailyAdvices;
 
-window.mcOpenCreateDailyQuizModal = function() {
-    window.currentBuilderQuestions = [
-        { question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true }
-    ];
+window.mcOpenCreateDailyQuizModal = function(prefill) {
+    window.currentBuilderQuestions = (prefill && prefill.questions && prefill.questions.length > 0) 
+        ? prefill.questions 
+        : [{ question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true }];
     
     const modal = document.createElement('div');
     modal.id = 'ef-dq-builder-modal';
@@ -2011,6 +2011,22 @@ window.mcOpenCreateDailyQuizModal = function() {
     document.body.appendChild(modal);
     
     modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    
+    // Pre-fill fields if editing
+    if (prefill) {
+        const titleInput = document.getElementById('dq-builder-title');
+        const timeInput = document.getElementById('dq-builder-time');
+        if (titleInput && prefill.title) titleInput.value = prefill.title;
+        if (timeInput && prefill.timeLimit) timeInput.value = prefill.timeLimit;
+        
+        // Update save button for edit mode
+        const saveBtn = document.querySelector('#ef-dq-builder-modal .btn-primary');
+        if (saveBtn && prefill.saveHandler) {
+            saveBtn.onclick = prefill.saveHandler;
+            saveBtn.textContent = 'SAVE CHANGES';
+        }
+    }
+    
     window.mcRenderBuilderQuestions();
 };
 
@@ -2845,59 +2861,49 @@ window.mcOpenEditDailyQuizModal = async function(dqid) {
             return window.showEFModal("Not Found", "Daily quiz not found.", "OK", null, true);
         }
         
-        // Open the builder modal
-        window.mcOpenCreateDailyQuizModal();
+        // Prepare questions with proper expanded state
+        const questions = (data.questions || []).map(q => ({ ...q, expanded: false }));
+        if (questions.length > 0) questions[0].expanded = true;
         
-        // Pre-fill fields after modal renders
-        setTimeout(() => {
-            const titleInput = document.getElementById('dq-builder-title');
-            const timeInput = document.getElementById('dq-builder-time');
-            if (titleInput) titleInput.value = data.title || '';
-            if (timeInput) timeInput.value = data.timeLimit || 10;
+        // Build save handler for edit mode
+        const saveHandler = async () => {
+            const title = document.getElementById('dq-builder-title')?.value.trim();
+            const time = parseInt(document.getElementById('dq-builder-time')?.value) || 10;
+            window.mcSyncBuilderStateFromDOM();
             
-            // Load existing questions
-            if (data.questions && data.questions.length > 0) {
-                window.currentBuilderQuestions = data.questions.map(q => ({ ...q, expanded: false }));
-                if (window.currentBuilderQuestions[0]) window.currentBuilderQuestions[0].expanded = true;
-                window.mcRenderBuilderQuestions();
+            if (!title || window.currentBuilderQuestions.length === 0) {
+                return window.showEFModal("Validation", "Please enter a title and add questions.", "OK", null, true);
             }
             
-            // Override save button to update instead of create
             const saveBtn = document.querySelector('#ef-dq-builder-modal .btn-primary');
-            if (saveBtn) {
-                const origClick = saveBtn.onclick;
-                saveBtn.onclick = async () => {
-                    const title = document.getElementById('dq-builder-title')?.value.trim();
-                    const time = parseInt(document.getElementById('dq-builder-time')?.value) || 10;
-                    window.mcSyncBuilderStateFromDOM();
-                    
-                    if (!title || window.currentBuilderQuestions.length === 0) {
-                        return window.showEFModal("Validation", "Please enter a title and add questions.", "OK", null, true);
-                    }
-                    
-                    saveBtn.disabled = true;
-                    saveBtn.textContent = 'SAVING…';
-                    
-                    try {
-                        await updateDoc(doc(db, 'daily_quizzes', dqid), {
-                            title,
-                            questions: window.currentBuilderQuestions,
-                            timeLimit: time
-                        });
-                        
-                        document.getElementById('ef-dq-builder-modal')?.remove();
-                        window.showEFModal("Updated", "Daily quiz updated successfully!", "OK", null, true);
-                        mcLoadDailyQuizzes();
-                    } catch (e) {
-                        console.error(e);
-                        window.showEFModal("Error", e.message, "OK", null, true);
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = 'SAVE CHANGES';
-                    }
-                };
-                saveBtn.textContent = 'SAVE CHANGES';
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'SAVING…'; }
+            
+            try {
+                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                await updateDoc(doc(db, 'daily_quizzes', dqid), {
+                    title,
+                    questions: window.currentBuilderQuestions,
+                    timeLimit: time
+                });
+                
+                document.getElementById('ef-dq-builder-modal')?.remove();
+                window.showEFModal("Updated", "Daily quiz updated successfully!", "OK", null, true);
+                mcLoadDailyQuizzes();
+            } catch (e) {
+                console.error(e);
+                window.showEFModal("Error", e.message, "OK", null, true);
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'SAVE CHANGES'; }
             }
-        }, 300);
+        };
+        
+        // Open builder with pre-filled data — no setTimeout needed, no wasted render
+        window.mcOpenCreateDailyQuizModal({
+            title: data.title,
+            timeLimit: data.timeLimit,
+            questions: questions,
+            saveHandler: saveHandler
+        });
+        
     } catch (e) {
         console.error(e);
         window.showEFModal("Error", e.message, "OK", null, true);
