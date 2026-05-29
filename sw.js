@@ -1,4 +1,4 @@
-const FONT_CACHE = 'examforge-cache-v3';
+const FONT_CACHE = 'examforge-cache-v18';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -14,23 +14,23 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-async function cacheFirst(r) {
-  const c = await caches.open(FONT_CACHE);
-  const cached = await c.match(r);
-  if (cached) return cached;
-  try {
-    const net = await fetch(r);
-    if (net && net.status === 200) c.put(r, net.clone());
-    return net;
-  } catch(e) { throw e; }
-}
+// async function cacheFirst(r) {
+//   const c = await caches.open(FONT_CACHE);
+//   const cached = await c.match(r);
+//   if (cached) return cached;
+//   try {
+//     const net = await fetch(r);
+//     if (net && net.status === 200) c.put(r, net.clone());
+//     return net;
+//   } catch(e) { throw e; }
+// }
 
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
-    event.respondWith(cacheFirst(event.request));
-  }
-});
+// self.addEventListener('fetch', (event) => {
+//   const url = new URL(event.request.url);
+//   if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
+//     event.respondWith(cacheFirst(event.request));
+//   }
+// });
 
 // Handle all notification clicks
 self.addEventListener('notificationclick', function(event) {

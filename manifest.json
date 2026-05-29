@@ -1,9 +1,9 @@
 {
-  "id": "/",
+  "id": "/login",
   "name": "Examforge",
   "short_name": "Examforge",
   "description": "An interactive educational platform and quiz engine for students.",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
