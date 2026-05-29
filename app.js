@@ -118,13 +118,12 @@ document.addEventListener('DOMContentLoaded', () => {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        const coursesSnapshot = await getDocs(collection(db, "unicourses"));
+        const courses = await sync.collection('unicourses');
         coursesListDiv.innerHTML = ""; // Clear loading text
 
         // Loop through each course
-        for (const courseDoc of coursesSnapshot.docs) {
-            const courseData = courseDoc.data();
-            const courseId = courseDoc.id;
+        for (const courseData of courses) {
+            const courseId = courseData.id;
 
             // Create Course Element
             const courseDiv = document.createElement("div");
@@ -133,20 +132,19 @@ document.addEventListener('DOMContentLoaded', () => {
             coursesListDiv.appendChild(courseDiv);
 
             // Fetch Topics for this specific course
-            const topicsSnapshot = await getDocs(collection(db, "unicourses", courseId, "topics"));
+            const topics = await sync.collection('unicourses/' + courseId + '/topics');
             const topicsList = document.getElementById(`topics-${courseId}`);
             topicsList.innerHTML = ""; // Clear loading text
 
-            if (topicsSnapshot.empty) {
+            if (!topics.length) {
                 topicsList.innerHTML = "<li>No topics added yet.</li>";
             } else {
-                topicsSnapshot.forEach((topicDoc) => {
-                    const topicData = topicDoc.data();
+                topics.forEach((topicData) => {
                     const li = document.createElement("li");
                     li.innerHTML = `
-                        <strong>${topicDoc.id.replace('-', ' ').toUpperCase()}</strong> 
+                        <strong>${topicData.id.replace('-', ' ').toUpperCase()}</strong> 
                         - ${topicData.questions ? topicData.questions.length : 0} Questions 
-                        <button onclick="startQuiz('${courseId}', '${topicDoc.id}')">Start Quiz</button>
+                        <button onclick="startQuiz('${courseId}', '${topicData.id}')">Start Quiz</button>
                     `;
                     topicsList.appendChild(li);
                 });
@@ -243,27 +241,22 @@ function setupAdminListeners() {
 }
     async function getNationalRanking(userRating) {
         try {
-            const usersRef = collection(db, "users");
+            // Use cached users collection for counting
+            const users = await sync.collection('users');
 
             // 1. Count users with strictly higher ratings
-            const higherQuery = query(usersRef, where("exaRating", ">", userRating));
-            const higherSnap = await getCountFromServer(higherQuery);
-            const higherCount = higherSnap.data().count;
+            const higherCount = users.filter(u => (u.exaRating || 0) > userRating).length;
 
-            // 2. Get the actual count from the database
-            const totalSnap = await getCountFromServer(usersRef);
-            const dbTotal = totalSnap.data().count;
-
-            // 3. THE FIX: Determine your rank
+            // 2. Determine your rank
             const exactRank = higherCount + 1;
 
             /* If the database says there is only 1 user (the other guy), 
                but you are rank #2, we must force the 'total' to be at least 2 
                so the UI doesn't look broken to the student.
             */
-            const displayTotal = Math.max(dbTotal, exactRank);
+            const displayTotal = Math.max(users.length, exactRank);
 
-            // 4. Calculate percentile using the corrected total
+            // 3. Calculate percentile using the corrected total
             let percentile = exactRank === 1 ? 1 : Math.floor((exactRank / displayTotal) * 100);
 
             return {
@@ -994,19 +987,19 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        const [uSnap, cSnap] = await Promise.all([
-            getCountFromServer(collection(db, 'users')),
-            getDocs(collection(db, 'unicourses'))
+        const [allUsers, courses] = await Promise.all([
+            sync.collection('users'),
+            sync.collection('unicourses')
         ]);
         const el = id => document.getElementById(id);
-        if (el('mc-s-users')) el('mc-s-users').textContent = uSnap.data().count;
-        if (el('mc-s-courses')) el('mc-s-courses').textContent = cSnap.size;
+        if (el('mc-s-users')) el('mc-s-users').textContent = allUsers.length;
+        if (el('mc-s-courses')) el('mc-s-courses').textContent = courses.length;
 
         let totalTopics = 0, totalQs = 0;
-        for (const cDoc of cSnap.docs) {
-            const tSnap = await getDocs(collection(db, 'unicourses', cDoc.id, 'topics'));
-            totalTopics += tSnap.size;
-            tSnap.docs.forEach(t => { totalQs += (t.data().questions || []).length; });
+        for (const course of courses) {
+            const topics = await sync.collection('unicourses/' + course.id + '/topics');
+            totalTopics += topics.length;
+            topics.forEach(t => { totalQs += (t.questions || []).length; });
         }
         if (el('mc-s-topics')) el('mc-s-topics').textContent = totalTopics;
         if (el('mc-s-questions')) el('mc-s-questions').textContent = totalQs;
@@ -1176,8 +1169,8 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const snap = await getDocs(collection(db, 'unicourses'));
-            const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>a.id.localeCompare(b.id));
+            const courses = await sync.collection('unicourses');
+            courses.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
             if (!courses.length) {
@@ -1185,7 +1178,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                 return;
             }
             // fetch topic counts
-            const counts = await Promise.all(courses.map(c => getCountFromServer(collection(db,'unicourses',c.id,'topics'))));
+            const topicsLists = await Promise.all(courses.map(c => sync.collection('unicourses/' + c.id + '/topics')));
             grid.innerHTML = courses.map((c,i) => `
                 <div class="mc-card" style="position:relative;" onclick="window.mcDrillCourse('${c.id}')">
                     <button onclick="event.stopPropagation();window.mcDeleteCourse('${c.id}', '${(c.title || c.id).replace(/'/g, "\\'")}')"
@@ -1198,7 +1191,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                     <div class="mc-card-title" style="padding-right:24px;">${c.title || c.id.toUpperCase()}</div>
                     <div class="mc-card-meta">
                         <span class="material-icons-round" style="font-size:0.75rem;">layers</span>
-                        ${counts[i].data().count} topic${counts[i].data().count!==1?'s':''}
+                        ${topicsLists[i].length} topic${topicsLists[i].length!==1?'s':''}
                         <span style="margin-left:auto;font-family:var(--font-mono);font-size:0.6rem;background:var(--bg-inset);padding:2px 6px;border-radius:4px;">${c.id.toUpperCase()}</span>
                     </div>
                 </div>
@@ -1230,8 +1223,8 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const snap = await getDocs(collection(db,'unicourses',courseId,'topics'));
-            const topics = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>a.id.localeCompare(b.id));
+            const topics = await sync.collection('unicourses/' + courseId + '/topics');
+            topics.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-topic-grid');
             if (!grid) return;
             if (!topics.length) {
@@ -3888,21 +3881,25 @@ window.openAdminUserModal = async function(uid) {
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
 
     try {
-        const [userSnap, resultsSnap, schedSnap, notifSnap] = await Promise.all([
-            getDoc(doc(db,'users',uid)),
-            getDocs(collection(db,`users/${uid}/results`)),
-            getDocs(query(collection(db,`users/${uid}/schedule`), orderBy('timestamp','desc'))),
-            getDocs(query(collection(db,`users/${uid}/notifications`), orderBy('timestamp','desc'), limit(50)))
+        const [userData, resultsData, schedData, notifData] = await Promise.all([
+            sync.doc('users/' + uid),
+            sync.collection('users/' + uid + '/results'),
+            sync.collection('users/' + uid + '/schedule'),
+            sync.collection('users/' + uid + '/notifications')
         ]);
 
-        if (!userSnap.exists()) { overlay.remove(); alert('User not found.'); return; }
+        if (!userData) { overlay.remove(); alert('User not found.'); return; }
 
-        const u       = userSnap.data();
+        // Sort schedule and notifications by timestamp descending
+        const results  = resultsData || [];
+        const schedItems = (schedData || []).sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+        const notifItems = (notifData || []).sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+        const u       = userData;
         const name    = u.displayName || u.username || u.email?.split('@')[0] || 'Unknown';
         const initials= name.trim().split(' ').filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase()||'??';
 
         // Compute analytics
-        const results  = resultsSnap.docs.map(d => d.data());
         const totalExams = results.length;
         let avgScore = 0, avgGrade = 'N/A', weeklyBest = '—';
         if (totalExams > 0) {
@@ -3915,9 +3912,9 @@ window.openAdminUserModal = async function(uid) {
 
         ADM.state = {
             uid, u,
-            results: resultsSnap.docs.map(d=>({_id:d.id,...d.data()})),
-            schedItems: schedSnap.docs.map(d=>({_id:d.id,...d.data()})),
-            notifItems: notifSnap.docs.map(d=>({_id:d.id,...d.data()})),
+            results,
+            schedItems,
+            notifItems,
             tab: 'profile'
         };
 
@@ -4446,10 +4443,10 @@ window.mcDeleteCourse = function(courseId, courseTitle) {
         async () => {
             try {
                 // Delete all topics under this course first
-                const topicsSnap = await getDocs(collection(db, 'unicourses', courseId, 'topics'));
+                const topics = await sync.collection('unicourses/' + courseId + '/topics');
                 const batch = writeBatch(db);
-                topicsSnap.forEach(tDoc => {
-                    batch.delete(tDoc.ref);
+                topics.forEach(t => {
+                    batch.delete(doc(db, 'unicourses', courseId, 'topics', t.id));
                 });
                 // Delete the main course doc
                 batch.delete(doc(db, 'unicourses', courseId));
@@ -4544,12 +4541,12 @@ function renderUserList(users) {
 
 async function fetchAdminStats() {
     try {
-        const userCount = await getCountFromServer(collection(db, "users"));
-        document.getElementById('admin-total-students').innerText = userCount.data().count;
+        const allUsers = await sync.collection('users');
+        document.getElementById('admin-total-students').innerText = allUsers.length;
         
         try {
-            const examCount = await getCountFromServer(collection(db, "exams"));
-            document.getElementById('admin-total-exams').innerText = examCount.data().count;
+            const allExams = await sync.collection('exams');
+            document.getElementById('admin-total-exams').innerText = allExams.length;
         } catch { document.getElementById('admin-total-exams').innerText = "0"; }
     } catch (err) { console.error(err); }
 }
@@ -4651,18 +4648,16 @@ window.adminPromptNotification = function(userId) {
         
         // ─── Fetch fresh user data for accurate stats and schedule ───
         try {
-            const { getDoc, doc, collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
-            if (userSnap.exists()) {
-                const freshData = userSnap.data();
+            const freshData = await sync.doc('users/' + auth.currentUser.uid);
+            if (freshData) {
                 if (freshData.stats) {
                     userData.stats = { ...userData.stats, ...freshData.stats };
                 }
             }
             // Fetch schedule items
-            const schedSnap = await getDocs(query(collection(db, `users/${auth.currentUser.uid}/schedule`), orderBy('timestamp', 'asc')));
-            if (!schedSnap.empty) {
-                userData.schedule = schedSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+            const schedItems = await sync.collection('users/' + auth.currentUser.uid + '/schedule');
+            if (schedItems && schedItems.length) {
+                userData.schedule = schedItems.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
             }
         } catch (e) { console.error("Failed to fetch user data:", e); }
         
@@ -5155,20 +5150,19 @@ window.adminPromptNotification = function(userId) {
         // Use cache if already loaded, otherwise fetch from Firestore
         if (!libCourseCache.length) {
             try {
-                const snap = await getDocs(collection(db, 'unicourses'));
+                const allCourses = await sync.collection('unicourses');
                 // Fetch topic counts in parallel
-                const courses = await Promise.all(snap.docs.map(async d => {
-                    const data = d.data();
+                const courses = await Promise.all(allCourses.map(async c => {
                     let topicCount = 0;
                     try {
-                        const tSnap = await getCountFromServer(collection(db, 'unicourses', d.id, 'topics'));
-                        topicCount = tSnap.data().count;
+                        const topics = await sync.collection('unicourses/' + c.id + '/topics');
+                        topicCount = topics.length;
                     } catch (_) {}
                     return {
-                        id: d.id,
-                        title: data.title || d.id.toUpperCase(),
-                        level: data.level || '',
-                        description: data.description || '',
+                        id: c.id,
+                        title: c.title || c.id.toUpperCase(),
+                        level: c.level || '',
+                        description: c.description || '',
                         topicCount
                     };
                 }));
@@ -5347,9 +5341,9 @@ window.adminPromptNotification = function(userId) {
         if (!grid) return;
 
         try {
-            const snap = await getDocs(collection(db, 'unicourses', courseId, 'topics'));
+            const topics = await sync.collection('unicourses/' + courseId + '/topics');
             
-            if (snap.empty) {
+            if (!topics.length) {
                 grid.innerHTML = `
                     <div class="empty-state">
                         <span class="material-icons-round">construction</span>
@@ -5361,12 +5355,11 @@ window.adminPromptNotification = function(userId) {
 
             // Sort topics alphabetically by id, hide private ones from students
             const isAdminUser = userData.stats?.role === 'admin';
-            const topics = snap.docs
-                .map(d => ({ id: d.id, ...d.data() }))
+            const filteredTopics = topics
                 .filter(t => isAdminUser || !t.isPrivate)
                 .sort((a, b) => a.id.localeCompare(b.id));
 
-            let htmlStr = topics.map((t, i) => {
+            let htmlStr = filteredTopics.map((t, i) => {
                 const qCount = (t.questions || []).length;
                 const label = t.title || t.id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                 const timeLabel = t.timeLimit ? `${t.timeLimit} min` : '';
@@ -5441,8 +5434,8 @@ window.adminPromptNotification = function(userId) {
             </div>`;
 
         try {
-            const snap = await getDocs(query(collection(db, `users/${auth.currentUser.uid}/schedule`), orderBy('timestamp','asc')));
-            userData.schedule = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+            const schedItems = await sync.collection('users/' + auth.currentUser.uid + '/schedule');
+            userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
         } catch(e) { console.error(e); }
 
         const container = document.getElementById('schedule-content');
@@ -7011,8 +7004,8 @@ window.mcLoadAllowedParticipants = async function(eventId) {
         // Fetch user details for each allowed UID
         const users = await Promise.all(allowed.map(async uid => {
             try {
-                const uSnap = await getDoc(doc(db, 'users', uid));
-                if (uSnap.exists()) return { uid, ...uSnap.data() };
+                const uSnap = await sync.doc('users/' + uid);
+                if (uSnap) return { uid, ...uSnap };
                 return { uid, displayName: uid, email: '', username: '' };
             } catch(e) { return { uid, displayName: uid, email: '', username: '' }; }
         }));
@@ -7414,8 +7407,8 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
         const studentData = await Promise.all(registrations.map(async (reg) => {
             let user = { displayName: 'Unknown', email: '', username: '' };
             try {
-                const userSnap = await getDoc(doc(db, 'users', reg.uid));
-                if (userSnap.exists()) user = userSnap.data();
+                const uData = await sync.doc('users/' + reg.uid);
+                if (uData) user = uData;
             } catch(e) {}
             
             // Check mock attempts for each subject
