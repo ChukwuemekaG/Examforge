@@ -41,6 +41,7 @@ import {
   getDoc,
   getDocs,
   collection,
+  collectionGroup,
   query,
   onSnapshot,
   where,
@@ -297,6 +298,33 @@ export class SyncManager {
   }
 
   /**
+   * Fetches a Firestore collectionGroup query, caches it, and notifies subscribers.
+   *
+   * Uses collectionGroup(db, collectionId) instead of collection(db, path) to query
+   * across all subcollections with the given ID. Each result includes a `_refPath`
+   * metadata field so callers can determine the parent document path.
+   *
+   * @param {string} collectionId - The collection ID to search across all subcollections.
+   * @param {Array} constraints - Firestore query constraints.
+   * @returns {Promise<Array<object>>} Array of document data with `_refPath` metadata.
+   */
+  async _fetchCollectionGroup(collectionId, constraints) {
+    const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
+    const colGroupRef = collectionGroup(this._db, collectionId);
+    const q = query(colGroupRef, ...constraints);
+    const snap = await getDocs(q);
+    const data = snap.docs.map(d => ({
+      id: d.id,
+      _refPath: d.ref.path,
+      ...d.data()
+    }));
+
+    await this._cache.set(cacheKey, data, 'query');
+    this._notifySubscribers(cacheKey, data);
+    return data;
+  }
+
+  /**
    * Generic fetch with deduplication.
    * If a fetch for the same cache key is already in-flight, returns its promise.
    *
@@ -480,6 +508,54 @@ export class SyncManager {
 
     // 2. Cache miss or stale — fetch from Firestore with deduplication
     return this._dedupedFetch(cacheKey, () => this._fetchQuery(path, constraints));
+  }
+
+  /**
+   * Fetches documents from a collection group using a cache-first strategy.
+   *
+   * Uses `collectionGroup(db, collectionId)` instead of `collection(db, path)` to
+   * query across all subcollections with the given ID. Cache keys are prefixed
+   * with 'cg:' to avoid collisions with regular queries.
+   *
+   * Like queries, collectionGroup queries use TTL-based refresh. Each unique
+   * combination of collectionId + constraints produces its own cache entry.
+   * Deduplication ensures concurrent requests for the same parameters share
+   * one Firestore fetch.
+   *
+   * Each returned document includes a `_refPath` metadata field containing the
+   * full Firestore document path (e.g., "users/abc123/results/def456"), which
+   * allows callers to determine the parent document or collection.
+   *
+   * @param {string} collectionId - The collection group ID (e.g., 'results').
+   * @param {Array} [constraints=[]] - Firestore query constraints (where, orderBy, limit, etc.).
+   * @returns {Promise<Array<object>>} Array of document data, each with `_refPath`.
+   *
+   * @example
+   *   const results = await sync.collectionGroup('results', [
+   *     where('quizId', '==', quizId)
+   *   ]);
+   *   results.forEach(r => {
+   *     const uid = r._refPath.split('/')[1];
+   *     console.log(r.id, uid, r.score);
+   *   });
+   */
+  async collectionGroup(collectionId, constraints = []) {
+    if (!collectionId || typeof collectionId !== 'string') {
+      throw new Error(`[SyncManager] Invalid collectionGroup ID: "${collectionId}"`);
+    }
+    if (!Array.isArray(constraints)) {
+      throw new Error('[SyncManager] Query constraints must be an array');
+    }
+    const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
+
+    // 1. Check cache first
+    const cached = await this._cache.get(cacheKey);
+    if (cached && isFresh(cached, DEFAULT_QUERY_TTL_MS)) {
+      return cached.data;
+    }
+
+    // 2. Cache miss or stale — fetch from Firestore with deduplication
+    return this._dedupedFetch(cacheKey, () => this._fetchCollectionGroup(collectionId, constraints));
   }
 
   /**

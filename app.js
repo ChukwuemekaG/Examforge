@@ -2958,13 +2958,12 @@ window.mcViewTopicResults = async function(courseId, topicId) {
 
     try {
         // collectionGroup query across all users' results subcollections
-        const q = query(collectionGroup(db,'results'), where('quizId','==',quizId));
-        const snap = await getDocs(q);
+        const data = await sync.collectionGroup('results', [where('quizId','==',quizId)]);
 
         const body = document.getElementById('mctr-body');
         if (!body) return;
 
-        if (snap.empty) {
+        if (data.length === 0) {
             body.innerHTML = `
                 <div style="text-align:center;padding:72px 24px;color:var(--text-muted);">
                     <span class="material-icons-round" style="font-size:3rem;display:block;margin-bottom:12px;opacity:0.25;">people_outline</span>
@@ -2975,11 +2974,10 @@ window.mcViewTopicResults = async function(courseId, topicId) {
         }
 
         // Each result doc path is users/{uid}/results/{resultId}
-        const rows = snap.docs.map(d => {
-            const data = d.data();
-            const uid  = d.ref.parent.parent.id; // users/{uid}/results/{id}
-            return { ...data, uid };
-        }).sort((a,b) => (b.score||0) - (a.score||0));
+        const rows = data.map(d => ({
+            ...d,
+            uid: d._refPath.split('/')[1] // users/{uid}/results/{id}
+        })).sort((a,b) => (b.score||0) - (a.score||0));
 
         // Fetch user display names in parallel (deduplicated)
         const uids = [...new Set(rows.map(r=>r.uid))];

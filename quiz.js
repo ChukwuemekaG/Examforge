@@ -1129,19 +1129,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // ── Clean up notification & schedule after mock submission ──
                 try {
-                    const { getDocs, query, collection, where, deleteDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                    const { deleteDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                     
                     // Delete notifications for this mock
-                    const notifSnap = await getDocs(
-                        query(collection(db, 'users', currentUser.uid, 'notifications'), where('actionPath', '==', `/quiz.html?mockid=${examState.quizId}`))
-                    );
-                    const delPromises = notifSnap.docs.map(d => deleteDoc(fDoc(db, 'users', currentUser.uid, 'notifications', d.id)));
+                    const notifications = await sync.query('users/' + currentUser.uid + '/notifications', [where('actionPath', '==', `/quiz.html?mockid=${examState.quizId}`)]);
+                    const delPromises = notifications.map(d => deleteDoc(fDoc(db, 'users', currentUser.uid, 'notifications', d.id)));
                     
                     // Delete schedule items for this mock
-                    const schedSnap = await getDocs(
-                        query(collection(db, 'users', currentUser.uid, 'schedule'), where('mockId', '==', examState.quizId))
-                    );
-                    schedSnap.docs.forEach(d => delPromises.push(deleteDoc(fDoc(db, 'users', currentUser.uid, 'schedule', d.id))));
+                    const scheduleItems = await sync.query('users/' + currentUser.uid + '/schedule', [where('mockId', '==', examState.quizId)]);
+                    scheduleItems.forEach(d => delPromises.push(deleteDoc(fDoc(db, 'users', currentUser.uid, 'schedule', d.id))));
                     
                     await Promise.all(delPromises);
                 } catch (cleanupErr) {
