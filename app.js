@@ -404,7 +404,6 @@ function setupAdminListeners() {
                         role: 'student'
                     });
                 }
-            }
 
                 init();
                 // ─── Push Notification Setup ─────────────────────────
