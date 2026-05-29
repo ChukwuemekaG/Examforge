@@ -424,7 +424,7 @@ export class SyncManager {
         const data = extractData(snap);
         if (data) {
           await this._cache.set(cacheKey, data, 'doc');
-          this._clearMemCache(cacheKey);
+          this._setMemCache(cacheKey, data, DEFAULT_DOC_TTL_MS);
         } else {
           await this._cache.delete(cacheKey);
           this._clearMemCache(cacheKey);
@@ -602,7 +602,7 @@ export class SyncManager {
     const unsubscribe = onSnapshot(colRef, async (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       await this._cache.set(path, data, 'collection');
-      this._clearMemCache(path);
+      this._setMemCache(path, data, DEFAULT_COLLECTION_TTL_MS);
       this._notifySubscribers(path, data);
       if (onChange) onChange(data);
     }, (error) => {
