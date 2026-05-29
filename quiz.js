@@ -637,34 +637,36 @@ document.addEventListener('DOMContentLoaded', () => {
             const isUserChoice = subject.userAnswers[qIndex] === optIndex;
             const isActuallyCorrect = q.correctIndex === optIndex;
 
+            const indicator = btn.querySelector('.indicator');
+
             if (examState.isReviewMode) {
                 btn.disabled = true;
                 if (isActuallyCorrect) {
                     btn.classList.add('correct');
-                    btn.querySelector('.indicator').textContent = 'check_circle';
+                    indicator.textContent = 'check_circle';
                 } else if (isUserChoice) {
                     btn.classList.add('wrong');
-                    btn.querySelector('.indicator').textContent = 'cancel';
+                    indicator.textContent = 'cancel';
                 } else {
-                    btn.querySelector('.indicator').textContent = 'radio_button_unchecked';
+                    indicator.textContent = 'radio_button_unchecked';
                 }
             } else if (examState.mode === 'practice' && hasAnswered) {
                 btn.disabled = true;
                 if (isActuallyCorrect) {
                     btn.classList.add('correct');
-                    btn.querySelector('.indicator').textContent = 'check_circle';
+                    indicator.textContent = 'check_circle';
                 } else if (isUserChoice) {
                     btn.classList.add('wrong');
-                    btn.querySelector('.indicator').textContent = 'cancel';
+                    indicator.textContent = 'cancel';
                 } else {
-                    btn.querySelector('.indicator').textContent = 'radio_button_unchecked';
+                    indicator.textContent = 'radio_button_unchecked';
                 }
             } else {
                 if (isUserChoice) {
                     btn.classList.add('selected');
-                    btn.querySelector('.indicator').textContent = 'radio_button_checked';
+                    indicator.textContent = 'radio_button_checked';
                 } else {
-                    btn.querySelector('.indicator').textContent = 'radio_button_unchecked';
+                    indicator.textContent = 'radio_button_unchecked';
                 }
                 btn.addEventListener('click', () => selectOption(optIndex));
             }
@@ -720,7 +722,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             Array.from(optionsContainer.children).forEach((btn, idx) => {
                 btn.classList.toggle('selected', idx === optIndex);
-                btn.querySelector('.indicator').textContent = idx === optIndex ? 'radio_button_checked' : 'radio_button_unchecked';
+                const indicator = btn.querySelector('.indicator');
+                if (indicator) indicator.textContent = idx === optIndex ? 'radio_button_checked' : 'radio_button_unchecked';
             });
             updateMapHighlight();
         }
