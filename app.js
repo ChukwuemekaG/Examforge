@@ -7556,6 +7556,15 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
             return { uid: reg.uid, user, subjects: reg.subjects || [], scores: subjectScores };
         }));
         
+        // Sort by average score (highest first)
+        studentData.sort((a, b) => {
+            const aScores = Object.values(a.scores).filter(s => s !== null);
+            const bScores = Object.values(b.scores).filter(s => s !== null);
+            const aAvg = aScores.length > 0 ? aScores.reduce((sum, s) => sum + s.percentage, 0) / aScores.length : -1;
+            const bAvg = bScores.length > 0 ? bScores.reduce((sum, s) => sum + s.percentage, 0) / bScores.length : -1;
+            return bAvg - aAvg; // descending
+        });
+        
         // 3. Render table
         const name = u => u.displayName || u.email?.split('@')[0] || 'Unknown';
         const initials = u => {
@@ -7582,6 +7591,14 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
                     .reg-table th, .reg-table td { padding:5px 6px; }
                 }
             </style>
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                <button onclick="window.mcExportRegTableCSV('${eventId}')" style="font-size:0.65rem;font-weight:800;padding:6px 12px;border:2px solid var(--text);border-radius:6px;background:var(--bg-card);cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    <span class="material-icons-round" style="font-size:0.85rem;">file_download</span> EXPORT CSV
+                </button>
+                <button onclick="window.mcExportRegTablePDF('${eventId}')" style="font-size:0.65rem;font-weight:800;padding:6px 12px;border:2px solid var(--text);border-radius:6px;background:var(--bg-card);cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    <span class="material-icons-round" style="font-size:0.85rem;">picture_as_pdf</span> EXPORT PDF
+                </button>
+            </div>
             <table class="reg-table">
                 <thead>
                     <tr>
@@ -7646,6 +7663,204 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
     } catch (e) {
         console.error(e);
         container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--brand);font-size:0.8rem;">Error loading students: ${e.message}</div>`;
+    }
+};
+
+window.mcExportRegTableCSV = async function(eventId) {
+    try {
+        const registrationDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
+        const registrations = registrationDocs.map(r => ({ uid: r.id, ...r }));
+        if (registrations.length === 0) return window.showEFModal("No Data", "No registered students.", "OK", null, true);
+        
+        const ev = await sync.doc('subscription_events/' + eventId);
+        const subjects = (ev.availableSubjects || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
+        
+        // Build header row
+        const header = ['#', 'Student', 'Username', 'Email', 'Subjects'];
+        subjects.forEach(s => {
+            header.push(s + ' Score', s + ' %', s + ' Grade');
+        });
+        
+        // Build data rows - reuse the same logic as the table
+        let rows = [];
+        for (const reg of registrations) {
+            let user = { displayName: 'Unknown', email: '', username: '' };
+            try { const u = await sync.doc('users/' + reg.uid); if (u) user = u; } catch(e) {}
+            
+            const subjectScores = {};
+            for (const sub of (reg.subjects || [])) {
+                const mockResults = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)]);
+                if (mockResults.length > 0) {
+                    const attempt = await sync.doc('mock_exams/' + mockResults[0].id + '/attempts/' + reg.uid);
+                    if (attempt) {
+                        subjectScores[sub] = { correct: attempt.correct || 0, total: attempt.totalQuestions || 0, percentage: attempt.score || 0 };
+                    }
+                }
+            }
+            
+            const name = user.displayName || user.email?.split('@')[0] || 'Unknown';
+            const row = ['', name, user.username || '', user.email || '', (reg.subjects || []).join('; ')];
+            
+            subjects.forEach(s => {
+                const sc = subjectScores[s];
+                if (sc) {
+                    const g = mcGradeFromScore(sc.percentage);
+                    row.push(sc.correct + '/' + sc.total, '' + sc.percentage, g.grade);
+                } else {
+                    row.push('\u2014', '\u2014', '\u2014');
+                }
+            });
+            
+            rows.push(row);
+        }
+        
+        // Sort by average score descending
+        rows.sort((a, b) => {
+            const subjectCount = subjects.length;
+            let aSum = 0, aCount = 0, bSum = 0, bCount = 0;
+            subjects.forEach((_, idx) => {
+                const aVal = parseFloat(a[5 + idx * 3 + 1]);
+                const bVal = parseFloat(b[5 + idx * 3 + 1]);
+                if (!isNaN(aVal)) { aSum += aVal; aCount++; }
+                if (!isNaN(bVal)) { bSum += bVal; bCount++; }
+            });
+            const aAvg = aCount > 0 ? aSum / aCount : -1;
+            const bAvg = bCount > 0 ? bSum / bCount : -1;
+            return bAvg - aAvg;
+        });
+        
+        // Add row numbers after sorting
+        rows.forEach((r, idx) => r[0] = String(idx + 1));
+        
+        // Generate CSV
+        const csvContent = [header, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'registration-results-' + eventId + '.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error(e);
+        window.showEFModal("Error", e.message, "OK", null, true);
+    }
+};
+
+window.mcExportRegTablePDF = async function(eventId) {
+    try {
+        const registrationDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
+        const registrations = registrationDocs.map(r => ({ uid: r.id, ...r }));
+        if (registrations.length === 0) return window.showEFModal("No Data", "No registered students.", "OK", null, true);
+        
+        const ev = await sync.doc('subscription_events/' + eventId);
+        const subjects = (ev.availableSubjects || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
+        const normalizedSubjects = (ev.availableSubjects || []).map(s => {
+            if (typeof s === 'string') return { name: s, creditUnit: 1 };
+            return { name: s.name || s, creditUnit: s.creditUnit || 1 };
+        });
+        
+        // Build data (same logic as mcRenderRegStudentsTable)
+        let allData = [];
+        for (const reg of registrations) {
+            let user = { displayName: 'Unknown', email: '', username: '' };
+            try { const u = await sync.doc('users/' + reg.uid); if (u) user = u; } catch(e) {}
+            
+            const subjectScores = {};
+            for (const sub of (reg.subjects || [])) {
+                const mockResults = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)]);
+                if (mockResults.length > 0) {
+                    const attempt = await sync.doc('mock_exams/' + mockResults[0].id + '/attempts/' + reg.uid);
+                    if (attempt) {
+                        subjectScores[sub] = { correct: attempt.correct || 0, total: attempt.totalQuestions || 0, percentage: attempt.score || 0 };
+                    }
+                }
+            }
+            allData.push({ uid: reg.uid, user, subjects: reg.subjects || [], scores: subjectScores });
+        }
+        
+        // Sort by average score
+        allData.sort((a, b) => {
+            const aSc = Object.values(a.scores).filter(s => s !== null);
+            const bSc = Object.values(b.scores).filter(s => s !== null);
+            const aAvg = aSc.length > 0 ? aSc.reduce((s, x) => s + x.percentage, 0) / aSc.length : -1;
+            const bAvg = bSc.length > 0 ? bSc.reduce((s, x) => s + x.percentage, 0) / bSc.length : -1;
+            return bAvg - aAvg;
+        });
+        
+        const name = u => u.displayName || u.email?.split('@')[0] || 'Unknown';
+        
+        // Build HTML table for print
+        let tableRows = allData.map((d, idx) => {
+            let cols = '<td style="text-align:center;padding:6px 8px;border:1px solid #333;font-size:11px;">' + (idx + 1) + '</td>' +
+                        '<td style="padding:6px 8px;border:1px solid #333;font-size:11px;">' + name(d.user) + '</td>' +
+                        '<td style="padding:6px 8px;border:1px solid #333;font-size:11px;">' + (d.user.username || '\u2014') + '</td>' +
+                        '<td style="padding:6px 8px;border:1px solid #333;font-size:11px;">' + (d.user.email || '\u2014') + '</td>' +
+                        '<td style="padding:6px 8px;border:1px solid #333;font-size:11px;">' + d.subjects.join(', ') + '</td>';
+            
+            subjects.forEach(s => {
+                const sc = d.scores[s];
+                if (sc) {
+                    const g = mcGradeFromScore(sc.percentage);
+                    cols += '<td style="text-align:center;padding:6px 8px;border:1px solid #333;font-size:11px;font-weight:700;">' + sc.correct + '/' + sc.total + '</td>' +
+                             '<td style="text-align:center;padding:6px 8px;border:1px solid #333;font-size:11px;font-weight:700;">' + sc.percentage + '%</td>' +
+                             '<td style="text-align:center;padding:6px 8px;border:1px solid #333;font-size:11px;font-weight:700;">' + g.grade + '</td>';
+                } else {
+                    cols += '<td style="text-align:center;padding:6px 8px;border:1px solid #333;font-size:11px;color:#999;">\u2014</td>' +
+                             '<td style="text-align:center;padding:6px 8px;border:1px solid #333;font-size:11px;color:#999;">\u2014</td>' +
+                             '<td style="text-align:center;padding:6px 8px;border:1px solid #333;font-size:11px;color:#999;">\u2014</td>';
+                }
+            });
+            return '<tr>' + cols + '</tr>';
+        }).join('');
+        
+        let headerCols = '<th style="text-align:center;padding:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:11px;">#</th>' +
+                          '<th style="text-align:left;padding:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:11px;">Student</th>' +
+                          '<th style="text-align:left;padding:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:11px;">Username</th>' +
+                          '<th style="text-align:left;padding:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:11px;">Email</th>' +
+                          '<th style="text-align:left;padding:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:11px;">Subjects</th>';
+        
+        subjects.forEach(s => {
+            const ns = normalizedSubjects.find(n => n.name === s);
+            const cu = ns ? ns.creditUnit : 1;
+            headerCols += '<th style="text-align:center;padding:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:10px;">' + s + '<br>' + cu + ' CU</th>' +
+                           '<th style="text-align:center;padding:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:10px;">%</th>' +
+                           '<th style="text-align:center;padding:8px;border:1px solid #333;background:#1a1a2e;color:#fff;font-size:10px;">Grade</th>';
+        });
+        
+        const eventTitle = ev.title || 'Subscription Event Results';
+        const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const printHTML = '<!DOCTYPE html>\n' +
+'<html>\n' +
+'<head><title>' + eventTitle + ' - Results</title>\n' +
+'<style>\n' +
+'    body { font-family: Arial, sans-serif; margin: 30px; color: #222; }\n' +
+'    h2 { text-align: center; margin-bottom: 20px; font-size: 18px; text-transform: uppercase; }\n' +
+'    table { width: 100%; border-collapse: collapse; }\n' +
+'    th { background: #1a1a2e; color: #fff; font-size: 11px; padding: 8px; border: 1px solid #333; }\n' +
+'    td { padding: 6px 8px; border: 1px solid #333; font-size: 11px; }\n' +
+'    tr:nth-child(even) { background: #f5f5f5; }\n' +
+'    .footer { text-align: center; margin-top: 20px; font-size: 10px; color: #666; }\n' +
+'</style>\n' +
+'</head>\n' +
+'<body>\n' +
+'    <h2>' + eventTitle + '</h2>\n' +
+'    <table>\n' +
+'        <thead><tr>' + headerCols + '</tr></thead>\n' +
+'        <tbody>' + tableRows + '</tbody>\n' +
+'    </table>\n' +
+'    <div class="footer">Generated by ExamForge &middot; ' + dateStr + '</div>\n' +
+'    <script>window.print();<\/script>\n' +
+'</body>\n' +
+'</html>';
+        
+        const printWindow = window.open('', '_blank', 'width=1200,height=800');
+        printWindow.document.write(printHTML);
+        printWindow.document.close();
+        
+    } catch (e) {
+        console.error(e);
+        window.showEFModal("Error", e.message, "OK", null, true);
     }
 };
 
@@ -7785,7 +8000,6 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
     modal.onclick = e => { if (e.target === modal) modal.remove(); };
     // Attempt to preload existing mock if any (await it so questions render with loaded data)
     await window.mcPreloadEventMock(eventId, subject);
-    window.mcRenderBuilderQuestions();
 
     // Bind toggle color updates
     const colorMap = { strict: '#dc2626', mock: '#7c3aed', nocorrection: '#d97706', private: '#0f766e' };
@@ -7812,8 +8026,6 @@ window.mcPreloadEventMock = async function(eventId, subject) {
             if(window.currentBuilderQuestions.length === 0) window.currentBuilderQuestions = [{ question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '', expanded: true }];
             window.currentBuilderQuestions.forEach(q => q.expanded = false);
             if(window.currentBuilderQuestions[0]) window.currentBuilderQuestions[0].expanded = true;
-            window.mcRenderBuilderQuestions();
-            
             // Restore toggle states from loaded mock
             const toggleIds = ['mc-tog-strict', 'mc-tog-mock', 'mc-tog-nocorrection', 'mc-tog-private'];
             const toggleStates = {
@@ -7840,6 +8052,8 @@ window.mcPreloadEventMock = async function(eventId, subject) {
     } catch(e) {
         console.error("Error preloading mock", e);
     }
+    // ALWAYS render after preload, whether data was found or not
+    window.mcRenderBuilderQuestions();
 };
 
 window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=false) {
