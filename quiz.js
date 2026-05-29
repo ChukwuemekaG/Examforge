@@ -1079,7 +1079,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const userData = await sync.doc('users/' + currentUser.uid);
             const existingData = userData || {};
 
-            const resultsRef = collection(db, `users/${currentUser.uid}/results`);
             const retakeResults = await sync.query('users/' + currentUser.uid + '/results', [
                 where("quizId", "==", examState.quizId),
                 limit(1)
@@ -1145,38 +1144,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 // ── End cleanup ──
 
-                // ── Save result entry to user's results collection ──
-                try {
-                    const resultRef = doc(collection(db, 'users', currentUser.uid, 'results'));
-                    await setDoc(resultRef, {
-                        id: resultRef.id,
-                        quizId: examState.quizId,
-                        course: examState.subjects?.map(s => s.title).join(', ') || 'Mock Exam',
-                        date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-                        score: finalScore,
-                        total: 100,
-                        grade: finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F',
-                        correct: correct,
-                        totalQuestions: total,
-                        timeTaken: examState.timeTaken,
-                        isMock: true,
-                        timestamp: serverTimestamp()
-                    });
-                } catch(e) { console.error("Failed to save mock result:", e); }
-                // ── End result save ──
-
-                // === Streak/stats update for mock exam ===
+                // ── Save result + user update in ONE write (embedded in user doc) ──
+                const mockResult = {
+                    id: Date.now().toString(36),
+                    quizId: examState.quizId,
+                    course: examState.subjects?.map(s => s.title).join(', ') || 'Mock Exam',
+                    date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                    score: finalScore,
+                    total: 100,
+                    grade: finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F',
+                    correct: correct,
+                    totalQuestions: total,
+                    timeTaken: examState.timeTaken,
+                    isMock: true,
+                };
+                const existingRes = existingData.recentResults || [];
+                const recentResults = [mockResult, ...existingRes].slice(0, 50);
                 const updatePayload = {
                     streak: streakUpdate.streak,
                     highestStreak: streakUpdate.highestStreak,
                     lastExamDate: streakUpdate.lastExamDate,
                     exaRating: newExa,
+                    recentResults: recentResults,
                 };
-                if (userData) await updateDoc(userRef, updatePayload);
-                else await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
+                await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
 
             } else {
-                await addDoc(resultsRef, {
+                // Build new result object (embedded in user doc — no separate results collection write)
+                const newResult = {
+                    id: Date.now().toString(36),
                     quizId: examState.quizId,
                     course: courseTitle,
                     date: dateStr,
@@ -1189,8 +1185,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     exaChange: exaChange,
                     isRetake: isRetake,
                     corrections: corrections,
-                    timestamp: serverTimestamp()
-                });
+                };
 
                 if (examState.quizId && examState.quizId.startsWith('dq_')) {
                     const attemptRef = collection(db, "daily_quizzes", examState.quizId, "attempts");
@@ -1216,20 +1211,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             correct: correct,
                             totalQuestions: total,
                             timeTaken: examState.timeTaken,
-                            title: d?.title || 'Daily Quiz'
+                            title: 'Daily Quiz'
                         }));
                     } catch(e) {}
 
                 }
 
+                // Get existing recent results, prepend new one, keep max 50
+                const existingRes = existingData.recentResults || [];
+                const recentResults = [newResult, ...existingRes].slice(0, 50);
                 const updatePayload = {
                     streak: streakUpdate.streak,
                     highestStreak: streakUpdate.highestStreak,
                     lastExamDate: streakUpdate.lastExamDate,
                     exaRating: newExa,
+                    recentResults: recentResults,
                 };
-                if (userData) await updateDoc(userRef, updatePayload);
-                else await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
+                await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
             }
 
             if (!examState.isMockExam) {

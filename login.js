@@ -147,15 +147,22 @@ formRegister.addEventListener('submit', async (e) => {
             try {
                 // If the identifier doesn't have an @, it is likely a username
                 if (!identifier.includes('@')) {
-                    const userRef = doc(db, "usernames", identifier);
-                    const userSnap = await getDoc(userRef);
-
-                    if (userSnap.exists()) {
-                        emailToAuth = userSnap.data().email;
+                    // Check localStorage cache first — skip Firestore read for returning users
+                    const cachedEmail = localStorage.getItem('ef_username_' + identifier);
+                    if (cachedEmail) {
+                        emailToAuth = cachedEmail;
                     } else {
-                        toggleLoading(false);
-                        showFeedback(loginFeedback, "USERNAME NOT FOUND.");
-                        return;
+                        const userRef = doc(db, "usernames", identifier);
+                        const userSnap = await getDoc(userRef);
+
+                        if (userSnap.exists()) {
+                            emailToAuth = userSnap.data().email;
+                            localStorage.setItem('ef_username_' + identifier, emailToAuth);
+                        } else {
+                            toggleLoading(false);
+                            showFeedback(loginFeedback, "USERNAME NOT FOUND.");
+                            return;
+                        }
                     }
                 }
 

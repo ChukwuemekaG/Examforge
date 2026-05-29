@@ -402,38 +402,9 @@ function setupAdminListeners() {
                         highestStreak: 0,
                         createdAt: serverTimestamp(),
                         role: 'student'
-                    });
-                    // Re-fetch after creation
-                    await sync.refresh('users/' + user.uid);
-                } else {
-                    if (!userDataFromSync.provider || !userDataFromSync.displayName) {
-                        await updateDoc(userDocRef, {
-                            provider: provider,
-                            displayName: user.displayName || userDataFromSync.displayName
-                        });
-                    }
-                }
-
-                // Remove old listener if any
-                if (userListenerUnsubscribe) { userListenerUnsubscribe(); userListenerUnsubscribe = null; }
-
-                // Subscribe to real-time user data updates via sync (replaces manual onSnapshot)
-                sync.subscribe('users/' + user.uid, (data) => {
-                    if (data) {
-                        userData.stats = { ...userData.stats, ...data };
-                        const masterBtn = document.getElementById('nav-master');
-                        if (masterBtn) masterBtn.style.display = data.role === 'admin' ? 'flex' : 'none';
                     }
                 });
-
-                // Cache-first results access (0 reads if cached)
-                const resultsData = await sync.query('users/' + user.uid + '/results', [
-                    orderBy("timestamp", "desc"),
-                    limit(50)
-                ]);
-                if (resultsData && resultsData.length > 0) {
-                    userData.results = resultsData;
-                }
+            }
 
                 init();
                 // ─── Push Notification Setup ─────────────────────────
@@ -464,7 +435,7 @@ function setupAdminListeners() {
 
     // ─── Analytics Engine ─────────────────────────────────────────
     function getAnalytics() {
-        const results = userData.results;
+        const results = userData.recentResults || [];
         if (results.length === 0) {
             return { avg: 0, count: 0, bestScore: 0, bestCourse: 'N/A' };
         }
@@ -4600,8 +4571,8 @@ window.adminPromptNotification = function(userId) {
         const firstName = currentUser.displayName ? currentUser.displayName.split(' ')[0] : 'Student';
         const streakData = computeStreakDisplay(userData.stats);
         const streak = streakData.streak;
-        const weeklyBest = getWeeklyBest(userData.results);
-        const trend = getAccuracyTrend(userData.results);
+        const weeklyBest = getWeeklyBest(userData.recentResults || []);
+        const trend = getAccuracyTrend(userData.recentResults || []);
         const exaRating = userData.stats.exaRating || 800;
         const exaTitle = getExaTitle(exaRating);
 
@@ -4744,13 +4715,13 @@ window.adminPromptNotification = function(userId) {
                     <button class="btn btn-ghost btn-sm" onclick="efNavigate('results')">View All</button>
                 </div>
                 <div class="feed">
-                    ${userData.results.length === 0 ? `
+                    ${(userData.recentResults || []).length === 0 ? `
                         <div style="text-align:center; padding: 24px 8px; color: var(--text-muted); background: var(--bg-inset); border-radius: 8px; border: 1px dashed var(--border);">
                             <span class="material-icons-round" style="font-size: 1.5rem; margin-bottom: 8px;opacity:0.6;">assignment</span>
                             <div style="font-size: 0.72rem; font-weight: 600;">No exams taken yet</div>
                             <div style="font-size: 0.65rem; margin-top: 2px;">Your recent results will appear here.</div>
                         </div>
-                    ` : userData.results.slice(0, 4).map(r => `
+                    ` : (userData.recentResults || []).slice(0, 4).map(r => `
                     <div class="feed-item" onclick="efNavigate('results')" style="cursor:pointer; border-radius:8px; padding:8px; margin:0 -8px; transition: background 0.2s;">
                         <div class="feed-icon ${r.score >= 80 ? 'green' : r.score >= 65 ? '' : 'red'}">
                             <span class="material-icons-round">${r.score >= 80 ? 'check_circle' : 'radio_button_checked'}</span>
@@ -5507,7 +5478,7 @@ window.adminPromptNotification = function(userId) {
 
     function renderResults() {
         const analytics = getAnalytics();
-        const displayResults = userData.results.slice(0, 50);
+        const displayResults = (userData.recentResults || []).slice(0, 50);
 
         // Internal helper to derive average letter grade
         const getAvgGrade = (avg) => {
@@ -6291,8 +6262,10 @@ window.adminPromptNotification = function(userId) {
  * Checks if a username already exists in Firestore.
  */
     async function isUsernameUnique(username) {
-        const users = await sync.query('users', [where("username", "==", username)]);
-        return users.length === 0; // Returns true if no user has this name
+        // Direct doc lookup — 1 read guaranteed, no collection query
+        const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const snap = await getDoc(doc(db, 'usernames', username));
+        return !snap.exists();
     }
 
 
