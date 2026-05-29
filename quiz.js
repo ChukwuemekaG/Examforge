@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const rt = $id('result-title'); if (rt) rt.textContent = `${existingAttempt.score}% - Completed`;
                     
                     // Hide review button on retake - no corrections after closing
-                    const rb = $id('btn-review');
+                    const rb = $id('btn-review-corrections');
                     if (rb) rb.style.display = 'none';
                     
                     safeDisplay('timer-display', 'none');
@@ -645,6 +645,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (isUserChoice) {
                     btn.classList.add('wrong');
                     btn.querySelector('.indicator').textContent = 'cancel';
+                } else {
+                    btn.querySelector('.indicator').textContent = 'radio_button_unchecked';
                 }
             } else if (examState.mode === 'practice' && hasAnswered) {
                 btn.disabled = true;
@@ -654,11 +656,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (isUserChoice) {
                     btn.classList.add('wrong');
                     btn.querySelector('.indicator').textContent = 'cancel';
+                } else {
+                    btn.querySelector('.indicator').textContent = 'radio_button_unchecked';
                 }
             } else {
                 if (isUserChoice) {
                     btn.classList.add('selected');
                     btn.querySelector('.indicator').textContent = 'radio_button_checked';
+                } else {
+                    btn.querySelector('.indicator').textContent = 'radio_button_unchecked';
                 }
                 btn.addEventListener('click', () => selectOption(optIndex));
             }
@@ -714,7 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             Array.from(optionsContainer.children).forEach((btn, idx) => {
                 btn.classList.toggle('selected', idx === optIndex);
-                btn.querySelector('.indicator').textContent = idx === optIndex ? 'radio_button_checked' : '';
+                btn.querySelector('.indicator').textContent = idx === optIndex ? 'radio_button_checked' : 'radio_button_unchecked';
             });
             updateMapHighlight();
         }
