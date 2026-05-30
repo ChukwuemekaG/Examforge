@@ -728,10 +728,12 @@ function setupAdminListeners() {
         document.documentElement.scrollTop = 0;
 
         // Reveal bottom nav and notification bell after every page render
-        const navEl = document.getElementById('bottomNav');
-        if (navEl) navEl.style.display = 'flex';
-        const notifEl = document.getElementById('ef-notif-floating');
-        if (notifEl) notifEl.style.display = 'flex';
+        setTimeout(() => {
+            const navEl = document.getElementById('bottomNav');
+            if (navEl) navEl.style.display = 'flex';
+            const notifEl = document.getElementById('ef-notif-floating');
+            if (notifEl) notifEl.style.display = 'flex';
+        }, 1000);
 
         const state = { view, params };
         const url = '#' + view + (params.course ? '/' + encodeURIComponent(params.course) : '');
