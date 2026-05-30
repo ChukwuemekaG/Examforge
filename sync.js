@@ -682,7 +682,6 @@ export class SyncManager {
    *
    * @param {string} path - The Firestore path to subscribe to.
    * @param {Function} callback - Called with (data) on every change.
-   * @param {Function} [onError] - Optional error handler called with (error).
    * @returns {Promise<void>}
    *
    * @example
@@ -690,7 +689,7 @@ export class SyncManager {
    *     renderProfile(userData);
    *   });
    */
-  async subscribe(path, callback, onError) {
+  async subscribe(path, callback) {
     if (!path || typeof path !== 'string') {
       throw new Error('[SyncManager] subscribe() requires a valid path');
     }
@@ -700,24 +699,6 @@ export class SyncManager {
 
     const cacheKey = buildCacheKey(path);
 
-    // Register the callback
-    if (!this._subscribers.has(cacheKey)) {
-      this._subscribers.set(cacheKey, new Set());
-    }
-    this._subscribers.get(cacheKey).add(callback);
-
-    // Ensure a listener exists for document paths
-    const segments = path.split('/').filter(Boolean);
-    if (segments.length % 2 === 0) {
-      // Looks like a document path — set up listener if not already active
-      try {
-        this._setupDocListener(path);
-      } catch (error) {
-        if (onError) onError(error);
-        else console.error(`[SyncManager] Error setting up listener for "${path}":`, error);
-      }
-    }
-
     // Immediately invoke the callback with cached data (if available)
     try {
       const cached = await this._cache.get(cacheKey);
@@ -725,7 +706,7 @@ export class SyncManager {
         callback(cached.data);
       }
     } catch (error) {
-      // Non-critical — the subscriber will get updates when data arrives
+      // Non-critical
     }
   }
 

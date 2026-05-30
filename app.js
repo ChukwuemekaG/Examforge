@@ -485,42 +485,52 @@ function setupAdminListeners() {
                     });
                 }
 
-                // Subscribe to real-time user data changes
-                sync.subscribe('users/' + user.uid, (data) => {
-                    if (data) {
-                        userData.stats = {
-                            ...userData.stats,
-                            exaRating: data.exaRating ?? 800,
-                            streak: data.streak ?? 0,
-                            highestStreak: data.highestStreak ?? 0,
-                            lastExamDate: data.lastExamDate || null,
-                            role: data.role || 'student'
-                        };
-                        userData.recentResults = data.recentResults || [];
-                        // Show admin nav if user is admin
-                        const masterNav = document.getElementById('nav-master');
-                        if (masterNav) {
-                            masterNav.style.display = (data.role === 'admin') ? '' : 'none';
-                        }
-                        const masterNavBottom = document.getElementById('nav-master-bottom');
-                        if (masterNavBottom) {
-                            masterNavBottom.style.display = (data.role === 'admin') ? 'flex' : 'none';
-                        }
-                        // Override with latest quiz result from localStorage if available
-                        try {
-                            const lastExa = JSON.parse(localStorage.getItem('ef_last_exa'));
-                            if (lastExa && lastExa.exaRating && Date.now() - lastExa.timestamp < 120000) {
-                                if (lastExa.exaRating > (data.exaRating || 0) || 
-                                    (data.exaRating || 0) === (userData.stats?.exaRating || 800)) {
-                                    userData.stats.exaRating = lastExa.exaRating;
-                                }
-                                localStorage.removeItem('ef_last_exa');
-                            }
-                        } catch(e) {}
-                        // Refresh UI if on dashboard
-                        if (typeof updateDashboardUI === 'function') updateDashboardUI();
+                // Subscribe to user data changes (read from cache, periodic refresh)
+                const refreshUserData = (data) => {
+                    if (!data) return;
+                    userData.stats = {
+                        ...userData.stats,
+                        exaRating: data.exaRating ?? 800,
+                        streak: data.streak ?? 0,
+                        highestStreak: data.highestStreak ?? 0,
+                        lastExamDate: data.lastExamDate || null,
+                        role: data.role || 'student'
+                    };
+                    userData.recentResults = data.recentResults || [];
+                    // Show admin nav if user is admin
+                    const masterNav = document.getElementById('nav-master');
+                    if (masterNav) {
+                        masterNav.style.display = (data.role === 'admin') ? '' : 'none';
                     }
-                });
+                    const masterNavBottom = document.getElementById('nav-master-bottom');
+                    if (masterNavBottom) {
+                        masterNavBottom.style.display = (data.role === 'admin') ? 'flex' : 'none';
+                    }
+                    // Override with latest quiz result from localStorage if available
+                    try {
+                        const lastExa = JSON.parse(localStorage.getItem('ef_last_exa'));
+                        if (lastExa && lastExa.exaRating && Date.now() - lastExa.timestamp < 120000) {
+                            if (lastExa.exaRating > (data.exaRating || 0)) {
+                                userData.stats.exaRating = lastExa.exaRating;
+                            }
+                            localStorage.removeItem('ef_last_exa');
+                        }
+                    } catch(e) {}
+                    // Refresh UI if on dashboard
+                    if (typeof updateDashboardUI === 'function') updateDashboardUI();
+                };
+
+                // Initial load from cache
+                sync.subscribe('users/' + user.uid, refreshUserData);
+
+                // Periodic refresh every 60 seconds to pick up changes
+                setInterval(() => {
+                    sync.refresh('users/' + user.uid).then(() => {
+                        sync.doc('users/' + user.uid).then(data => {
+                            if (data) refreshUserData(data);
+                        });
+                    }).catch(() => {});
+                }, 60000);
 
                 // ─── One-time migration: copy old subcollection results to recentResults ───
                 if (userData.recentResults && userData.recentResults.length === 0) {
@@ -796,6 +806,11 @@ function setupAdminListeners() {
 
     // ─── Router ────────────────────────────────────────────────────
     function navigate(view, params = {}, { replace = false } = {}) {
+        // Clean up inbox listener when leaving inbox view
+        if (currentView === 'inbox' && window._inboxListener) {
+            try { window._inboxListener(); } catch(e) {}
+            window._inboxListener = null;
+        }
         currentView = view;
         updateActiveNav(view);
         workspace.scrollTop = 0;
@@ -6221,7 +6236,7 @@ window.adminPromptNotification = function(userId) {
             advice:        { icon:'tips_and_updates',bg:'rgba(124,58,237,0.08)',border:'#7c3aed', color:'#7c3aed'  },
         };
 
-        onSnapshot(
+        window._inboxListener = onSnapshot(
             query(collection(db, `users/${auth.currentUser.uid}/notifications`), orderBy('timestamp','desc'), limit(30)),
             snapshot => {
                 const now = Date.now();
@@ -7169,7 +7184,7 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        const events = await sync.collection('subscription_events');
+        const events = (await sync.collection('subscription_events')) || [];
         events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
         if (events.length === 0) {
