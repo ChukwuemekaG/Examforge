@@ -1028,8 +1028,8 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
     .page-header { margin-bottom: 12px; }
 }
 
-/* ≤600px — large phones — show bottom nav, collapse sidebar fully */
-@media (max-width: 600px) {
+/* ≤768px — tablets & large phones — show bottom nav, hide sidebar */
+@media (max-width: 768px) {
     /* Bottom navigation */
     .bottom-nav { display: flex; }
     
@@ -1039,12 +1039,19 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
         padding-bottom: calc(var(--bottom-nav-h) + 12px);
     }
     
-    /* Sidebar - full width when open */
-    .sidebar {
-        width: 100%;
-        max-width: 100%;
-    }
-    .sidebar.mobile-open { width: 100%; }
+    /* Sidebar hidden on mobile — use bottom nav instead */
+    .sidebar { display: none; }
+    
+    /* Hide hamburger menu — bottom nav replaces it */
+    .menu-btn { display: none; }
+    
+    /* Hide wordmark, smaller logo */
+    .topbar-logo .wordmark { display: none; }
+    .topbar-logo img { height: 20px; }
+    
+    /* Hide topbar search */
+    .topbar-search { display: none; }
+    .mobile-search-btn { display: none; }
     
     /* Tables become card-like on mobile */
     table { min-width: 0; }

@@ -405,6 +405,10 @@ function setupAdminListeners() {
                     if (masterNav) {
                         masterNav.style.display = (userDataFromSync.role === 'admin') ? '' : 'none';
                     }
+                    const masterNavBottom = document.getElementById('nav-master-bottom');
+                    if (masterNavBottom) {
+                        masterNavBottom.style.display = (userDataFromSync.role === 'admin') ? 'flex' : 'none';
+                    }
                 }
 
                 if (!userDataFromSync) {
@@ -438,6 +442,10 @@ function setupAdminListeners() {
                         const masterNav = document.getElementById('nav-master');
                         if (masterNav) {
                             masterNav.style.display = (data.role === 'admin') ? '' : 'none';
+                        }
+                        const masterNavBottom = document.getElementById('nav-master-bottom');
+                        if (masterNavBottom) {
+                            masterNavBottom.style.display = (data.role === 'admin') ? 'flex' : 'none';
                         }
                         // Refresh UI if on dashboard
                         if (typeof updateDashboardUI === 'function') updateDashboardUI();
@@ -6430,6 +6438,10 @@ window.adminPromptNotification = function(userId) {
                     <button class="btn btn-outline" id="btnResetPassword" style="width: 100%; border: 3px solid var(--text); font-weight: 900; font-size: 0.75rem; padding: 10px; background: white; margin: 0; display: block;">SEND RESET EMAIL</button>
                 </div>
                 
+                <button class="btn btn-danger" id="btnLogoutFromSettings" style="width: 100%; font-weight: 900; border: 3px solid var(--text); font-size: 0.75rem; padding: 10px; margin: 0 0 12px 0; display: block;">
+                    <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;margin-right:6px;">logout</span> SIGN OUT
+                </button>
+                
                 <button class="btn btn-ghost" id="btnDeleteAccountTrigger" style="width: 100%; color: var(--brand); font-weight: 900; border: 3px solid var(--brand); font-size: 0.75rem; padding: 10px; margin: 0; display: block;">
                     DELETE ACCOUNT
                 </button>
@@ -6470,6 +6482,11 @@ window.adminPromptNotification = function(userId) {
             try { await sendPasswordResetEmail(auth, currentUser.email); e.target.innerText = "SENT!"; e.target.style.background = "#16a34a"; e.target.style.color = "#fff"; }
             catch (err) { window.showEFModal("Error", "Failed to send reset email.", "OKAY", null, true); }
         };
+
+        document.getElementById('btnLogoutFromSettings')?.addEventListener('click', async () => {
+            try { await signOut(auth); window.location.href = '/'; }
+            catch (error) { console.error("Error signing out: ", error); }
+        });
 
         document.getElementById('btnDeleteAccountTrigger').onclick = () => {
             window.showEFModal("Final Farewell?", "Delete your account permanently? This cannot be undone.", "DELETE", async () => {
