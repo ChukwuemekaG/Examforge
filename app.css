@@ -314,12 +314,20 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     border-top: 2px solid var(--border-heavy);
     z-index: var(--bottom-nav-z);
     align-items: center;
-    justify-content: space-around;
-    padding: 4px 8px;
+    justify-content: flex-start;
+    padding: 4px 4px;
     /* Safe area for notched phones */
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+    flex-wrap: nowrap;
 }
+
+.bottom-nav::-webkit-scrollbar { display: none; }
 
 .bottom-nav-item {
     display: flex;
@@ -327,7 +335,8 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     align-items: center;
     justify-content: center;
     gap: 2px;
-    flex: 1;
+    flex: 0 0 auto;
+    min-width: 56px;
     height: 100%;
     padding: 6px 8px;
     border: none;

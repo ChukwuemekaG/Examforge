@@ -83,6 +83,26 @@ document.addEventListener('DOMContentLoaded', () => {
         stats: { streak: 0, highestStreak: 0, rank: 'N/A', lastExamDate: null, exaRating: 800 }
     };
 
+// Real-time dashboard UI update (called by subscriber when user data changes)
+window.updateDashboardUI = function() {
+    if (currentView !== 'dashboard') return;
+    // Update EXA rating display
+    const exaEl = document.querySelector('[data-ef-exa]');
+    if (exaEl && userData.stats) {
+        exaEl.textContent = userData.stats.exaRating ?? 800;
+    }
+    // Update streak display
+    const streakEl = document.querySelector('[data-ef-streak]');
+    if (streakEl && userData.stats) {
+        streakEl.textContent = userData.stats.streak ?? 0;
+    }
+    // Update highest streak
+    const highStreakEl = document.querySelector('[data-ef-high-streak]');
+    if (highStreakEl && userData.stats) {
+        highStreakEl.textContent = userData.stats.highestStreak ?? 0;
+    }
+};
+
     // ─── Mock course data (Fallback for Library) ─────────
     const MOCK_COURSES = [
         { codes: ['MTH101'], title: 'Elementary Mathematics I', level: '100L', description: 'Foundations of algebra, sets, number theory, and introductory calculus for science students.', link: '?json=mth101.json' },
@@ -116,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        const courses = await sync.collection('unicourses');
+        const courses = (await sync.collection('unicourses')) || [];
         coursesListDiv.innerHTML = ""; // Clear loading text
 
         // Loop through each course
@@ -130,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             coursesListDiv.appendChild(courseDiv);
 
             // Fetch Topics for this specific course
-            const topics = await sync.collection('unicourses/' + courseId + '/topics');
+            const topics = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
             const topicsList = document.getElementById(`topics-${courseId}`);
             topicsList.innerHTML = ""; // Clear loading text
 
@@ -240,7 +260,7 @@ function setupAdminListeners() {
     async function getNationalRanking(userRating) {
         try {
             // Use cached users collection for counting
-            const users = await sync.collection('users');
+            const users = (await sync.collection('users')) || [];
 
             // 1. Count users with strictly higher ratings
             const higherCount = users.filter(u => (u.exaRating || 0) > userRating).length;
@@ -447,6 +467,17 @@ function setupAdminListeners() {
                         if (masterNavBottom) {
                             masterNavBottom.style.display = (data.role === 'admin') ? 'flex' : 'none';
                         }
+                        // Override with latest quiz result from localStorage if available
+                        try {
+                            const lastExa = JSON.parse(localStorage.getItem('ef_last_exa'));
+                            if (lastExa && lastExa.exaRating && Date.now() - lastExa.timestamp < 120000) {
+                                if (lastExa.exaRating > (data.exaRating || 0) || 
+                                    (data.exaRating || 0) === (userData.stats?.exaRating || 800)) {
+                                    userData.stats.exaRating = lastExa.exaRating;
+                                }
+                                localStorage.removeItem('ef_last_exa');
+                            }
+                        } catch(e) {}
                         // Refresh UI if on dashboard
                         if (typeof updateDashboardUI === 'function') updateDashboardUI();
                     }
@@ -733,10 +764,12 @@ function setupAdminListeners() {
 
         // Reveal bottom nav and notification bell after every page render
         setTimeout(() => {
-            const navEl = document.getElementById('bottomNav');
-            if (navEl) navEl.style.display = 'flex';
-            const notifEl = document.getElementById('ef-notif-floating');
-            if (notifEl) notifEl.style.display = 'flex';
+            if (window.innerWidth <= 768) {
+                const navEl = document.getElementById('bottomNav');
+                if (navEl) navEl.style.display = 'flex';
+                const notifEl = document.getElementById('ef-notif-floating');
+                if (notifEl) notifEl.style.display = 'flex';
+            }
         }, 1000);
 
         const state = { view, params };
@@ -1090,7 +1123,7 @@ function mcRenderUsersTab() {
         }
 
         try {
-            window.masterAllUsers = await sync.collection('users');
+            window.masterAllUsers = (await sync.collection('users')) || [];
             renderFilteredUsers();
         } catch (err) {
             console.error("Error loading users:", err);
@@ -1219,7 +1252,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const courses = await sync.collection('unicourses');
+            const courses = (await sync.collection('unicourses')) || [];
             courses.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
@@ -1228,7 +1261,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                 return;
             }
             // fetch topic counts
-            const topicsLists = await Promise.all(courses.map(c => sync.collection('unicourses/' + c.id + '/topics')));
+            const topicsLists = await Promise.all(courses.map(c => sync.collection('unicourses/' + c.id + '/topics').catch(() => [])));
             grid.innerHTML = courses.map((c,i) => `
                 <div class="mc-card" style="position:relative;" onclick="window.mcDrillCourse('${c.id}')">
                     <button onclick="event.stopPropagation();window.mcDeleteCourse('${c.id}', '${(c.title || c.id).replace(/'/g, "\\'")}')"
@@ -1273,7 +1306,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const topics = await sync.collection('unicourses/' + courseId + '/topics');
+            const topics = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
             topics.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-topic-grid');
             if (!grid) return;
@@ -1470,7 +1503,7 @@ async function mcLoadDailyQuizzes() {
     if (!grid) return;
 
         try {
-            const quizzes = await sync.collection('daily_quizzes');
+            const quizzes = (await sync.collection('daily_quizzes')) || [];
             quizzes.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
         if (quizzes.length === 0) {
@@ -1531,7 +1564,7 @@ async function mcLoadDailyQuizSubCount() {
     const el = document.getElementById('mc-dq-sub-count');
     if (!el) return;
         try {
-            const users = await sync.collection('users');
+            const users = (await sync.collection('users')) || [];
             const subs = users.filter(d => {
                 return !d.subscriptions || d.subscriptions.dailyQuiz !== false;
             });
@@ -1582,7 +1615,7 @@ async function mcLoadDailyAdvices() {
     if (!grid) return;
 
         try {
-            const advices = await sync.query('daily_advices', [orderBy('createdAt', 'desc')]);
+            const advices = (await sync.query('daily_advices', [orderBy('createdAt', 'desc')])) || [];
             if (!advices.length) {
             grid.innerHTML = `
                 <div style="grid-column:1/-1;text-align:center;padding:48px;border:3px dashed var(--border);border-radius:16px;color:var(--text-muted);">
@@ -1861,7 +1894,7 @@ window.mcPublishDailyAdvice = async function() {
     btn.textContent = 'PUBLISHING…';
 
     try {
-        const targetUsersData = await sync.collection('users');
+        const targetUsersData = (await sync.collection('users')) || [];
         let targetUsers = [];
         if (audience === 'all') {
             targetUsers = targetUsersData;
@@ -2462,7 +2495,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         
         const quizShareUrl = window.location.origin + '/quiz?dqid=' + dqid;
         
-        const attempts = await sync.query('daily_quizzes/' + dqid + '/attempts', [orderBy('timestamp', 'desc')]);
+        const attempts = (await sync.query('daily_quizzes/' + dqid + '/attempts', [orderBy('timestamp', 'desc')])) || [];
 
         const attemptCount = attempts.length;
         let avgScore = 0;
@@ -2518,7 +2551,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         
         let subscriberCount = 0;
         try {
-            const usersArr = await sync.collection('users');
+            const usersArr = (await sync.collection('users')) || [];
             subscriberCount = usersArr.filter(d => {
                 return !d.subscriptions || d.subscriptions.dailyQuiz !== false;
             }).length;
@@ -4799,7 +4832,7 @@ window.adminPromptNotification = function(userId) {
                     <div style="font-weight: 800; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.12em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
                         <span class="material-icons-round" style="font-size: 0.9rem; color: var(--brand);">analytics</span> EXA RATING
                     </div>
-                    <div style="font-family: poppins; font-size: clamp(3.5rem, 8vw, 4.8rem); font-weight: 900; color: var(--text); line-height: 0.9; margin-bottom: 8px;">
+                    <div style="font-family: poppins; font-size: clamp(3.5rem, 8vw, 4.8rem); font-weight: 900; color: var(--text); line-height: 0.9; margin-bottom: 8px;" data-ef-exa>
                         ${exaRating}
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -4887,8 +4920,8 @@ window.adminPromptNotification = function(userId) {
 
             <div class="card stat-card" style="margin: 0; min-width: 0;">
                 <div class="stat-label"><span class="material-icons-round">local_fire_department</span> Streak</div>
-                <div class="stat-value" style="word-wrap: break-word;">${streak}d</div>
-                <div class="stat-delta" style="font-size:0.62rem; font-weight:600;">Best: ${userData.stats.highestStreak || 0}d</div>
+                <div class="stat-value" style="word-wrap: break-word;" data-ef-streak>${streak}d</div>
+                <div class="stat-delta" style="font-size:0.62rem; font-weight:600;" data-ef-high-streak>Best: ${userData.stats.highestStreak || 0}d</div>
             </div>
 
             <div class="card stat-card" style="margin: 0; min-width: 0;">
@@ -7359,7 +7392,7 @@ window.mcBroadcastEventMocks = function(eventId, title) {
         async () => {
             try {
                 // 1. Find all mocks for this event
-                const mocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
+                const mocks = (await sync.query('mock_exams', [where('eventId', '==', eventId)])) || [];
                 
                 if (mocks.length === 0) {
                     return window.showEFModal("No Mocks", "No mock exams found for this event. Create them first via MANAGE EVENT.", "OK", null, true);
@@ -7739,7 +7772,7 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
             // Check mock attempts for each subject
             const subjectScores = {};
             for (const sub of (reg.subjects || [])) {
-                const mockResults = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)]);
+                const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)])) || [];
                 
                 if (mockResults.length > 0) {
                     const mockId = mockResults[0].id;
@@ -7894,7 +7927,7 @@ window.mcExportRegTableCSV = async function(eventId) {
             
             const subjectScores = {};
             for (const sub of (reg.subjects || [])) {
-                const mockResults = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)]);
+                const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)])) || [];
                 if (mockResults.length > 0) {
                     const attempt = await sync.doc('mock_exams/' + mockResults[0].id + '/attempts/' + reg.uid);
                     if (attempt) {
@@ -7973,7 +8006,7 @@ window.mcExportRegTablePDF = async function(eventId) {
             
             const subjectScores = {};
             for (const sub of (reg.subjects || [])) {
-                const mockResults = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)]);
+                const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)])) || [];
                 if (mockResults.length > 0) {
                     const attempt = await sync.doc('mock_exams/' + mockResults[0].id + '/attempts/' + reg.uid);
                     if (attempt) {
@@ -8078,7 +8111,7 @@ window.mcPrintAllEventResults = async function(eventId) {
         const subjects = (evData.availableSubjects || []).map(s => mcNormalizeSubject(s));
         
         // Find all mocks linked to this event
-        const mocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
+        const mocks = (await sync.query('mock_exams', [where('eventId', '==', eventId)])) || [];
         
         // Group students by UID across all mocks
         const studentResults = {};
@@ -8379,7 +8412,7 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
 
 window.mcPreloadEventMock = async function(eventId, subject) {
     try {
-        const mockResults = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)]);
+        const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)])) || [];
         if (mockResults.length > 0) {
             const m = mockResults[0];
             document.getElementById('dq-builder-title').value = m.title;
@@ -8430,7 +8463,7 @@ window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=fal
     saveBtn.disabled = true;
     
     try {
-        const existingMocks = await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)]);
+        const existingMocks = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)])) || [];
         
         let mockId;
         if (existingMocks.length > 0) {

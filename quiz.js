@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const subjects = await Promise.all(courseIds.map(async (courseId, i) => {
-                    const topicsData = await sync.collection('unicourses/' + courseId + '/topics');
+                    const topicsData = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
                     let allQuestions = [], totalTimeLimit = 0;
                     let anyNoCorrection = false;
                     topicsData.forEach(d => {
@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let subjectTitle = rawTitle || courseId.toUpperCase();
 
             if (topicId === '__full__') {
-                const topicsData = await sync.collection('unicourses/' + courseId + '/topics');
+                const topicsData = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
                 let anyStrict = false, anyMock = false, anyNoCorrection = false;
                 topicsData.forEach(d => {
                     allQuestions.push(...(d.questions || []));
@@ -1151,11 +1151,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const { deleteDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                     
                     // Delete notifications for this mock
-                    const notifications = await sync.query('users/' + currentUser.uid + '/notifications', [where('actionPath', '==', `/quiz.html?mockid=${examState.quizId}`)]);
+                    const notifications = (await sync.query('users/' + currentUser.uid + '/notifications', [where('actionPath', '==', `/quiz.html?mockid=${examState.quizId}`)])) || [];
                     const delPromises = notifications.map(d => deleteDoc(fDoc(db, 'users', currentUser.uid, 'notifications', d.id)));
                     
                     // Delete schedule items for this mock
-                    const scheduleItems = await sync.query('users/' + currentUser.uid + '/schedule', [where('mockId', '==', examState.quizId)]);
+                    const scheduleItems = (await sync.query('users/' + currentUser.uid + '/schedule', [where('mockId', '==', examState.quizId)])) || [];
                     scheduleItems.forEach(d => delPromises.push(deleteDoc(fDoc(db, 'users', currentUser.uid, 'schedule', d.id))));
                     
                     await Promise.all(delPromises);
@@ -1188,6 +1188,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     recentResults: recentResults,
                 };
                 await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
+
+                // Store latest EXA for instant dashboard update on next app load
+                try { localStorage.setItem('ef_last_exa', JSON.stringify({ exaRating: newExa, timestamp: Date.now() })); } catch(e) {}
 
             } else {
                 // Build new result object (embedded in user doc — no separate results collection write)
@@ -1248,6 +1251,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     recentResults: recentResults,
                 };
                 await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
+
+                // Store latest EXA for instant dashboard update on next app load
+                try { localStorage.setItem('ef_last_exa', JSON.stringify({ exaRating: newExa, timestamp: Date.now() })); } catch(e) {}
             }
 
             if (!examState.isMockExam) {
