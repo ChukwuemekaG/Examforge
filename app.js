@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let swipeStartX = 0;
     let swipeStartY = 0;
+    let swipeStartTime = 0;
 
     // These are "consumed" elements that should NOT trigger navigation swipe
     function isSwipableTarget(el) {
@@ -57,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isSwipableTarget(e.target)) { swipeStartX = 0; return; }
         swipeStartX = e.changedTouches[0].screenX;
         swipeStartY = e.changedTouches[0].screenY;
+        swipeStartTime = Date.now();
     }, { passive: true });
 
     workspace.addEventListener('touchend', (e) => {
@@ -65,9 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const swipeEndY = e.changedTouches[0].screenY;
         const xDiff = swipeEndX - swipeStartX;
         const yDiff = swipeEndY - swipeStartY;
+        const duration = Date.now() - swipeStartTime;
 
-        // Only horizontal swipes, minimum 60px distance
-        if (Math.abs(xDiff) < 60 || Math.abs(xDiff) < Math.abs(yDiff) * 1.5) {
+        // Must be a deliberate swipe: minimum duration, distance, and horizontal dominance
+        if (duration < 150 || Math.abs(xDiff) < 60 || Math.abs(xDiff) < Math.abs(yDiff) * 1.5) {
             swipeStartX = 0;
             return;
         }
