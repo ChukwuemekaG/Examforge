@@ -310,29 +310,17 @@ function setupAdminListeners() {
 }
     async function getNationalRanking(userRating) {
         try {
-            // Use cached users collection for counting
-            const users = (await sync.collection('users')) || [];
-
-            // 1. Count users with strictly higher ratings
-            const higherCount = users.filter(u => (u.exaRating || 0) > userRating).length;
-
-            // 2. Determine your rank
+            const { collection, query, where, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const [higherSnap, totalSnap] = await Promise.all([
+                getCountFromServer(query(collection(db, 'users'), where('exaRating', '>', userRating))),
+                getCountFromServer(collection(db, 'users'))
+            ]);
+            const higherCount = higherSnap.data().count;
+            const totalUsers = totalSnap.data().count;
             const exactRank = higherCount + 1;
-
-            /* If the database says there is only 1 user (the other guy), 
-               but you are rank #2, we must force the 'total' to be at least 2 
-               so the UI doesn't look broken to the student.
-            */
-            const displayTotal = Math.max(users.length, exactRank);
-
-            // 3. Calculate percentile using the corrected total
+            const displayTotal = Math.max(totalUsers, exactRank);
             let percentile = exactRank === 1 ? 1 : Math.floor((exactRank / displayTotal) * 100);
-
-            return {
-                rank: exactRank,
-                total: displayTotal,
-                percentile: percentile
-            };
+            return { rank: exactRank, total: displayTotal, percentile };
         } catch (error) {
             console.error("Ranking Error:", error);
             return { rank: '-', total: '-', percentile: 100 };
@@ -1109,15 +1097,21 @@ async function renderMaster() {
     mcRenderTabContent();
 }
  
-window.mcSwitchTab = function(tab) {
+window.mcSwitchTab = async function(tab) {
     masterTab = tab;
     document.querySelectorAll('.mc-tab').forEach(t => {
-        // Use the data-view attribute or the first label span for matching
-        const fullLabel = t.querySelector('.mc-tab-label');
-        const shortLabel = t.querySelector('.mc-tab-label-short');
+        const fullLabel = t.querySelector('.mc-tab-label') || t.querySelector('.mc-tab-label-short');
         const labelText = (fullLabel ? fullLabel.textContent : t.textContent).trim().toLowerCase().replace(/\s+/g,'');
         t.classList.toggle('active', labelText.includes(tab) || tab.includes(labelText));
     });
+    // Refresh caches before rendering admin tab content
+    try {
+        if (tab === 'users' || tab === 'courses') await sync.refresh('users');
+        if (tab === 'courses') await sync.refresh('unicourses');
+        if (tab === 'dailyquiz') await sync.refresh('daily_quizzes');
+        if (tab === 'dailyadvice') await sync.refresh('daily_advices');
+        if (tab === 'subevents') await sync.refresh('subscription_events');
+    } catch(e) {}
     mcRenderTabContent();
 };
  
@@ -1131,13 +1125,14 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        const [allUsers, courses] = await Promise.all([
-            sync.collection('users'),
+        const { collection, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const [userCountSnap, courses] = await Promise.all([
+            getCountFromServer(collection(db, 'users')),
             sync.collection('unicourses')
         ]);
         const el = id => document.getElementById(id);
-        if (el('mc-s-users')) el('mc-s-users').textContent = allUsers.length;
-        if (el('mc-s-courses')) el('mc-s-courses').textContent = courses.length;
+        if (el('mc-s-users')) el('mc-s-users').textContent = userCountSnap.data().count;
+        if (el('mc-s-courses')) el('mc-s-courses').textContent = (courses || []).length;
     } catch (e) { console.error(e); }
 }
 
@@ -1614,15 +1609,13 @@ async function mcLoadDailyQuizzes() {
 async function mcLoadDailyQuizSubCount() {
     const el = document.getElementById('mc-dq-sub-count');
     if (!el) return;
-        try {
-            const users = (await sync.collection('users')) || [];
-            const subs = users.filter(d => {
-                return !d.subscriptions || d.subscriptions.dailyQuiz !== false;
-            });
-            el.textContent = `${subs.length} subscriber${subs.length !== 1 ? 's' : ''} will receive broadcasts`;
+    try {
+        const { collection, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const snap = await getCountFromServer(collection(db, 'users'));
+        el.textContent = `${snap.data().count} total registered students`;
         el.style.color = '#16a34a';
     } catch (e) {
-        el.textContent = 'Could not count subscribers';
+        el.textContent = 'Could not count users';
     }
 }
 
@@ -2000,6 +1993,7 @@ window.mcPublishDailyAdvice = async function() {
         const modal = document.getElementById('ef-adv-builder-modal');
         if (modal) modal.remove();
 
+        await sync.refresh('daily_advices');
         window.showEFModal("Advice Broadcasted", `Daily Advice published and successfully broadcasted to ${targetUsers.length} students!`, "EXCELLENT", null, true);
         mcLoadDailyAdvices();
 
@@ -2490,7 +2484,9 @@ window.mcSaveCreatedDailyQuiz = async function() {
         if (modal) modal.remove();
         
         window.showEFModal("Quiz Published", "Your new daily quiz has been saved and published successfully!", "AWESOME", null, true);
+        await sync.refresh('daily_quizzes');
         mcLoadDailyQuizzes();
+        mcLoadDailyQuizSubCount();
         
     } catch (e) {
         console.error(e);
@@ -8541,6 +8537,7 @@ window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=fal
         if (!autoRelease) {
             document.getElementById('ef-dq-builder-modal')?.remove();
             window.showEFModal("Saved", "Mock exam saved successfully.", "OK", null, true);
+            sync.refresh('mock_exams').catch(() => {});
         }
         return mockId;
     } catch (e) {
