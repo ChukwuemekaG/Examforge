@@ -4707,7 +4707,30 @@ window.adminPromptNotification = function(userId) {
             // Fetch schedule items
             const schedItems = await sync.collection('users/' + auth.currentUser.uid + '/schedule');
             if (schedItems && schedItems.length) {
-                userData.schedule = schedItems.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+                const now = Date.now();
+                const getDueMs = s => {
+                    if (s.dueTimestamp?.toMillis) return s.dueTimestamp.toMillis();
+                    if (s.dueDate) return new Date(s.dueDate + 'T' + (s.dueTime || '23:59')).getTime();
+                    return null;
+                };
+                const active = schedItems.filter(s => {
+                    const ms = getDueMs(s);
+                    return ms === null || ms >= now;
+                });
+                // Auto-delete expired items in background
+                const expired = schedItems.filter(s => {
+                    const ms = getDueMs(s);
+                    return ms !== null && ms < now;
+                });
+                if (expired.length) {
+                    const { writeBatch, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                    const batch = writeBatch(db);
+                    expired.forEach(s => {
+                        if (s.id) batch.delete(doc(db, `users/${auth.currentUser.uid}/schedule`, s.id));
+                    });
+                    batch.commit().catch(() => {});
+                }
+                userData.schedule = active.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
             }
         } catch (e) { console.error("Failed to fetch user data:", e); }
         
