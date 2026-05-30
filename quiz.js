@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const timeStr = existingAttempt.timeTaken ? `${Math.floor(existingAttempt.timeTaken/60)}m ${existingAttempt.timeTaken%60}s` : '—';
                     const wrong = (existingAttempt.totalQuestions || 0) - (existingAttempt.correct || 0);
                     const gradeChar = existingAttempt.score >= 80 ? 'A' : existingAttempt.score >= 65 ? 'B' : existingAttempt.score >= 50 ? 'C' : existingAttempt.score >= 40 ? 'D' : 'F';
-                    const gradeColor = existingAttempt.score >= 80 ? '#16a34a' : existingAttempt.score >= 65 ? '#2563eb' : existingAttempt.score >= 50 ? '#ca8a04' : existingAttempt.score >= 40 ? '#d97706' : '#dc2626';
+                    const gradeColor = existingAttempt.score >= 80 ? '#16a34a' : existingAttempt.score >= 65 ? '#2563eb' : existingAttempt.score >= 50 ? '#ca8a04' : existingAttempt.score >= 40 ? '#d97706' : '#fe6961';
                     
                     // Insert quiz info bar for daily quiz retake
                     const dqContainer = $id('subject-scores-container');
@@ -167,8 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div style="font-size:1.3rem;font-weight:900;color:#16a34a;">${existingAttempt.correct || 0}</div>
                                 <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Correct</div>
                             </div>
-                            <div style="background:rgba(220,38,38,0.06);border:2px solid #dc2626;border-radius:10px;padding:14px;text-align:center;">
-                                <div style="font-size:1.3rem;font-weight:900;color:#dc2626;">${wrong}</div>
+                            <div style="background:rgba(254,105,97,0.06);border:2px solid #fe6961;border-radius:10px;padding:14px;text-align:center;">
+                                <div style="font-size:1.3rem;font-weight:900;color:#fe6961;">${wrong}</div>
                                 <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">Wrong</div>
                             </div>
                         </div>
@@ -957,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Final UI reveal - elaborate results
         const wrong = globalTotal - globalCorrect;
         const grade = perc >= 80 ? 'A' : perc >= 65 ? 'B' : perc >= 50 ? 'C' : perc >= 40 ? 'D' : 'F';
-        const gradeColor = perc >= 80 ? '#16a34a' : perc >= 65 ? '#2563eb' : perc >= 50 ? '#ca8a04' : perc >= 40 ? '#d97706' : '#dc2626';
+        const gradeColor = perc >= 80 ? '#16a34a' : perc >= 65 ? '#2563eb' : perc >= 50 ? '#ca8a04' : perc >= 40 ? '#d97706' : '#fe6961';
         const timeSpent = examState.timeTaken ? `${Math.floor(examState.timeTaken/60)}m ${examState.timeTaken%60}s` : '—';
         const quizTitle = examState.subjects?.map(s => s.title).join(', ') || 'Quiz';
         const timeLimitMin = examState.timeLimit ? Math.floor(examState.timeLimit / 60) : '—';

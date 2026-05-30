@@ -329,9 +329,9 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     gap: 2px;
     flex: 1;
     height: 100%;
-    padding: 4px 2px;
-    border: 2px solid transparent;
-    border-radius: 0;
+    padding: 6px 4px;
+    border: none;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-muted);
     cursor: pointer;
@@ -339,6 +339,7 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     position: relative;
     min-height: 44px;
     -webkit-tap-highlight-color: transparent;
+    margin: 4px 2px;
 }
 
 .bottom-nav-item .material-icons-round {
@@ -357,24 +358,22 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
 }
 
 .bottom-nav-item:hover {
-    color: var(--text-sub);
-    border-color: var(--border);
+    color: var(--text);
+    background: var(--bg-inset);
 }
 
 .bottom-nav-item.active {
-    color: var(--brand);
-    border-color: var(--brand);
+    color: #fff;
+    background: var(--brand);
+    box-shadow: 0 2px 8px rgba(254, 105, 97, 0.3);
 }
 
-.bottom-nav-item.active::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 25%;
-    right: 25%;
-    height: 2px;
-    background: var(--brand);
-    border-radius: 0 0 2px 2px;
+.bottom-nav-item.active .material-icons-round {
+    color: #fff;
+}
+
+.bottom-nav-item.active .bottom-nav-label {
+    color: #fff;
 }
 
 /* ============================================================

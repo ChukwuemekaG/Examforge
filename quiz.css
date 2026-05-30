@@ -13,9 +13,9 @@ html {
 ========================================= */
 :root, [data-theme="light"] {
     min-width: 350px; /* Allows the layout to shrink smaller for mobile devices */
-    --brand:        #C0392B;
-    --brand-hover:  #A93226;
-    --brand-dim: #FFD6E0;
+    --brand:        #fe6961;
+    --brand-hover:  #fe675a;
+    --brand-dim: #fef0ef;
     --bg: #f5f5f5; /* Retro off-white */
     --surface: #FFFFFF;
     --surface-alt: #F4F4F0;
@@ -24,7 +24,7 @@ html {
     --border: #000000;
     --success: #00E676;
     --success-dim: #B3FFD6;
-    --danger-dim: #FFCCCC;
+    --danger-dim: #fef0ef;
     
     /* Hard, solid brutalist shadows */
     --shadow-sm: 2px 2px 0px 0px #000000;
@@ -38,9 +38,9 @@ html {
 }
 
 [data-theme="dark"] {
-    --brand:        #C0392B;
-    --brand-hover:  #A93226;
-    --brand-dim: #4A0014;
+    --brand:        #fe6961;
+    --brand-hover:  #fe675a;
+    --brand-dim: #4a1512;
     --bg: #1b1c24; 
     --surface: #1d1d26;
     --surface-alt: #1c1c23;
@@ -49,7 +49,7 @@ html {
     --border: #FFFFFF; /* White borders for extreme contrast */
     --success: #00E676;
     --success-dim: #00331A;
-    --danger-dim: #4A0000;
+    --danger-dim: #4a1512;
     
     /* Shadows turn white (or very light) in dark mode to maintain the brutalist pop */
     --shadow-sm: 2px 2px 0px 0px #FFFFFF;
@@ -160,8 +160,8 @@ body {
 .btn-outline:hover:not(:disabled) { background: var(--surface-alt); transform: translate(-2px, -2px); }
 .btn-outline:active:not(:disabled) { transform: translate(2px, 2px); }
 
-.btn-danger { background: #FF3B30; color: #fff; }
-.btn-danger:hover:not(:disabled) { background: #E32A20; transform: translate(-2px, -2px); }
+.btn-danger { background: #fe6961; color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #e5554d; transform: translate(-2px, -2px); }
 
 .btn-block { width: 100%; }
 
@@ -256,7 +256,7 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     color: var(--text); background: var(--surface); padding: 3px 10px; 
     border-radius: var(--r-sm); border: 3px solid var(--border);
 }
-.timer.danger { color: #fff; background: #FF3B30; animation: pulse 1s infinite; }
+.timer.danger { color: #fff; background: #fe6961; animation: pulse 1s infinite; }
 
 .progress-track { width: 100%; height: 6px; background: var(--bg); border-bottom: 3px solid var(--border); }
 .progress-fill { height: 100%; background: var(--brand); width: 0%; border-right: 3px solid var(--border); transition: width 0.3s ease; }
@@ -280,7 +280,7 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
 .option-btn.selected strong, .option-btn.selected .indicator { color: var(--bg) !important; }
 
 .option-btn.correct { background: var(--success); color: #000; border-color: var(--border); }
-.option-btn.wrong { background: #FF3B30; color: #fff; border-color: var(--border); }
+.option-btn.wrong { background: #fe6961; color: #fff; border-color: var(--border); }
 .option-btn.correct strong, .option-btn.wrong strong { color: inherit !important; }
 
 .explanation-box { margin-top: 20px; padding: 16px; background: var(--surface-alt); border: 3px solid var(--border); border-radius: var(--r-md); }
@@ -325,7 +325,7 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
 .calc-btn:hover { background: var(--surface-alt); filter: brightness(0.9); }
 .calc-btn:active { transform: scale(0.95); }
 .calc-btn.op { background: var(--surface-alt); color: var(--brand); }
-.calc-btn.act { background: #FF3B30; color: #fff; }
+.calc-btn.act { background: #fe6961; color: #fff; }
 .calc-btn.equals { background: var(--brand); color: #fff; }
 
 /* =========================================
