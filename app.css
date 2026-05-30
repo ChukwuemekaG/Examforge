@@ -975,6 +975,38 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
     }
 }
 
+/* Floating notification bell (mobile only) */
+#ef-notif-floating {
+    display: none;
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    align-items: center;
+    justify-content: center;
+    z-index: 900;
+    cursor: pointer;
+    color: var(--text-sub);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: var(--transition);
+}
+#ef-notif-floating:hover { border-color: var(--brand); color: var(--text); }
+#ef-notif-floating .material-icons-round { font-size: 20px; }
+.floating-notif-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    background: var(--brand);
+    border: 2px solid var(--surface);
+    border-radius: 50%;
+}
+
 /* ============================================================
    RESPONSIVE BREAKPOINTS
    ============================================================ */
@@ -1028,62 +1060,14 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
     .page-header { margin-bottom: 12px; }
 }
 
-/* ≤768px — tablets & large phones — show bottom nav, hide sidebar */
+/* ≤768px — tablets & large phones — show bottom nav, hide sidebar, hide topbar */
 @media (max-width: 768px) {
-    /* Bottom navigation */
     .bottom-nav { display: flex; }
-    
-    /* Workspace bottom padding to account for bottom nav */
-    .workspace { 
-        padding: 12px 10px;
-        padding-bottom: calc(var(--bottom-nav-h) + 12px);
-    }
-    
-    /* Sidebar hidden on mobile — use bottom nav instead */
+    .topbar { display: none; }
     .sidebar { display: none; }
-    
-    /* Hide hamburger menu — bottom nav replaces it */
     .menu-btn { display: none; }
-    
-    /* Hide wordmark, smaller logo */
-    .topbar-logo .wordmark { display: none; }
-    .topbar-logo img { height: 20px; }
-    
-    /* Hide topbar search */
-    .topbar-search { display: none; }
-    .mobile-search-btn { display: none; }
-    
-    /* Tables become card-like on mobile */
-    table { min-width: 0; }
-    .table-wrap { max-width: 100%; }
-    
-    /* Card grid - 2 columns on mobile */
-    .card-grid { 
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-    
-    .card { padding: 8px; }
-    
-    /* Stat cards single column on very small */
-    .stat-value { font-size: 1.4rem; }
-    
-    /* Hide avatar initials text on small screens, keep icon */
-    .avatar { width: 34px; height: 34px; font-size: 0.7rem; }
-    
-    /* Compact topbar */
-    .topbar { padding: 0 10px; gap: 8px; }
-    .topbar-actions { gap: 4px; }
-    
-    /* Theme switch can be smaller */
-    .theme-switch { width: 52px; height: 28px; }
-    .slider:before { height: 18px; width: 18px; }
-    input:checked + .slider:before { transform: translateX(24px); }
-    .slider .material-icons-round { font-size: 13px; }
-    
-    /* Tab bar */
-    .tab-bar { width: 100%; }
-    .tab-btn { flex: 1; padding: 8px 10px; font-size: 0.65rem; }
+    .workspace { padding: 12px 10px; padding-top: 0; padding-bottom: calc(var(--bottom-nav-h) + 12px); }
+    #ef-notif-floating { display: flex; }
 }
 
 /* ≤480px — small phones */

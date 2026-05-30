@@ -505,6 +505,14 @@ function setupAdminListeners() {
                 }
 
                 init();
+                // ─── Floating notification bell (mobile) ───
+                if (!document.getElementById('ef-notif-floating')) {
+                    const notifFloat = document.createElement('div');
+                    notifFloat.id = 'ef-notif-floating';
+                    notifFloat.innerHTML = '<span class="material-icons-round">notifications</span><span class="floating-notif-badge"></span>';
+                    notifFloat.addEventListener('click', () => efNavigate('inbox'));
+                    document.body.appendChild(notifFloat);
+                }
                 // ─── Warm caches in background for instant view loads ───
                 sync.collection('unicourses').catch(() => {});
                 sync.collection('users/' + user.uid + '/schedule').catch(() => {});
@@ -4902,6 +4910,19 @@ window.adminPromptNotification = function(userId) {
                 </div>
             </div>
         </div>
+            <!-- Profile & Settings (mobile) -->
+            <div class="dashboard-profile-card" style="margin-top:16px;">
+                <button onclick="efNavigate('settings')" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg-card);border:3px solid var(--text);border-radius:12px;cursor:pointer;font-weight:700;font-size:0.85rem;color:var(--text);">
+                    <div style="width:40px;height:40px;border-radius:8px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;">
+                        <span class="material-icons-round" style="font-size:1.1rem;">person</span>
+                    </div>
+                    <div style="flex:1;text-align:left;">
+                        <div style="font-weight:800;font-size:0.85rem;">Profile & Settings</div>
+                        <div style="font-size:0.7rem;color:var(--text-muted);">Theme, notifications, account</div>
+                    </div>
+                    <span class="material-icons-round" style="color:var(--text-muted);">chevron_right</span>
+                </button>
+            </div>
     `;
         fixTwoCol();
     }
@@ -6392,7 +6413,7 @@ window.adminPromptNotification = function(userId) {
         workspace.style.fontSize = '16px';
 
         workspace.innerHTML = `
-    <div style="width: 100%; max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; padding-bottom: 40px;">
+    <div id="ef-settings-page" style="width: 100%; max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; padding-bottom: 40px;">
         
         <div style="width: 100%; margin-bottom: 8px;">
             <div style="font-size: 1.6rem; font-weight: 900; line-height: 1.1; color: var(--text);">Settings</div>
@@ -6424,6 +6445,25 @@ window.adminPromptNotification = function(userId) {
                 </div>
                 <div id="username-status-msg" style="font-size: 0.7rem; margin-top: 6px; font-weight: 800; min-height: 1em;"></div>
             </div>
+
+        <div style="margin: 16px 0; height: 2px; background: var(--border); width: 100%; opacity: 0.2;"></div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="material-icons-round" style="color:var(--text-muted);font-size:1.2rem;">${document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark_mode' : 'light_mode'}</span>
+                <div>
+                    <div style="font-weight:700;font-size:0.8rem;color:var(--text);">Theme</div>
+                    <div style="font-size:0.65rem;color:var(--text-muted);">${document.documentElement.getAttribute('data-theme') === 'dark' ? 'Dark mode' : 'Light mode'}</div>
+                </div>
+            </div>
+            <label class="theme-switch" style="margin:0;transform:scale(0.85);">
+                <input type="checkbox" class="theme-toggle-checkbox" ${document.documentElement.getAttribute('data-theme') === 'dark' ? 'checked' : ''}>
+                <span class="slider">
+                    <span class="material-icons-round icon-light">light_mode</span>
+                    <span class="material-icons-round icon-dark">dark_mode</span>
+                </span>
+            </label>
+        </div>
         </div>
 
         <div class="card" style="width: calc(100% - 6px); padding: 16px !important; margin: 0 !important; border-radius: 12px; box-sizing: border-box;">
@@ -6476,6 +6516,19 @@ window.adminPromptNotification = function(userId) {
             } catch (err) { statusMsg.innerText = "Error: " + err.message; }
             btn.disabled = false; btn.innerText = "SAVE CHANGES";
         };
+
+        // Theme toggle in settings
+        const settingsThemeToggle = document.querySelector('#ef-settings-page .theme-toggle-checkbox');
+        if (settingsThemeToggle) {
+            settingsThemeToggle.addEventListener('change', (e) => {
+                const isDark = e.target.checked;
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                localStorage.setItem('examforge-theme', isDark ? 'dark' : 'light');
+                // Update the icon
+                const icon = settingsThemeToggle.closest('div').querySelector('.material-icons-round');
+                if (icon) icon.textContent = isDark ? 'dark_mode' : 'light_mode';
+            });
+        }
 
         // Re-bind other buttons
         document.getElementById('btnResetPassword').onclick = async (e) => {
