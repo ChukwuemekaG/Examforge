@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') return false;
         if (el.closest('.btn') || el.closest('button') || el.closest('a') || el.closest('input')) return false;
         if (el.closest('.bottom-nav') || el.closest('.bottom-nav-item')) return false;
+        // Don't swipe on horizontally scrollable containers (tables, etc.)
+        if (el.closest('[style*="overflow-x: auto"]') || el.closest('.table-wrap') || el.closest('.reg-table') || el.closest('.bottom-nav')) return false;
         if (el.closest('.card') && el.closest('.card').querySelector('button, input, a')) return false;
         return true;
     }
@@ -721,6 +723,11 @@ function setupAdminListeners() {
                 sidebar.classList.remove('collapsed');
             }
         }
+        // Show/hide bottom nav and notification bell on resize
+        const bottomNav = document.getElementById('bottomNav');
+        if (bottomNav) bottomNav.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+        const notifFloat = document.getElementById('ef-notif-floating');
+        if (notifFloat) notifFloat.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
     });
 
     // ─── Sidebar State Persistence ──────────────────────────────
