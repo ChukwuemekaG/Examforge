@@ -9,7 +9,9 @@
  *   1. Read from cache first → return immediately for instant UI
  *   2. On cache miss → fetch from Firestore in background → cache it → return
  *   3. For documents: set up onSnapshot listener to keep cache perpetually fresh
- *   4. For collections/queries: use TTL-based refresh (no unlimited listeners)
+ *   4. Collections/queries use the same cache-first strategy — IndexedDB is the
+ *      persistent source of truth (never expires). Data stays fresh via onSnapshot
+ *      listeners (documents) or cache warming (collections).
  *   5. Deduplicate concurrent requests for the same path
  *   6. Notify subscribers when data changes
  *
@@ -60,9 +62,6 @@ const DEFAULT_COLLECTION_TTL_MS = 2 * 60 * 1000;
 /** @type {number} Default TTL for cached queries (1 minute) */
 const DEFAULT_QUERY_TTL_MS = 1 * 60 * 1000;
 
-/** @type {number} Interval for the periodic stale-cache sweeper (5 minutes) */
-const STALE_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -111,37 +110,6 @@ function extractData(snap) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-/**
- * Determines the TTL for a cache entry based on its type.
- *
- * @param {'doc'|'collection'|'query'} type
- * @returns {number} TTL in milliseconds
- */
-function getTTL(type) {
-  switch (type) {
-    case 'doc':
-      return DEFAULT_DOC_TTL_MS;
-    case 'collection':
-      return DEFAULT_COLLECTION_TTL_MS;
-    case 'query':
-      return DEFAULT_QUERY_TTL_MS;
-    default:
-      return DEFAULT_DOC_TTL_MS;
-  }
-}
-
-/**
- * Checks whether a cache entry is still fresh (within its TTL).
- *
- * @param {object} entry - The cache entry with a `fetchedAt` property.
- * @param {number} ttlMs - Time-to-live in milliseconds.
- * @returns {boolean}
- */
-function isFresh(entry, ttlMs) {
-  if (!entry || !entry.fetchedAt) return false;
-  return Date.now() - entry.fetchedAt < ttlMs;
-}
-
 // ─── SyncManager ────────────────────────────────────────────────────────────
 
 export class SyncManager {
@@ -161,8 +129,8 @@ export class SyncManager {
 
     /**
      * In-memory session cache (instant — no I/O).
-     * Maps cacheKey → { data, fetchedAt, ttl }
-     * @type {Map<string, {data: *, fetchedAt: number, ttl: number}>}
+     * Maps cacheKey → { data, fetchedAt }
+     * @type {Map<string, {data: *, fetchedAt: number}>}
      */
     this._memCache = new Map();
 
@@ -176,7 +144,7 @@ export class SyncManager {
     /**
      * Active onSnapshot unsubscribers.
      * Maps cacheKey → unsubscribe function.
-     * Only used for document listeners (collections use TTL refresh instead).
+     * Only used for document listeners (collections use liveCollection instead).
      * @type {Map<string, Function>}
      */
     this._listeners = new Map();
@@ -202,39 +170,32 @@ export class SyncManager {
      */
     this._sweeperInterval = null;
 
-    // Start the periodic stale-cache sweeper to clean up expired entries
-    this._startSweeper();
+    // (Sweeper removed — IndexedDB is now the persistent source of truth)
   }
 
   // ─── In-memory session cache ───────────────────────────────────────────────
 
   /**
-   * Retrieves data from the in-memory cache if it hasn't expired.
+   * Retrieves data from the in-memory cache.
+   * In-memory cache never expires — data persists for the session lifetime.
    *
    * @param {string} key - The cache key.
-   * @returns {*|null} The cached data, or null if missing/expired.
+   * @returns {*|null} The cached data, or null if missing.
    */
   _getMemCache(key) {
     const entry = this._memCache.get(key);
-    if (!entry) return null;
-    if (Date.now() - entry.fetchedAt > entry.ttl) {
-      this._memCache.delete(key);
-      return null;
-    }
-    return entry.data;
+    return entry ? entry.data : null;
   }
 
   /**
-   * Stores data in the in-memory cache with a bounded TTL.
-   * Maximum TTL is capped at 30 seconds for memory freshness.
+   * Stores data in the in-memory cache.
+   * Data persists for the session lifetime — never expires.
    *
    * @param {string} key - The cache key.
    * @param {*} data - The data to cache.
-   * @param {number} [ttl] - Time-to-live in milliseconds (max 30000).
    */
-  _setMemCache(key, data, ttl) {
-    const memTtl = ttl ? Math.min(ttl, 30000) : 30000;
-    this._memCache.set(key, { data, fetchedAt: Date.now(), ttl: memTtl });
+  _setMemCache(key, data) {
+    this._memCache.set(key, { data, fetchedAt: Date.now() });
   }
 
   /**
@@ -248,31 +209,7 @@ export class SyncManager {
 
   // ─── Private Internals ────────────────────────────────────────────────────
 
-  /**
-   * Starts a periodic timer that deletes stale cache entries.
-   * This prevents the IndexedDB cache from growing unboundedly.
-   */
-  _startSweeper() {
-    // Use the shortest TTL (for queries) as the sweep granularity
-    this._sweeperInterval = setInterval(async () => {
-      // Delete everything older than the doc TTL (the most generous ceiling)
-      // since entries with shorter TTLs are already stale by then
-      try {
-        const deleted = await this._cache.deleteStale(DEFAULT_DOC_TTL_MS);
-        if (deleted > 0) {
-          // console.debug(`[SyncManager] Sweeper deleted ${deleted} stale cache entries`);
-        }
-      } catch (error) {
-        // Silently fail — the cache is non-critical infrastructure
-        console.warn('[SyncManager] Cache sweeper encountered an error:', error);
-      }
-    }, STALE_SWEEP_INTERVAL_MS);
-
-    // Allow the process to exit if this is the only timer running
-    if (this._sweeperInterval && this._sweeperInterval.unref) {
-      this._sweeperInterval.unref();
-    }
-  }
+  // (Sweeper removed — IndexedDB is now the persistent source of truth)
 
   /**
    * Notifies all subscribers for a given cache key with the latest data.
@@ -424,7 +361,7 @@ export class SyncManager {
         const data = extractData(snap);
         if (data) {
           await this._cache.set(cacheKey, data, 'doc');
-          this._setMemCache(cacheKey, data, DEFAULT_DOC_TTL_MS);
+          this._setMemCache(cacheKey, data);
         } else {
           await this._cache.delete(cacheKey);
           this._clearMemCache(cacheKey);
@@ -485,18 +422,18 @@ export class SyncManager {
       return memData;
     }
 
-    // 2. Check IndexedDB cache
+    // 2. Check IndexedDB cache (always use if exists — no TTL)
     const cached = await this._cache.get(cacheKey);
-    if (cached && isFresh(cached, DEFAULT_DOC_TTL_MS)) {
-      this._setMemCache(cacheKey, cached.data, DEFAULT_DOC_TTL_MS);
+    if (cached && cached.data) {
+      this._setMemCache(cacheKey, cached.data);
       // Set up the listener in the background if not already active
       this._setupDocListener(path);
       return cached.data;
     }
 
-    // 3. Cache miss or stale — fetch from Firestore with deduplication
+    // 3. No cache — fetch from Firestore with deduplication + set up listener
     const data = await this._dedupedFetch(cacheKey, () => this._fetchDoc(path));
-    this._setMemCache(cacheKey, data, DEFAULT_DOC_TTL_MS);
+    this._setMemCache(cacheKey, data);
 
     // 4. Set up real-time listener (if not already active)
     this._setupDocListener(path);
@@ -507,9 +444,9 @@ export class SyncManager {
   /**
    * Fetches a Firestore collection using a cache-first strategy.
    *
-   * Collections use TTL-based refresh rather than onSnapshot to avoid
-   * expensive unlimited listeners. Data is cached and returned instantly
-   * on subsequent calls within the TTL window.
+   * Collections use the same cache-first approach as documents.
+   * IndexedDB is the persistent source of truth — cached data never expires.
+   * Data is cached and returned instantly on subsequent calls.
    *
    * @param {string} path - The collection path (e.g., 'posts').
    * @returns {Promise<Array<object>>} Array of document data.
@@ -524,16 +461,16 @@ export class SyncManager {
     const memData = this._getMemCache(cacheKey);
     if (memData !== null) return memData;
 
-    // 2. Check IndexedDB cache
+    // 2. Check IndexedDB cache (always use if exists — no TTL)
     const cached = await this._cache.get(cacheKey);
-    if (cached && isFresh(cached, DEFAULT_COLLECTION_TTL_MS)) {
-      this._setMemCache(cacheKey, cached.data, DEFAULT_COLLECTION_TTL_MS);
+    if (cached && cached.data) {
+      this._setMemCache(cacheKey, cached.data);
       return cached.data;
     }
 
-    // 3. Cache miss or stale — fetch from Firestore with deduplication
+    // 3. No cache — fetch from Firestore
     const data = await this._dedupedFetch(cacheKey, () => this._fetchCollection(path));
-    this._setMemCache(cacheKey, data, DEFAULT_COLLECTION_TTL_MS);
+    this._setMemCache(cacheKey, data);
     return data;
   }
 
@@ -602,7 +539,7 @@ export class SyncManager {
     const unsubscribe = onSnapshot(colRef, async (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       await this._cache.set(path, data, 'collection');
-      this._setMemCache(path, data, DEFAULT_COLLECTION_TTL_MS);
+      this._setMemCache(path, data);
       this._notifySubscribers(path, data);
       if (onChange) onChange(data);
     }, (error) => {
@@ -616,7 +553,8 @@ export class SyncManager {
   /**
    * Fetches a Firestore query with constraints using a cache-first strategy.
    *
-   * Like collections, queries use TTL-based refresh rather than onSnapshot.
+   * Like collections, queries use the same cache-first approach.
+   * IndexedDB is the persistent source of truth — cached data never expires.
    * Each unique set of constraints produces its own cache entry.
    *
    * @param {string} path - The collection path to query.
@@ -643,16 +581,16 @@ export class SyncManager {
     const memData = this._getMemCache(cacheKey);
     if (memData !== null) return memData;
 
-    // 2. Check IndexedDB cache
+    // 2. Check IndexedDB cache (always use if exists — no TTL)
     const cached = await this._cache.get(cacheKey);
-    if (cached && isFresh(cached, DEFAULT_QUERY_TTL_MS)) {
-      this._setMemCache(cacheKey, cached.data, DEFAULT_QUERY_TTL_MS);
+    if (cached && cached.data) {
+      this._setMemCache(cacheKey, cached.data);
       return cached.data;
     }
 
-    // 3. Cache miss or stale — fetch from Firestore with deduplication
+    // 3. No cache — fetch from Firestore
     const data = await this._dedupedFetch(cacheKey, () => this._fetchQuery(path, constraints));
-    this._setMemCache(cacheKey, data, DEFAULT_QUERY_TTL_MS);
+    this._setMemCache(cacheKey, data);
     return data;
   }
 
@@ -663,8 +601,9 @@ export class SyncManager {
    * query across all subcollections with the given ID. Cache keys are prefixed
    * with 'cg:' to avoid collisions with regular queries.
    *
-   * Like queries, collectionGroup queries use TTL-based refresh. Each unique
-   * combination of collectionId + constraints produces its own cache entry.
+   * Like other queries, collectionGroup queries use the same cache-first approach.
+   * IndexedDB is the persistent source of truth — cached data never expires.
+   * Each unique combination of collectionId + constraints produces its own cache entry.
    * Deduplication ensures concurrent requests for the same parameters share
    * one Firestore fetch.
    *
@@ -698,16 +637,16 @@ export class SyncManager {
     const memData = this._getMemCache(cacheKey);
     if (memData !== null) return memData;
 
-    // 2. Check IndexedDB cache
+    // 2. Check IndexedDB cache (always use if exists — no TTL)
     const cached = await this._cache.get(cacheKey);
-    if (cached && isFresh(cached, DEFAULT_QUERY_TTL_MS)) {
-      this._setMemCache(cacheKey, cached.data, DEFAULT_QUERY_TTL_MS);
+    if (cached && cached.data) {
+      this._setMemCache(cacheKey, cached.data);
       return cached.data;
     }
 
-    // 3. Cache miss or stale — fetch from Firestore with deduplication
+    // 3. No cache — fetch from Firestore
     const data = await this._dedupedFetch(cacheKey, () => this._fetchCollectionGroup(collectionId, constraints));
-    this._setMemCache(cacheKey, data, DEFAULT_QUERY_TTL_MS);
+    this._setMemCache(cacheKey, data);
     return data;
   }
 
@@ -848,17 +787,10 @@ export class SyncManager {
   /**
    * Destroys the SyncManager instance.
    *
-   * Tears down all active onSnapshot listeners, clears the subscriber list,
-   * and stops the periodic cache sweeper. Call this when the app/page is
-   * shutting down to prevent memory leaks.
+   * Tears down all active onSnapshot listeners and clears the subscriber list.
+   * Call this when the app/page is shutting down to prevent memory leaks.
    */
   destroy() {
-    // Stop the sweeper
-    if (this._sweeperInterval) {
-      clearInterval(this._sweeperInterval);
-      this._sweeperInterval = null;
-    }
-
     // Tear down all active listeners
     this._listeners.forEach((unsubscribe) => {
       try {
