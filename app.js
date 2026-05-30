@@ -5860,7 +5860,7 @@ window.adminPromptNotification = function(userId) {
                 <tbody>
                     ${displayResults.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding: 40px 0; color: var(--text-muted);">No results recorded yet.</td></tr>' :
                 displayResults.map(r => `
-                    <tr class="result-row-clickable" onclick="window.openResultDetail(${JSON.stringify(r).replace(/"/g, '&quot;')})" style="cursor:pointer;">
+                    <tr>
                         <td>${r.course}</td>
                         <td style="font-family:var(--font-mono); font-size:0.72rem;">${r.date}</td>
                         <td style="font-weight:700;">${r.score}%</td>
@@ -5901,7 +5901,7 @@ window.adminPromptNotification = function(userId) {
                 </thead>
                 <tbody>
                     ${results.map(r => `
-                    <tr class="result-row-clickable" data-result-id="${r.id}" style="cursor:pointer;" title="Click to view corrections">
+                    <tr>
                         <td>${r.course}</td>
                         <td style="font-family:var(--font-mono); font-size:0.72rem; color:var(--text-muted);">${r.date}</td>
                         <td style="font-family:var(--font-mono); font-weight:700; color:${r.score >= 80 ? '#16a34a' : r.score >= 65 ? 'var(--text)' : 'var(--brand)'};">${r.score} / ${r.total || 100}</td>
