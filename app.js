@@ -841,7 +841,7 @@ function setupAdminListeners() {
                 const notifEl = document.getElementById('ef-notif-floating');
                 if (notifEl) notifEl.style.display = 'flex';
             }
-        }, 1000);
+        }, 2000);
 
         const state = { view, params };
         const url = '#' + view + (params.course ? '/' + encodeURIComponent(params.course) : '');
