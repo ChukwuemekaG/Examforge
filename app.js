@@ -33,6 +33,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileSearchInput = document.getElementById('mobileSearchInput');
     const bottomNav = document.getElementById('bottomNav');
 
+    // ─── Swipe navigation (mobile only) ──────────────────────────
+    const SWIPE_TABS = ['dashboard', 'library', 'subscriptions', 'schedule', 'results', 'inbox'];
+
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+
+    // These are "consumed" elements that should NOT trigger navigation swipe
+    function isSwipableTarget(el) {
+        const tag = el.tagName;
+        const type = el.type || '';
+        // Don't swipe on inputs, textareas, selects, buttons, or interactive elements
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') return false;
+        if (el.closest('.btn') || el.closest('button') || el.closest('a') || el.closest('input')) return false;
+        if (el.closest('.bottom-nav') || el.closest('.bottom-nav-item')) return false;
+        if (el.closest('.card') && el.closest('.card').querySelector('button, input, a')) return false;
+        return true;
+    }
+
+    workspace.addEventListener('touchstart', (e) => {
+        if (!isSwipableTarget(e.target)) { swipeStartX = 0; return; }
+        swipeStartX = e.changedTouches[0].screenX;
+        swipeStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    workspace.addEventListener('touchend', (e) => {
+        if (!swipeStartX) return;
+        const swipeEndX = e.changedTouches[0].screenX;
+        const swipeEndY = e.changedTouches[0].screenY;
+        const xDiff = swipeEndX - swipeStartX;
+        const yDiff = swipeEndY - swipeStartY;
+
+        // Only horizontal swipes, minimum 60px distance
+        if (Math.abs(xDiff) < 60 || Math.abs(xDiff) < Math.abs(yDiff) * 1.5) {
+            swipeStartX = 0;
+            return;
+        }
+
+        const currentIdx = SWIPE_TABS.indexOf(currentView);
+        if (currentIdx === -1) { swipeStartX = 0; return; }
+
+        let targetIdx;
+        if (xDiff < 0) targetIdx = currentIdx + 1; // swipe left → next tab
+        else targetIdx = currentIdx - 1; // swipe right → previous tab
+
+        if (targetIdx >= 0 && targetIdx < SWIPE_TABS.length) {
+            efNavigate(SWIPE_TABS[targetIdx]);
+        }
+
+        swipeStartX = 0;
+    }, { passive: true });
+
     // ─── Global Modal Scroll-Lock Helper ────────────────────────
     function setupGlobalModalScrollLock() {
         const hasActiveModal = () => {
