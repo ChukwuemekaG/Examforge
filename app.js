@@ -729,9 +729,9 @@ function setupAdminListeners() {
 
         // Reveal bottom nav and notification bell after every page render
         const navEl = document.getElementById('bottomNav');
-        if (navEl) navEl.style.display = '';
+        if (navEl) navEl.style.display = 'flex';
         const notifEl = document.getElementById('ef-notif-floating');
-        if (notifEl) notifEl.style.display = '';
+        if (notifEl) notifEl.style.display = 'flex';
 
         const state = { view, params };
         const url = '#' + view + (params.course ? '/' + encodeURIComponent(params.course) : '');

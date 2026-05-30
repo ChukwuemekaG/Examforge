@@ -1063,12 +1063,10 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
 /* ≤768px — tablets & large phones — show bottom nav, hide sidebar, hide topbar */
 @media (max-width: 768px) {
     body { padding-top: 0; }
-    .bottom-nav { display: flex; }
     .topbar { display: none; }
     .sidebar { display: none; }
     .menu-btn { display: none; }
     .workspace { padding: 12px 10px; padding-top: 0; padding-bottom: calc(var(--bottom-nav-h) + 12px); }
-    #ef-notif-floating { display: flex; }
 
     /* ── Responsive results tables ── */
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
