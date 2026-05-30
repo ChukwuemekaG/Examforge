@@ -1083,9 +1083,8 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
     /* Hide page header row button on very small */
     .page-header-row .btn:not(.btn-sm) { display: none; }
     
-    /* Hide bottom nav labels, only show icons */
-    .bottom-nav-label { display: none; }
-    .bottom-nav-item .material-icons-round { font-size: 24px; }
+    /* Smaller icons to accommodate always-visible labels */
+    .bottom-nav-item .material-icons-round { font-size: 20px; }
     
     /* Stack page header */
     .page-header-row { flex-direction: column; align-items: flex-start; }

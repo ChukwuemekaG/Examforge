@@ -513,6 +513,11 @@ function setupAdminListeners() {
                     notifFloat.addEventListener('click', () => efNavigate('inbox'));
                     document.body.appendChild(notifFloat);
                 }
+                // Hide bottom nav and notification bell until first view renders
+                const initialBottomNav = document.getElementById('bottomNav');
+                if (initialBottomNav) initialBottomNav.style.display = 'none';
+                const initialNotifFloat = document.getElementById('ef-notif-floating');
+                if (initialNotifFloat) initialNotifFloat.style.display = 'none';
                 // ─── Warm caches in background for instant view loads ───
                 sync.collection('unicourses').catch(() => {});
                 sync.collection('users/' + user.uid + '/schedule').catch(() => {});
@@ -4951,6 +4956,12 @@ window.adminPromptNotification = function(userId) {
     }
 
     function fixTwoCol() {
+        // Show bottom nav and notification bell now that dashboard is rendered
+        const bottomNav = document.getElementById('bottomNav');
+        if (bottomNav) bottomNav.style.display = '';
+        const notifFloat = document.getElementById('ef-notif-floating');
+        if (notifFloat) notifFloat.style.display = '';
+
         const twoCol = workspace.querySelector('[style*="grid-template-columns: 1fr 1fr"]');
         if (!twoCol) return;
         const observer = new ResizeObserver(() => {
