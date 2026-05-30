@@ -727,6 +727,12 @@ function setupAdminListeners() {
         workspace.scrollTop = 0;
         document.documentElement.scrollTop = 0;
 
+        // Reveal bottom nav and notification bell after every page render
+        const navEl = document.getElementById('bottomNav');
+        if (navEl) navEl.style.display = '';
+        const notifEl = document.getElementById('ef-notif-floating');
+        if (notifEl) notifEl.style.display = '';
+
         const state = { view, params };
         const url = '#' + view + (params.course ? '/' + encodeURIComponent(params.course) : '');
         if (replace) history.replaceState(state, '', url);
@@ -4956,12 +4962,6 @@ window.adminPromptNotification = function(userId) {
     }
 
     function fixTwoCol() {
-        // Show bottom nav and notification bell now that dashboard is rendered
-        const bottomNav = document.getElementById('bottomNav');
-        if (bottomNav) bottomNav.style.display = '';
-        const notifFloat = document.getElementById('ef-notif-floating');
-        if (notifFloat) notifFloat.style.display = '';
-
         const twoCol = workspace.querySelector('[style*="grid-template-columns: 1fr 1fr"]');
         if (!twoCol) return;
         const observer = new ResizeObserver(() => {
