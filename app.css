@@ -1062,42 +1062,57 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
 
 /* ≤768px — tablets & large phones — show bottom nav, hide sidebar, hide topbar */
 @media (max-width: 768px) {
-    body { padding-top: 0; }
+    body { padding-top: 0; font-size: 13px; }
     .bottom-nav { display: flex; }
     .topbar { display: none; }
     .sidebar { display: none; }
     .menu-btn { display: none; }
-    .workspace { padding: 12px 10px; padding-top: 0; padding-bottom: calc(var(--bottom-nav-h) + 12px); }
+    .workspace { padding: 10px 10px; padding-top: 0; padding-bottom: calc(var(--bottom-nav-h) + 10px); }
     #ef-notif-floating { display: flex; }
+    
+    /* General sizing refinements */
+    .page-title { font-size: clamp(0.95rem, 4vw, 1.2rem); font-weight: 700; }
+    .page-sub { font-size: 0.62rem; }
+    .page-header { margin-bottom: 10px; }
+    .btn { font-size: 0.7rem; padding: 7px 12px; border-width: 2px; }
+    .card { padding: 10px; border-width: 2px; }
+    .stat-value { font-size: clamp(1.1rem, 4vw, 1.5rem); }
+    .feed-item { padding: 8px 6px; gap: 8px; }
+    .feed-title { font-size: 0.75rem; font-weight: 600; }
+    .feed-meta { font-size: 0.58rem; }
+    .feed-icon { width: 28px; height: 28px; }
+    .feed-icon .material-icons-round { font-size: 12px; }
+    .nav-item { min-height: 40px; font-size: 0.68rem; padding: 6px 8px; }
+    .bottom-nav-item .material-icons-round { font-size: 20px; }
+    .bottom-nav-label { font-size: 0.45rem; }
 }
 
 /* ≤480px — small phones */
 @media (max-width: 480px) {
-    /* Single column card grid */
-    .card-grid { grid-template-columns: 1fr; gap: 10px; }
-    .card-grid-strict { grid-template-columns: 1fr; }
-    
-    /* Workspace minimal padding */
-    .workspace { padding: 8px 8px; padding-bottom: calc(var(--bottom-nav-h) + 8px); }
-    
-    /* Hide page header row button on very small */
+    body { font-size: 12px; }
+    .card-grid { grid-template-columns: 1fr; gap: 8px; }
+    .card-grid-strict { grid-template-columns: 1fr; gap: 8px; }
+    .workspace { padding: 6px 6px; padding-bottom: calc(var(--bottom-nav-h) + 6px); }
     .page-header-row .btn:not(.btn-sm) { display: none; }
-    
-    /* Smaller icons to accommodate always-visible labels */
-    .bottom-nav-item .material-icons-round { font-size: 20px; }
-    
-    /* Stack page header */
     .page-header-row { flex-direction: column; align-items: flex-start; }
-    
-    /* Compact everything */
-    .card { padding: 6px; }
-    .stat-value { font-size: 1.3rem; }
-    
-    /* Feed items more compact */
-    .feed-item { padding: 8px 6px; gap: 10px; }
-
-    /* Dashboard start exam button hidden on small screens */
+    .card { padding: 6px; border-width: 1.5px; }
+    .stat-value { font-size: 1.1rem; }
+    .feed-item { padding: 6px 4px; gap: 8px; }
+    .feed-title { font-size: 0.7rem; }
     .dashboard-start-exam { display: none; }
+    .bottom-nav { height: 50px; }
+    .bottom-nav-item .material-icons-round { font-size: 18px; }
+    .bottom-nav-label { font-size: 0.4rem; }
+    .page-title { font-size: clamp(0.85rem, 3.5vw, 1rem); }
+    .btn { font-size: 0.65rem; padding: 5px 8px; }
+}
+
+/* ≤360px — very small phones */
+@media (max-width: 360px) {
+    .bottom-nav { height: 46px; gap: 0; }
+    .bottom-nav-item .material-icons-round { font-size: 16px; }
+    .bottom-nav-label { font-size: 0.35rem; letter-spacing: 0.02em; }
+    .workspace { padding: 4px 4px; padding-bottom: calc(var(--bottom-nav-h) + 4px); }
 }
 
 @media screen and (max-width: 382px) {
