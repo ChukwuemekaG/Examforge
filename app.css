@@ -1069,6 +1069,17 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
     .menu-btn { display: none; }
     .workspace { padding: 12px 10px; padding-top: 0; padding-bottom: calc(var(--bottom-nav-h) + 12px); }
     #ef-notif-floating { display: flex; }
+
+    /* ── Responsive results tables ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table-wrap table { font-size: 0.7rem; min-width: 0; width: 100%; }
+    .table-wrap th, .table-wrap td { padding: 6px 8px; white-space: nowrap; }
+    .table-wrap th:first-child, .table-wrap td:first-child { 
+        max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; 
+    }
+    .table-wrap td:nth-child(2) { font-size: 0.6rem; }
+    .table-wrap .progress-track { width: 60px; }
+    .table-wrap td:last-child { padding-right: 12px; }
 }
 
 /* ≤480px — small phones */
@@ -1083,6 +1094,12 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
     .stat-value { font-size: 1.3rem; }
     .feed-item { padding: 8px 6px; gap: 10px; }
     .dashboard-start-exam { display: none; }
+
+    /* ── Responsive results tables ── */
+    .table-wrap table { font-size: 0.62rem; }
+    .table-wrap th, .table-wrap td { padding: 4px 5px; }
+    .table-wrap .progress-track { width: 40px; }
+    .table-wrap td:nth-child(2) { font-size: 0.55rem; }
 }
 
 @media screen and (max-width: 382px) {
