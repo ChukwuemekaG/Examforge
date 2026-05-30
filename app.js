@@ -519,7 +519,6 @@ function setupAdminListeners() {
                 const initialNotifFloat = document.getElementById('ef-notif-floating');
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
                 // ─── Warm caches in background for instant view loads ───
-                sync.collection('unicourses').catch(() => {});
                 sync.collection('users/' + user.uid + '/schedule').catch(() => {});
                 // If admin, pre-warm admin collections too
                 if (userDataFromSync && userDataFromSync.role === 'admin') {
