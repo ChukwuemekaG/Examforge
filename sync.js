@@ -239,18 +239,25 @@ export class SyncManager {
   async _fetchDoc(path) {
     const cacheKey = buildCacheKey(path);
     const docRef = doc(this._db, path);
-    const snap = await getDoc(docRef);
-    const data = extractData(snap);
+    try {
+      const snap = await getDoc(docRef);
+      const data = extractData(snap);
 
-    if (data) {
-      await this._cache.set(cacheKey, data, 'doc');
-    } else {
-      // Document was deleted — remove from cache
-      await this._cache.delete(cacheKey);
+      if (data) {
+        await this._cache.set(cacheKey, data, 'doc');
+      } else {
+        // Document was deleted — remove from cache
+        await this._cache.delete(cacheKey);
+      }
+
+      this._notifySubscribers(cacheKey, data);
+      return data;
+    } catch (e) {
+      if (e.code === 'unavailable' || e.code === 'not-found' || e.message?.includes('offline')) {
+        return null;
+      }
+      throw e;
     }
-
-    this._notifySubscribers(cacheKey, data);
-    return data;
   }
 
   /**
@@ -262,12 +269,19 @@ export class SyncManager {
   async _fetchCollection(path) {
     const cacheKey = buildCacheKey(path);
     const colRef = collection(this._db, path);
-    const snap = await getDocs(colRef);
-    const data = extractData(snap);
+    try {
+      const snap = await getDocs(colRef);
+      const data = extractData(snap);
 
-    await this._cache.set(cacheKey, data, 'collection');
-    this._notifySubscribers(cacheKey, data);
-    return data;
+      await this._cache.set(cacheKey, data, 'collection');
+      this._notifySubscribers(cacheKey, data);
+      return data;
+    } catch (e) {
+      if (e.code === 'unavailable' || e.message?.includes('offline')) {
+        return null;
+      }
+      throw e;
+    }
   }
 
   /**
@@ -281,12 +295,19 @@ export class SyncManager {
     const cacheKey = buildCacheKey(path, constraints);
     const colRef = collection(this._db, path);
     const q = query(colRef, ...constraints);
-    const snap = await getDocs(q);
-    const data = extractData(snap);
+    try {
+      const snap = await getDocs(q);
+      const data = extractData(snap);
 
-    await this._cache.set(cacheKey, data, 'query');
-    this._notifySubscribers(cacheKey, data);
-    return data;
+      await this._cache.set(cacheKey, data, 'query');
+      this._notifySubscribers(cacheKey, data);
+      return data;
+    } catch (e) {
+      if (e.code === 'unavailable' || e.message?.includes('offline')) {
+        return null;
+      }
+      throw e;
+    }
   }
 
   /**
@@ -304,16 +325,23 @@ export class SyncManager {
     const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
     const colGroupRef = collectionGroup(this._db, collectionId);
     const q = query(colGroupRef, ...constraints);
-    const snap = await getDocs(q);
-    const data = snap.docs.map(d => ({
-      id: d.id,
-      _refPath: d.ref.path,
-      ...d.data()
-    }));
+    try {
+      const snap = await getDocs(q);
+      const data = snap.docs.map(d => ({
+        id: d.id,
+        _refPath: d.ref.path,
+        ...d.data()
+      }));
 
-    await this._cache.set(cacheKey, data, 'query');
-    this._notifySubscribers(cacheKey, data);
-    return data;
+      await this._cache.set(cacheKey, data, 'query');
+      this._notifySubscribers(cacheKey, data);
+      return data;
+    } catch (e) {
+      if (e.code === 'unavailable' || e.message?.includes('offline')) {
+        return null;
+      }
+      throw e;
+    }
   }
 
   /**
@@ -370,8 +398,10 @@ export class SyncManager {
       },
       (error) => {
         console.error(`[SyncManager] onSnapshot error for "${path}":`, error);
-        // If the listener fails (e.g., permission denied), clean it up
-        this._listeners.delete(cacheKey);
+        // Firestore SDK auto-reconnects on transient errors; keep listener
+        if (error.code !== 'unavailable') {
+          this._listeners.delete(cacheKey);
+        }
       }
     );
 

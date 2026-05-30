@@ -521,7 +521,6 @@ function setupAdminListeners() {
                 // ─── Warm caches in background for instant view loads ───
                 sync.collection('unicourses').catch(() => {});
                 sync.collection('users/' + user.uid + '/schedule').catch(() => {});
-                sync.collection('subscription_events').catch(() => {});
                 // If admin, pre-warm admin collections too
                 if (userDataFromSync && userDataFromSync.role === 'admin') {
                     sync.collection('users').catch(() => {});
