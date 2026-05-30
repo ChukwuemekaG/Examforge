@@ -1072,7 +1072,7 @@ tbody td:first-child { font-weight: 600; color: var(--text); }
 
 /* ≤768px — tablets & large phones — show bottom nav, hide sidebar, hide topbar */
 @media (max-width: 768px) {
-    body { padding-top: 0; }
+    body { padding-top: 0; padding-bottom: calc(var(--bottom-nav-h) + 16px); }
     .topbar { display: none; }
     .sidebar { display: none; }
     .menu-btn { display: none; }
