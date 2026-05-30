@@ -315,7 +315,7 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     z-index: var(--bottom-nav-z);
     align-items: center;
     justify-content: space-around;
-    padding: 0 4px;
+    padding: 4px 8px;
     /* Safe area for notched phones */
     padding-bottom: env(safe-area-inset-bottom, 0px);
     overflow: visible;
@@ -329,7 +329,7 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     gap: 2px;
     flex: 1;
     height: 100%;
-    padding: 6px 4px;
+    padding: 6px 8px;
     border: none;
     border-radius: 8px;
     background: transparent;
@@ -339,7 +339,7 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
     position: relative;
     min-height: 44px;
     -webkit-tap-highlight-color: transparent;
-    margin: 4px 2px;
+    margin: 4px 0;
 }
 
 .bottom-nav-item .material-icons-round {
