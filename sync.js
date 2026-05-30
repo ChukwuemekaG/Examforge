@@ -403,10 +403,12 @@ export class SyncManager {
   /**
    * Fetches a Firestore document using a cache-first strategy.
    *
-   * 1. Returns cached data immediately if fresh.
+   * 1. Returns cached data immediately if available (in-memory first, then IndexedDB).
    * 2. Otherwise, fetches from Firestore in the background.
-   * 3. Sets up a real-time onSnapshot listener so the cache stays fresh.
-   * 4. Returns the data (from cache or Firestore) via the returned Promise.
+   * 3. Returns the data (from cache or Firestore) via the returned Promise.
+   *
+   * NOTE: This method does NOT set up real-time listeners. If you need live
+   * updates, use `subscribe()` instead.
    *
    * @param {string} path - The document path (e.g., 'users/abc123').
    * @returns {Promise<object|null>} The document data, or null if it doesn't exist.
@@ -417,26 +419,18 @@ export class SyncManager {
 
     // 1. Check in-memory cache first (instant — no I/O)
     const memData = this._getMemCache(cacheKey);
-    if (memData !== null) {
-      this._setupDocListener(path);
-      return memData;
-    }
+    if (memData !== null) return memData;
 
     // 2. Check IndexedDB cache (always use if exists — no TTL)
     const cached = await this._cache.get(cacheKey);
     if (cached && cached.data) {
       this._setMemCache(cacheKey, cached.data);
-      // Set up the listener in the background if not already active
-      this._setupDocListener(path);
       return cached.data;
     }
 
-    // 3. No cache — fetch from Firestore with deduplication + set up listener
+    // 3. No cache — fetch from Firestore with deduplication
     const data = await this._dedupedFetch(cacheKey, () => this._fetchDoc(path));
     this._setMemCache(cacheKey, data);
-
-    // 4. Set up real-time listener (if not already active)
-    this._setupDocListener(path);
 
     return data;
   }

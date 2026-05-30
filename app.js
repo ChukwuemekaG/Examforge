@@ -522,6 +522,12 @@ function setupAdminListeners() {
                 sync.collection('unicourses').catch(() => {});
                 sync.collection('users/' + user.uid + '/schedule').catch(() => {});
                 sync.collection('subscription_events').catch(() => {});
+                // If admin, pre-warm admin collections too
+                if (userDataFromSync && userDataFromSync.role === 'admin') {
+                    sync.collection('users').catch(() => {});
+                    sync.collection('daily_quizzes').catch(() => {});
+                    sync.query('daily_advices', [orderBy('createdAt', 'desc')]).catch(() => {});
+                }
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
                     if (Notification.permission === 'default') {
