@@ -8394,6 +8394,9 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
             .dq-modal-card { flex:1; display:flex; flex-direction:column; overflow:hidden; }
             .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
             .dq-question-grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; }
+            .dq-opt-row { display:flex; align-items:center; gap:6px; }
+            .dq-opt-row input { flex:1; min-width:0; }
+            .dq-opt-del-btn { flex-shrink:0; padding:3px 6px; font-size:0.6rem; height:28px; min-width:32px; text-align:center; }
             @media (max-width: 600px) {
                 .dq-meta-grid, .dq-question-grid-split { grid-template-columns: 1fr !important; gap: 10px !important; }
                 .dq-toggle-grid { grid-template-columns: 1fr !important; }
@@ -8497,13 +8500,10 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
                 <div id="dq-builder-questions-list" style="display:flex; flex-direction:column; gap:16px;"></div>
             </div>
             
-            <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
-                <div class="dq-footer-actions" style="display:flex; align-items:center; gap:12px; width:auto;">
-                    <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:10px 20px;">CANCEL</button>
-                    <button class="btn btn-primary" onclick="window.mcSaveCreatedEventMock('${eventId}', '${subject}')" style="font-weight:900; border:3px solid var(--text);padding:10px 24px;">SAVE MOCK EXAM</button>
-                </div>
-                <!-- Add Release Button next to Save -->
-                <button class="btn btn-primary" onclick="window.mcReleaseSubjectMock('${eventId}', '${subject}')" style="background:#10b981; border:3px solid var(--text);font-weight:900; padding:10px 24px; color:#fff;">SAVE & RELEASE TO STUDENTS</button>
+            <div class="dq-footer-actions" style="display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0; flex-wrap:wrap;">
+                <button class="btn btn-ghost" onclick="document.getElementById('ef-dq-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:8px 16px;font-size:0.72rem;">CANCEL</button>
+                <button class="btn btn-primary" onclick="window.mcSaveCreatedEventMock('${eventId}', '${subject}')" style="font-weight:900; border:3px solid var(--text);padding:8px 16px;font-size:0.72rem;">SAVE MOCK EXAM</button>
+                <button class="btn btn-primary" onclick="window.mcReleaseSubjectMock('${eventId}', '${subject}')" style="background:#10b981; border:3px solid var(--text);font-weight:900; padding:8px 16px;font-size:0.72rem; color:#fff;">SAVE & RELEASE</button>
             </div>
         </div>
     `;
@@ -8528,6 +8528,7 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
 
 window.mcPreloadEventMock = async function(eventId, subject) {
     try {
+        await sync.refresh('mock_exams');
         const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)])) || [];
         if (mockResults.length > 0) {
             const m = mockResults[0];
@@ -8603,10 +8604,10 @@ window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=fal
             createdAt: serverTimestamp()
         });
         
+        sync.refresh('mock_exams').catch(() => {});
         if (!autoRelease) {
             document.getElementById('ef-dq-builder-modal')?.remove();
             window.showEFModal("Saved", "Mock exam saved successfully.", "OK", null, true);
-            sync.refresh('mock_exams').catch(() => {});
         }
         return mockId;
     } catch (e) {
