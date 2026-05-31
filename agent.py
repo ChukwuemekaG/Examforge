@@ -112,8 +112,8 @@ input and determine what they want to do.
 Classify the intent into exactly one of these categories:
 
 - "modify"    — The user wants to CHANGE existing code / files.
-- "question"  — The user is asking a question about the codebase.
-- "explore"   — The user wants to explore the project, read files, or search.
+- "question"  — The user wants ANALYSIS, EXPLANATION, or UNDERSTANDING of code.
+- "explore"   — The user wants to SEE or DISPLAY raw file contents (no analysis).
 - "plan"      — The user wants a plan for a task BEFORE implementing it.
 - "code"      — The user wants to WRITE NEW CODE (files) or implement something.
 - "review"    — The user wants a code review of existing code or changes.
@@ -122,6 +122,35 @@ Classify the intent into exactly one of these categories:
 - "memory"    — The user wants to remember something, recall memory, or forget.
 - "todo"      — The user wants to manage a todo list.
 - "rollback"  — The user wants to undo or revert the last change.
+
+CRITICAL — Distinguish "explore" vs "question" carefully:
+
+**"explore"** — User wants to SEE / DISPLAY raw file contents (dump the file as-is).
+  Keywords: show me, read this, display the contents of, open, view, list, what's in
+  Examples:
+  - "show me the file"          \u2192 explore
+  - "read this file"            \u2192 explore
+  - "display the contents of"   \u2192 explore
+  - "open app.js"               \u2192 explore
+  - "what is in this file"      \u2192 explore
+  - "list the files in src"     \u2192 explore
+
+**"question"** — User wants ANALYSIS, EXPLANATION, or UNDERSTANDING of code.
+  Keywords: study, understand, explain, analyze, tell me about, how does, what does, why does
+  Examples:
+  - "study this file"           \u2192 question
+  - "understand this code"      \u2192 question
+  - "explain app.js"           \u2192 question
+  - "analyze this"             \u2192 question
+  - "tell me about app.js"     \u2192 question
+  - "how does this work"       \u2192 question
+  - "what does this function do" \u2192 question
+  - "look at app.js and understand it thoroughly" \u2192 question
+  - "review this code for me"  \u2192 question
+
+**RULE:** If the user says "study", "understand", "explain", "analyze", or "tell me about" a file,
+this is a **question** intent (they want analysis), NOT explore.
+Only classify as "explore" if they explicitly want to SEE the raw content.
 
 Also extract:
 - "task" — A concise description of what the user wants (rewrite it clearly).
@@ -433,32 +462,20 @@ def rollback_changes(push: bool = True) -> Generator[Dict[str, Any], None, None]
 #  3.  QUESTION ANSWERING
 # ========================================================================
 
-def answer_question(
-    user_input: str,
-    model: str = DEFAULT_MODEL,
-) -> Generator[Dict[str, Any], None, None]:
-    """Answer a question about the codebase by reading project files and
-    querying DeepSeek.
-
-    The function walks the project directory (up to a reasonable limit),
-    reads important files, and sends them as context to the LLM along with
-    the user's question.
+def _walk_project_files(root_path: Path) -> List[str]:
+    """Walk *root_path* and return relative paths of all text files,
+    skipping ignored directories and binary extensions.
 
     Parameters
     ----------
-    user_input : str
-        The user's question (e.g. *"How does the auth module work?"*).
-    model : str, optional
-        The DeepSeek model identifier.  Defaults to :data:`DEFAULT_MODEL`.
+    root_path : Path
+        The absolute project root directory.
 
-    Yields
-    ------
-    dict
-        Events: ``thinking``, ``done`` (with answer in ``message``), ``error``.
+    Returns
+    -------
+    list of str
+        Relative file paths (e.g. ``"src/main.py"``) sorted alphabetically.
     """
-    yield {"type": "thinking", "content": "Reading project files to answer your question…"}
-
-    # ── Walk the project and collect text files ──────────────────────────
     IGNORE_DIRS = {
         ".git", "__pycache__", "venv", ".venv", "node_modules",
         ".idea", ".vscode", "dist", "build", ".egg-info",
@@ -470,13 +487,8 @@ def answer_question(
         ".env", ".gitignore", ".sql", ".sh", ".bat", ".xml", ".vue",
         ".rb", ".php", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".hpp",
     }
-    IMPORTANT = {
-        "index.html", "app.js", "main.js", "style.css", "package.json",
-        "README.md", "requirements.txt", "config.py", "agent.py", "server.py",
-    }
 
-    all_files: List[str] = []
-    root_path = Path(PROJECT_ROOT).resolve()
+    files: List[str] = []
     for f in root_path.rglob("*"):
         try:
             rel = f.relative_to(root_path)
@@ -485,37 +497,136 @@ def answer_question(
         if any(part in IGNORE_DIRS for part in rel.parts):
             continue
         if f.is_file() and f.suffix.lower() in TEXT_EXTENSIONS:
-            all_files.append(str(rel))
+            files.append(str(rel))
 
-    # Sort: important files first, then alphabetical
-    all_files.sort(key=lambda x: (x.rsplit("/", 1)[-1] not in IMPORTANT, x.lower()))
+    files.sort(key=lambda x: x.lower())
+    return files
 
-    # ── Read up to 15 files (or 80k chars) as context ────────────────────
+
+def answer_question(
+    user_input: str,
+    model: str = DEFAULT_MODEL,
+) -> Generator[Dict[str, Any], None, None]:
+    """Answer a question about the codebase by intelligently selecting
+    relevant files.
+
+    Instead of reading a fixed set of files in priority order, this function:
+
+    1. Walks the project to get a list of all file paths (no contents yet).
+    2. Asks DeepSeek to identify which files are most relevant to the
+       user's question (sending only the file list + question).
+    3. Reads the contents of only those selected files.
+    4. Streams the final answer back, token by token.
+
+    Parameters
+    ----------
+    user_input : str
+        The user's question (e.g. *"How does the auth module work?"*).
+    model : str, optional
+        The DeepSeek model identifier.  Defaults to :data:`DEFAULT_MODEL`.
+
+    Yields
+    ------
+    dict
+        Events: ``thinking``, ``done`` (with answer in ``message`` and
+        accumulated cost in ``cost``), ``error``.
+    """
+    # ── Constants ────────────────────────────────────────────────────────
+    max_files_to_select = 10
+    per_file_chars = 12_000
+
+    # ── Step 1: Scanning ────────────────────────────────────────────────
+    yield {"type": "thinking", "content": "Scanning project files…"}
+
+    root_path = Path(PROJECT_ROOT).resolve()
+    all_files = _walk_project_files(root_path)
+
+    if not all_files:
+        yield {"type": "error", "content": "No project files found to analyse."}
+        return
+
+    # ── Step 2: Ask DeepSeek which files are relevant ───────────────────
+    yield {"type": "thinking", "content": "Identifying relevant files…"}
+
+    file_list_str = "\n".join(all_files)
+    selection_system = (
+        "You are a codebase navigation assistant. Given a list of project files "
+        "and a user's question, identify which files are most relevant. "
+        "Return a JSON object with two keys: 'files' (a list of exact file paths "
+        f"from the list, up to {max_files_to_select}) and 'reasoning' "
+        "(a short explanation of why those files were selected). "
+        "Only include file paths that actually appear in the provided list."
+    )
+    selection_prompt = (
+        f"User question: {user_input}\n\n"
+        f"Project files:\n{file_list_str}\n\n"
+        f"Which of these files are most relevant to answer the user's question? "
+        f"Return your answer as JSON."
+    )
+
+    selection_messages = [
+        {"role": "system", "content": selection_system},
+        {"role": "user", "content": selection_prompt},
+    ]
+
+    try:
+        selection_response = client.chat.completions.create(
+            model=model,
+            messages=selection_messages,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+    except Exception as exc:
+        yield {"type": "error", "content": f"File selection API call failed: {exc}"}
+        return
+
+    # ── Track selection cost ────────────────────────────────────────────
+    usage = selection_response.usage
+    if usage:
+        sel_cost = calculate_cost(model, usage.prompt_tokens, usage.completion_tokens)
+        add_cost(sel_cost)
+
+    # ── Parse selected files from response ──────────────────────────────
+    selected_files: List[str] = []
+    raw = selection_response.choices[0].message.content
+    if raw:
+        try:
+            data = json.loads(raw)
+            selected_files = [
+                p for p in data.get("files", [])[:max_files_to_select]
+                if isinstance(p, str) and p in all_files
+            ]
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+
+    # If DeepSeek didn't select anything valid, fall back to a small safe set
+    if not selected_files:
+        # Pick the first few files as a minimal fallback
+        selected_files = all_files[:min(3, len(all_files))]
+
+    yield {
+        "type": "thinking",
+        "content": f"Reading {len(selected_files)} file(s)…",
+    }
+
+    # ── Step 3: Read selected files ─────────────────────────────────────
     code_context: List[str] = []
     total_chars = 0
-    max_chars = 80_000
-    max_files = 15
 
-    for rel_path in all_files:
-        if len(code_context) >= max_files or total_chars >= max_chars:
-            break
+    for rel_path in selected_files:
         abs_path = root_path / rel_path
         try:
             content = abs_path.read_text(encoding="utf-8", errors="replace")
         except (OSError, PermissionError):
             continue
-        if len(content) > 12_000:
-            content = content[:12_000] + "\n# … (truncated)"
+        if len(content) > per_file_chars:
+            content = content[:per_file_chars] + "\n# … (truncated)"
         code_context.append(f"--- {rel_path} ---\n{content}")
         total_chars += len(content)
 
     context_text = "\n\n".join(code_context)
-    yield {
-        "type": "thinking",
-        "content": f"Read {len(code_context)} file(s) ({total_chars} characters). Generating answer…",
-    }
 
-    # ── Call DeepSeek ────────────────────────────────────────────────────
+    # ── Step 4: Answer with context, streamed ──────────────────────────
     system_msg = (
         "You are a helpful codebase assistant. Answer the user's question "
         "about the codebase concisely using Markdown. Reference specific "
@@ -537,19 +648,31 @@ def answer_question(
             model=model,
             messages=messages,
             temperature=0.3,
-            stream=False,
+            stream=True,
         )
     except Exception as exc:
         yield {"type": "error", "content": f"DeepSeek API call failed: {exc}"}
         return
 
-    # ── Track cost ───────────────────────────────────────────────────────
-    usage = response.usage
-    if usage:
-        cost = calculate_cost(model, usage.prompt_tokens, usage.completion_tokens)
-        add_cost(cost)
+    full_answer_parts: List[str] = []
+    for chunk in response:
+        if chunk.choices and len(chunk.choices) > 0:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                token = delta.content
+                full_answer_parts.append(token)
+                yield {"type": "thinking", "content": token}
 
-    answer = response.choices[0].message.content or ""
+    answer = "".join(full_answer_parts)
+
+    # ── Track answer cost ───────────────────────────────────────────────
+    # Usage may be available on the final streaming chunk or the response
+    answer_usage = getattr(response, "usage", None)
+    if answer_usage:
+        answer_cost = calculate_cost(
+            model, answer_usage.prompt_tokens, answer_usage.completion_tokens
+        )
+        add_cost(answer_cost)
 
     yield {"type": "done", "message": answer, "cost": get_session_cost()}
 
