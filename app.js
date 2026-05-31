@@ -909,7 +909,6 @@ function setupAdminListeners() {
 
 // ─── MASTER CONTROL: Admin Panel ─────────────────────────────
 
-window.masterAllUsers = [];
 let masterTab = 'users'; // 'users' | 'courses'
 
 async function renderMaster() {
@@ -1188,72 +1187,101 @@ function mcRenderUsersTab() {
     const panel = document.getElementById('mc-tab-content');
     if (!panel) return;
 
-    // Reset display limit to 50 on tab open
-    window.masterDisplayLimit = 50;
-
     panel.innerHTML = `
         <div class="mc-section-hdr">
             <span class="mc-section-title">Student Registry</span>
-            <input class="mc-search" id="mc-user-search" placeholder="Search name, handle or email…" style="max-width:320px;width:100%;">
+            <input class="mc-search" id="mc-user-search" placeholder="Search by name, username or email…" style="max-width:320px;width:100%;">
         </div>
         <div id="mc-user-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
-            <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
-                <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.5rem;vertical-align:middle;margin-right:6px;">autorenew</span> Loading users…
+            <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
+                Type a name, username or email above to search for students.
             </div>
         </div>
         <div id="mc-user-load-more-container" style="text-align:center;margin-top:20px;margin-bottom:20px;"></div>
     `;
 
-    // Function to load users from Firestore
-    async function loadUsers(forceRefresh = false) {
+    let searchTimeout = null;
+    let lastSearchTerm = '';
+    let lastSearchResults = [];
+    let displayLimit = 50;
+
+    async function searchUsers(searchTerm) {
         const grid = document.getElementById('mc-user-grid');
         if (!grid) return;
 
-        // If we already have users and aren't forcing a refresh, just render them!
-        if (window.masterAllUsers && window.masterAllUsers.length > 0 && !forceRefresh) {
-            renderFilteredUsers();
+        if (!searchTerm || searchTerm.length < 2) {
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
+                Type at least 2 characters to search for students.
+            </div>`;
+            document.getElementById('mc-user-load-more-container').innerHTML = '';
             return;
         }
 
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
+            <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.5rem;vertical-align:middle;margin-right:6px;">autorenew</span> Searching…
+        </div>`;
+
         try {
-            window.masterAllUsers = (await sync.collection('users')) || [];
+            const { collection, query, where, orderBy, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const usersRef = collection(db, 'users');
+
+            // Use range query for prefix matching on displayName
+            const q = query(
+                usersRef,
+                where('displayName', '>=', searchTerm),
+                where('displayName', '<=', searchTerm + '\uf8ff'),
+                limit(50)
+            );
+            const snap = await getDocs(q);
+            const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            lastSearchTerm = searchTerm;
+            lastSearchResults = results;
+            displayLimit = 50;
             renderFilteredUsers();
         } catch (err) {
-            console.error("Error loading users:", err);
-            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--brand);">Failed to load users.</div>';
+            console.error("Search error:", err);
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--brand);">Search failed. Try again.</div>`;
         }
     }
 
-    // Function to filter and render users based on display limit
     function renderFilteredUsers() {
+        const grid = document.getElementById('mc-user-grid');
+        if (!grid) return;
+
         const searchInput = document.getElementById('mc-user-search');
         const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-        // Filter users
-        const filtered = q ? window.masterAllUsers.filter(u =>
+        // Client-side filter on already-fetched results
+        const filtered = q ? lastSearchResults.filter(u =>
             (u.displayName||'').toLowerCase().includes(q) ||
             (u.username||'').toLowerCase().includes(q) ||
             (u.email||'').toLowerCase().includes(q)
-        ) : window.masterAllUsers;
+        ) : lastSearchResults;
 
-        // Slice to display limit
-        const sliced = filtered.slice(0, window.masterDisplayLimit);
+        const sliced = filtered.slice(0, displayLimit);
 
-        // Render grid
+        if (sliced.length === 0) {
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
+                No students match "${q}".
+            </div>`;
+            document.getElementById('mc-user-load-more-container').innerHTML = '';
+            return;
+        }
+
         mcRenderUserGrid(sliced);
 
-        // Render Load More button if there are more remaining
         const loadMoreContainer = document.getElementById('mc-user-load-more-container');
         if (loadMoreContainer) {
-            if (filtered.length > window.masterDisplayLimit) {
-                const remaining = filtered.length - window.masterDisplayLimit;
+            if (filtered.length > displayLimit) {
+                const remaining = filtered.length - displayLimit;
                 loadMoreContainer.innerHTML = `
                     <button class="btn btn-outline" id="mc-btn-load-more-users" style="padding:8px 24px;font-weight:800;margin-top:10px;">
                         Load More (${remaining} remaining)
                     </button>
                 `;
                 document.getElementById('mc-btn-load-more-users').onclick = () => {
-                    window.masterDisplayLimit += 50;
+                    displayLimit += 50;
                     renderFilteredUsers();
                 };
             } else {
@@ -1262,30 +1290,27 @@ function mcRenderUsersTab() {
         }
     }
 
-    // Hook search input
+    // Search input handler with debounce
     const searchInput = document.getElementById('mc-user-search');
     if (searchInput) {
         searchInput.oninput = () => {
-            // Reset display limit when searching to start fresh
-            window.masterDisplayLimit = 50;
-            renderFilteredUsers();
+            clearTimeout(searchTimeout);
+            const term = searchInput.value.trim();
+            if (term.length >= 2) {
+                searchTimeout = setTimeout(() => searchUsers(term), 300);
+            } else {
+                lastSearchResults = [];
+                lastSearchTerm = '';
+                const grid = document.getElementById('mc-user-grid');
+                if (grid) {
+                    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
+                        Type at least 2 characters to search for students.
+                    </div>`;
+                }
+                document.getElementById('mc-user-load-more-container').innerHTML = '';
+            }
         };
     }
-
-    // Hook reload button
-    const reloadBtn = document.getElementById('mc-load-users-btn');
-    if (reloadBtn) {
-        reloadBtn.onclick = async () => {
-            reloadBtn.disabled = true;
-            reloadBtn.innerHTML = '<span class="material-icons-round" style="font-size:1rem;vertical-align:middle;animation:spin 1s linear infinite;display:inline-block;">autorenew</span> Loading…';
-            await loadUsers(true);
-            reloadBtn.disabled = false;
-            reloadBtn.innerHTML = '<span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">refresh</span> Reload';
-        };
-    }
-
-    // Trigger initial load automatically!
-    loadUsers();
 }
 
 function mcRenderUserGrid(users) {
@@ -4566,7 +4591,6 @@ window.udtDeleteUser = async function(uid) {
     if (!confirm('Final confirmation — delete this user?')) return;
     try {
         await deleteDoc(doc(db, 'users', uid));
-        window.masterAllUsers = (window.masterAllUsers || []).filter(u => u.id !== uid);
         document.querySelector('.mc-modal-overlay')?.remove();
         mcRenderUsersTab();
     } catch(e) { alert('Delete failed: ' + e.message); }
