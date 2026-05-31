@@ -17,6 +17,14 @@ import { SyncManager } from './sync.js';
 let sync = null;
 let localCache = null;
 
+// ─── Global Firestore error handler (quota detection) ───
+window.addEventListener('unhandledrejection', (event) => {
+    const msg = event.reason?.message || event.reason?.code || '';
+    if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('exhausted') || msg.includes('unavailable')) {
+        if (window._showMaintenanceScreen) window._showMaintenanceScreen();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // ─── DOM refs ────────────────────────────────────────────────
@@ -138,6 +146,22 @@ document.addEventListener('DOMContentLoaded', () => {
         schedule: [],
         stats: { streak: 0, highestStreak: 0, rank: 'N/A', lastExamDate: null, exaRating: 800 }
     };
+
+// ─── Quota-exceeded maintenance screen ───
+window._showMaintenanceScreen = function() {
+    if (document.getElementById('ef-maintenance-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'ef-maintenance-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;padding:24px;gap:16px;';
+    overlay.innerHTML = `
+        <div style="width:80px;height:80px;border-radius:50%;background:rgba(254,105,97,0.1);display:flex;align-items:center;justify-content:center;">
+            <span class="material-icons-round" style="font-size:2.4rem;color:#fe6961;">construction</span>
+        </div>
+        <div style="font-size:1.4rem;font-weight:900;color:var(--text);text-align:center;">Under Maintenance</div>
+        <div style="font-size:0.85rem;color:var(--text-muted);text-align:center;max-width:360px;line-height:1.5;">ExamForge is currently under maintenance. We'll be back shortly. Thank you for your patience.</div>
+    `;
+    document.body.appendChild(overlay);
+};
 
 // ─── Throttled cache refresh (prevents stale data without excessive reads) ───
 window._lastRefresh = {};
@@ -537,21 +561,6 @@ function setupAdminListeners() {
 
                 // Initial load from cache
                 sync.subscribe('users/' + user.uid, refreshUserData);
-
-                // ─── Live refresh cycle ───
-                // Refreshes key collections every 30 seconds so all views stay live
-                const LIVE_PATHS = [
-                    'users/' + user.uid,
-                    'users/' + user.uid + '/schedule',
-                    'subscription_events',
-                    'daily_quizzes',
-                    'daily_advices'
-                ];
-                setInterval(() => {
-                    LIVE_PATHS.forEach(path => {
-                        sync.refresh(path).catch(() => {});
-                    });
-                }, 30000);
 
                 // ─── One-time migration: copy old subcollection results to recentResults ───
                 if (userData.recentResults && userData.recentResults.length === 0) {
@@ -1148,21 +1157,13 @@ async function renderMaster() {
     mcRenderTabContent();
 }
  
-window.mcSwitchTab = async function(tab) {
+window.mcSwitchTab = function(tab) {
     masterTab = tab;
     document.querySelectorAll('.mc-tab').forEach(t => {
         const fullLabel = t.querySelector('.mc-tab-label') || t.querySelector('.mc-tab-label-short');
         const labelText = (fullLabel ? fullLabel.textContent : t.textContent).trim().toLowerCase().replace(/\s+/g,'');
         t.classList.toggle('active', labelText.includes(tab) || tab.includes(labelText));
     });
-    // Refresh caches before rendering admin tab content
-    try {
-        if (tab === 'users' || tab === 'courses') await sync.refresh('users');
-        if (tab === 'courses') await sync.refresh('unicourses');
-        if (tab === 'dailyquiz') await sync.refresh('daily_quizzes');
-        if (tab === 'dailyadvice') await sync.refresh('daily_advices');
-        if (tab === 'subevents') await sync.refresh('subscription_events');
-    } catch(e) {}
     mcRenderTabContent();
 };
  
@@ -7631,14 +7632,9 @@ window.mcViewSubEventDetails = async function(eventId) {
     document.body.appendChild(overlay);
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
     
-    // Force refresh all event data before loading
+    // Force refresh event doc before loading
     try {
-        await Promise.all([
-            sync.refresh('subscription_events/' + eventId),
-            sync.refresh('subscription_events/' + eventId + '/registrations'),
-            sync.refresh('subscription_events/' + eventId + '/keys'),
-            sync.refresh('mock_exams').catch(() => {}),
-        ]);
+        await sync.refresh('subscription_events/' + eventId);
     } catch(e) {}
     
     try {
@@ -7872,14 +7868,6 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
     if (!normalizedSubjects) normalizedSubjects = (subjects || []).map(s => mcNormalizeSubject(s));
     const container = document.getElementById('mc-reg-students-table');
     if (!container) return;
-    
-    // Force refresh all data before rendering
-    try {
-        await Promise.all([
-            sync.refresh('subscription_events/' + eventId + '/registrations').catch(() => {}),
-            sync.refresh('mock_exams').catch(() => {}),
-        ]);
-    } catch(e) {}
     
     try {
         // 1. Fetch all registrations
