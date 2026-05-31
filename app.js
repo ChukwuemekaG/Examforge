@@ -4854,6 +4854,14 @@ window.adminPromptNotification = function(userId) {
                 };
                 userData.recentResults = freshData.recentResults || [];
             }
+            // Override with latest exam result from localStorage (covers quiz → dashboard flow)
+            try {
+                const lastExa = JSON.parse(localStorage.getItem('ef_last_exa'));
+                if (lastExa && lastExa.exaRating && Date.now() - lastExa.timestamp < 120000) {
+                    userData.stats.exaRating = lastExa.exaRating;
+                    localStorage.removeItem('ef_last_exa');
+                }
+            } catch(e) {}
             // Fetch schedule items
             const schedItems = await sync.collection('users/' + auth.currentUser.uid + '/schedule');
             if (schedItems && schedItems.length) {
@@ -7864,6 +7872,14 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
     if (!normalizedSubjects) normalizedSubjects = (subjects || []).map(s => mcNormalizeSubject(s));
     const container = document.getElementById('mc-reg-students-table');
     if (!container) return;
+    
+    // Force refresh all data before rendering
+    try {
+        await Promise.all([
+            sync.refresh('subscription_events/' + eventId + '/registrations').catch(() => {}),
+            sync.refresh('mock_exams').catch(() => {}),
+        ]);
+    } catch(e) {}
     
     try {
         // 1. Fetch all registrations

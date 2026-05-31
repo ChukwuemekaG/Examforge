@@ -1184,13 +1184,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     streak: streakUpdate.streak,
                     highestStreak: streakUpdate.highestStreak,
                     lastExamDate: streakUpdate.lastExamDate,
-                    exaRating: newExa,
-                    recentResults: recentResults,
                 };
                 await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
-
-                // Store latest EXA for instant dashboard update on next app load
-                try { localStorage.setItem('ef_last_exa', JSON.stringify({ exaRating: newExa, timestamp: Date.now() })); } catch(e) {}
 
             } else {
                 // Build new result object (embedded in user doc — no separate results collection write)
