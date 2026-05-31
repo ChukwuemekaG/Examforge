@@ -7671,13 +7671,13 @@ window.mcViewSubEventDetails = async function(eventId) {
 
         const broadcastBtn = `
             <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap;">
-                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:10px;text-align:center;background:#7c3aed;min-width:160px;">
-                    ${ev.resultsReleased ? 'RE-BROADCAST RESULTS' : 'BROADCAST ALL RESULTS'}
+                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:8px 10px;text-align:center;background:#7c3aed;font-size:0.7rem;white-space:normal;word-break:break-word;">
+                    <span class="material-icons-round" style="font-size:0.85rem;vertical-align:middle;">campaign</span> ${ev.resultsReleased ? 'RE-BROADCAST' : 'BROADCAST ALL'}
                 </button>
-                <button class="btn btn-outline" onclick="window.mcPrintAllEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:10px;text-align:center;min-width:160px;display:flex;align-items:center;justify-content:center;gap:4px;">
-                    <span class="material-icons-round" style="font-size:1rem;">print</span> PRINT ALL RESULTS
+                <button class="btn btn-outline" onclick="window.mcPrintAllEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:8px 10px;text-align:center;font-size:0.7rem;white-space:normal;word-break:break-word;display:flex;align-items:center;justify-content:center;gap:4px;">
+                    <span class="material-icons-round" style="font-size:0.85rem;">print</span> PRINT ALL
                 </button>
-                ${ev.resultsReleased ? `<span style="font-size:0.65rem;color:var(--text-muted);font-weight:700;display:flex;align-items:center;gap:4px;"><span class="material-icons-round" style="font-size:0.85rem;">info</span> Already broadcasted</span>` : ''}
+                ${ev.resultsReleased ? `<span style="font-size:0.6rem;color:var(--text-muted);font-weight:700;width:100%;text-align:center;margin-top:2px;"><span class="material-icons-round" style="font-size:0.75rem;vertical-align:middle;">info</span> Already broadcasted</span>` : ''}
             </div>`;
 
         document.getElementById('ef-se-det-body').innerHTML = `
@@ -8382,13 +8382,15 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
     modal.innerHTML = `
         <style>
             .dq-modal-card { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-            .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
+            .dq-meta-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
             .dq-question-grid-split { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; }
             @media (max-width: 600px) {
-                .dq-meta-grid, .dq-question-grid-split { grid-template-columns: 1fr !important; gap: 12px !important; }
+                .dq-meta-grid, .dq-question-grid-split { grid-template-columns: 1fr !important; gap: 10px !important; }
                 .dq-toggle-grid { grid-template-columns: 1fr !important; }
-                .dq-footer-actions { flex-direction: column !important; gap: 10px !important; width: 100%; }
+                .dq-footer-actions { flex-direction: column !important; gap: 8px !important; width: 100%; }
                 .dq-footer-actions button { width: 100% !important; }
+                .dq-modal-card [style*="padding:20px"] { padding: 12px !important; }
+                .dq-modal-card [style*="padding:14px 20px"] { padding: 10px 12px !important; }
             }
         </style>
         <div class="dq-modal-card">
