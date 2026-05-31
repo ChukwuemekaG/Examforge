@@ -149,18 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ─── Quota-exceeded maintenance screen ───
 window._showMaintenanceScreen = function() {
-    if (document.getElementById('ef-maintenance-overlay')) return;
-    const overlay = document.createElement('div');
-    overlay.id = 'ef-maintenance-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;padding:24px;gap:16px;';
-    overlay.innerHTML = `
-        <div style="width:80px;height:80px;border-radius:50%;background:rgba(254,105,97,0.1);display:flex;align-items:center;justify-content:center;">
-            <span class="material-icons-round" style="font-size:2.4rem;color:#fe6961;">construction</span>
-        </div>
-        <div style="font-size:1.4rem;font-weight:900;color:var(--text);text-align:center;">Under Maintenance</div>
-        <div style="font-size:0.85rem;color:var(--text-muted);text-align:center;max-width:360px;line-height:1.5;">ExamForge is currently under maintenance. We'll be back shortly. Thank you for your patience.</div>
-    `;
-    document.body.appendChild(overlay);
+    window._showMaintenancePage(); // Reuse the same maintenance page
 };
 
 // ─── Maintenance mode check (1 read, cached in localStorage) ───
@@ -672,8 +661,12 @@ function setupAdminListeners() {
                 }
 
                 // ─── Check maintenance mode (blocks non-admins) ───
-                const maintenanceBlocked = await window._checkMaintenance(userData.stats.role);
-                if (maintenanceBlocked) return; // Stop here — maintenance overlay shown
+                // Try maintenance check — don't block if it fails
+                try {
+                    const role = userDataFromSync?.role || userData.stats.role || 'student';
+                    const maintenanceBlocked = await window._checkMaintenance(role);
+                    if (maintenanceBlocked) return;
+                } catch(e) {}
                 
                 init();
                 // ─── Floating notification bell (mobile) ───
@@ -2762,10 +2755,9 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         
         let subscriberCount = 0;
         try {
-            const usersArr = (await sync.collection('users')) || [];
-            subscriberCount = usersArr.filter(d => {
-                return !d.subscriptions || d.subscriptions.dailyQuiz !== false;
-            }).length;
+            const { collection, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const snap = await getCountFromServer(collection(db, 'users'));
+            subscriberCount = snap.data().count;
         } catch (_) {}
         
         document.getElementById('ef-dq-det-body').innerHTML = `
