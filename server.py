@@ -44,7 +44,7 @@ def stream():
 
     # ── Agent streaming ───────────────────────────────────────────────────
     def generate():
-        for event in run_agent(message, model, auto_deploy):
+        for event in run_agent(message, model, deploy_enabled=auto_deploy):
             event["total_cost"] = get_session_cost()
             yield f"data: {json.dumps(event)}\n\n"
 

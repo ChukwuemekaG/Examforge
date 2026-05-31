@@ -439,7 +439,7 @@ def rollback_changes(push: bool = True) -> Generator[Dict[str, Any], None, None]
         pass
 
     try:
-        repo.git.revert("HEAD", no_edit=True)
+        repo.git.revert("HEAD", no_edit=True, m=1)
         yield {"type": "action", "content": "Last commit reverted locally."}
     except GitCommandError as exc:
         yield {"type": "error", "content": f"Revert failed: {exc}"}
@@ -1101,7 +1101,7 @@ def _git_commit_and_push(
 def run_agent(
     user_input: str,
     model: str = DEFAULT_MODEL,
-    auto_deploy: bool = False,
+    deploy_enabled: bool = False,
 ) -> Generator[Dict[str, Any], None, None]:
     """Main orchestrator — the central entry point for the TalkCody system.
 
@@ -1120,7 +1120,7 @@ def run_agent(
         The raw text the user sent to the agent.
     model : str, optional
         The DeepSeek model identifier.  Defaults to :data:`DEFAULT_MODEL`.
-    auto_deploy : bool, optional
+    deploy_enabled : bool, optional
         If ``True``, automatically merge the PR after pushing (default
         ``False``).
 
@@ -1170,11 +1170,66 @@ def run_agent(
         elif intent in ("code", "modify"):
             # ── Implement code changes ──────────────────────────────────
             yield {"type": "thinking", "content": "Building project context for implementation…"}
+
+            # Step 1: Walk all project files
+            root_path = Path(PROJECT_ROOT).resolve()
+            all_files = _walk_project_files(root_path)
+            file_list_str = "\n".join(all_files)
+
+            # Step 2: Show initial thinking
+            yield {"type": "thinking", "content": "🔍 Analyzing your request..."}
+
+            # Step 3: Ask DeepSeek to analyze and think step by step
+            analysis_system = (
+                "You are an expert developer analyzing a user's request. "
+                "Think step by step about what the user wants and what needs to be changed. "
+                "Show your reasoning process clearly and thoroughly."
+            )
+            analysis_prompt = (
+                f"The user wants: {task}\n\n"
+                f"Here are all the project files:\n{file_list_str}\n\n"
+                "Analyze what the user is asking for. Think step by step:\n"
+                "1. What is the user asking for?\n"
+                "2. What files need to be modified?\n"
+                "3. What changes need to be made in each file?\n"
+                "4. What is the implementation plan?\n\n"
+                "Output your analysis."
+            )
+
+            # Step 4: Stream the analysis
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": analysis_system},
+                        {"role": "user", "content": analysis_prompt},
+                    ],
+                    temperature=0.0,
+                    stream=True,
+                )
+            except Exception as exc:
+                yield {"type": "error", "content": f"Analysis API call failed: {exc}"}
+                return
+
+            analysis_parts: List[str] = []
+            for chunk in response:
+                if chunk.choices and len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta
+                    if delta and delta.content:
+                        token = delta.content
+                        analysis_parts.append(token)
+                        yield {"type": "thinking", "content": token}
+
+            analysis = "".join(analysis_parts)
+
+            # Step 5: Build files context and proceed with implementation
+            yield {"type": "thinking", "content": "Proceeding with implementation…"}
             files_context = _build_files_context(task, model=model)
 
-            # Use the files context as a basic plan description
+            # Use the analysis as the plan description
             plan_text = (
                 f"## Task\n\n{task}\n\n"
+                f"## Analysis / Plan\n\n{analysis}\n\n"
                 f"## Files Context\n\n{files_context}\n\n"
                 "Implement the changes described in the task. Modify the "
                 "necessary files using the write_file tool."
@@ -1200,7 +1255,7 @@ def run_agent(
                 yield from _git_commit_and_push(task, push, branch_name)
 
                 # ── Auto-deploy ─────────────────────────────────────────
-                if auto_deploy and push:
+                if deploy_enabled and push:
                     yield from auto_deploy(branch_name)
 
         elif intent == "review":
@@ -1273,7 +1328,7 @@ def run_agent(
 def run_agent_stream(
     user_input: str,
     model_name: str = DEFAULT_MODEL,
-    auto_deploy: bool = False,
+    deploy_enabled: bool = False,
 ) -> Generator[Dict[str, Any], None, None]:
     """Alias for :func:`run_agent` — provides backward compatibility with
     server code that imports ``run_agent_stream`` from the old agent module.
@@ -1284,7 +1339,7 @@ def run_agent_stream(
         The raw text the user sent to the agent.
     model_name : str, optional
         The DeepSeek model identifier.  Defaults to :data:`DEFAULT_MODEL`.
-    auto_deploy : bool, optional
+    deploy_enabled : bool, optional
         Whether to auto-deploy after push (default ``False``).
 
     Yields
@@ -1292,7 +1347,7 @@ def run_agent_stream(
     dict
         The same events as :func:`run_agent`.
     """
-    yield from run_agent(user_input, model=model_name, auto_deploy=auto_deploy)
+    yield from run_agent(user_input, model=model_name, deploy_enabled=deploy_enabled)
 
 
 # ========================================================================
@@ -1362,5 +1417,5 @@ if __name__ == "__main__":
     model_arg = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_MODEL
     deploy_arg = "--deploy" in sys.argv or "-d" in sys.argv
 
-    for event in run_agent(user_cmd, model=model_arg, auto_deploy=deploy_arg):
+    for event in run_agent(user_cmd, model=model_arg, deploy_enabled=deploy_arg):
         _print_event(event)
