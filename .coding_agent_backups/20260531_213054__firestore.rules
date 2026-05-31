@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── HELPERS ─────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid))
+               .data.get('role', 'student') == 'admin';
+    }
+
+    // ─── GLOBAL ADMIN BYPASS ──────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── 1. USER PROFILE COLLECTIONS ─────────────────────────────
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
+      
+      // Results subcollection (quiz/exam scores saved by the student)
+      match /results/{resultId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId);
+      }
+      
+      // Schedule subcollection (upcoming exams added by system)
+      match /schedule/{scheduleId} {
+        allow read: if isOwner(userId);
+        allow create: if isSignedIn();
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+      
+      // Notifications subcollection (dismissable and viewable by owners)
+      match /notifications/{notificationId} {
+        allow read, update, delete: if isOwner(userId);
+        allow create: if isSignedIn(); // Allows admin broadcasts & system logs
+      }
+    }
+
+    // ─── 2. USERNAMES REGISTRATION mapping ────────────────────────
+    match /usernames/{username} {
+      allow read: if true; // Needed to verify username availability during signup
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // ─── 3. DAILY ADVICE FEED & HISTORY ──────────────────────────
+    match /daily_advices/{adviceId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─── 4. DAILY QUIZZES & ATTEMPTS ──────────────────────────────
+    match /daily_quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+
+      // Attempts logged by students, audited by admins
+      match /attempts/{attemptId} {
+        allow read: if isSignedIn(); // Allows students to view scoreboard and admins to inspect scores
+        allow create: if isSignedIn(); // Allows students to submit attempts
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // ─── 5. MOCK EXAMS & ATTEMPTS ──────────────────────────────────
+    match /mock_exams/{mockId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+
+      // Attempts logged by students, audited by admins
+      match /attempts/{attemptId} {
+        allow read: if isSignedIn(); // Allows students to retrieve attempt status and admins to view scoreboard
+        allow create: if isSignedIn(); // Allows students to submit attempts
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // ─── 6. SUBSCRIPTION EVENTS & REGISTRATIONS ────────────────────
+    match /subscription_events/{eventId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+
+      match /registrations/{registrationId} {
+        allow read: if isSignedIn(); // students can read their own or others' if they want, but typically just theirs. Admins can read all.
+        allow write: if isOwner(registrationId) || isAdmin(); 
+      }
+
+      // Keys subcollection — 10-digit key system for subscription activation
+      match /keys/{keyId} {
+        allow read: if isSignedIn();          // Students can read a specific key to validate it
+        allow list: if isAdmin();             // Only admins can list all keys
+        allow create: if isAdmin();           // Only admins can generate new keys
+        allow update: if (isAdmin()) ||       // Admins can update any key
+          (resource.data.used == false &&      // Student can claim an unused key
+           request.resource.data.used == true &&
+           request.resource.data.usedBy == request.auth.uid);
+        allow delete: if isAdmin();           // Only admins can delete keys
+      }
+    }
+
+    // ─── 7. UNIVERSITY COURSES & LECTURES ─────────────────────────
+    match /unicourses/{courseId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+
+      match /topics/{topicId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
+        
+        match /questions/{questionId} {
+          allow read: if isSignedIn();
+          allow write: if isAdmin();
+        }
+      }
+    }
+  }
+}

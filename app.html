@@ -1,373 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ExamForge</title>
-    <link rel="icon" type="image/png" href="examforge-logo.png">
-    <link rel="apple-touch-icon" href="examforge-logo.png">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1a1a2e">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="ExamForge - Practice exams, quizzes, and performance analytics for university students.">
-    <meta name="keywords" content="exam, practice, quiz, university, GST, MTH, study">
-    <meta property="og:title" content="ExamForge">
-    <meta property="og:description" content="Practice exams, quizzes, and performance analytics for university students.">
-    <meta property="og:image" content="examforge-logo.png">
-    <meta property="og:url" content="https://examforge.web.app">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta property="og:title" content="ExamForge - Dashboard">
+    <meta property="og:description" content="Discipline. Direction. Distinction. Practice exams, track your progress, and ace your tests with confidence.">
+    <meta property="og:image" content="https://examforge.com.ng/examforge.jpeg">
+    <meta property="og:url" content="https://examforge.com.ng">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ExamForge">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Round:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-    <link rel="stylesheet" href="app.css">
-    <link rel="stylesheet" href="quiz.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta name="twitter:title" content="ExamForge - Dashboard">
+    <meta name="twitter:description" content="Discipline. Direction. Distinction. Practice exams, track your progress, and ace your tests with confidence.">
+    <meta name="twitter:image" content="https://examforge.com.ng/examforge.jpeg">
+    <title>ExamForge | Dashboard</title>
+    <link rel="icon" type="image/png" href="logo-examforge.png">
+    <link rel="apple-touch-icon" href="logo-examforge.png">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=block" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=block" as="style">
+    <link rel="stylesheet" href="app.css?v=5">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/ios/180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/ios/152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/ios/180.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/ios/167.png">
+    <script>
+        const savedTheme = localStorage.getItem('examforge-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
 </head>
+
 <body>
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-screen">
-        <div class="loading-content">
-            <img src="examforge-logo.png" alt="ExamForge" class="loading-logo">
-            <div class="loading-spinner"></div>
-            <p class="loading-text">Loading your experience...</p>
+    <!-- Maintenance mode overlay -->
+    <div id="ef-maintenance-overlay" style="position:fixed;inset:0;background:#fbfcff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;padding:24px;gap:16px;font-family:'Space Grotesk'">
+        <div style="width:80px;height:80px;border-radius:50%;background:rgba(254,105,97,0.1);display:flex;align-items:center;justify-content:center;">
+            <span class="material-icons-round" style="font-size:2.4rem;color:#fe6961;">construction</span>
         </div>
+        <div style="font-size:1.4rem;font-weight:900;color:#18160F;text-align:center;">Under Maintenance</div>
+        <div style="font-size:0.85rem;color:#3a3b3d;text-align:center;max-width:360px;line-height:1.5;">ExamForge is currently under maintenance. We'll be back shortly. Thank you for your patience.</div>
     </div>
-
-
-    <!-- Offline Banner -->
-    <div id="offline-banner" class="offline-banner" style="display: none;">
-        <div class="offline-content">
-            <span class="material-symbols-round">cloud_off</span>
-            <span>You are offline. Some features may be limited.</span>
-        </div>
+    <!-- Preloader: visible until app is ready -->
+    <div id="app-preloader">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
     </div>
+    <div class="overlay" id="overlay"></div>
+    <div class="app-shell">
 
-    <!-- Sidebar -->
-    <nav id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <img src="examforge-logo.png" alt="ExamForge" class="sidebar-logo">
-            <h1 class="sidebar-title">ExamForge</h1>
-            <button id="sidebar-close" class="sidebar-close" aria-label="Close sidebar">
-                <span class="material-symbols-round">close</span>
-            </button>
-        </div>
-        <div class="sidebar-user">
-            <div class="sidebar-avatar" id="sidebar-avatar">U</div>
-            <div class="sidebar-user-info">
-                <span class="sidebar-user-name" id="sidebar-user-name">User</span>
-                <span class="sidebar-user-email" id="sidebar-user-email">user@example.com</span>
-            </div>
-        </div>
-        <div class="sidebar-nav">
-            <a href="#" class="sidebar-item active" data-view="dashboard" onclick="navigateTo('dashboard')">
-                <span class="material-symbols-round">dashboard</span>
-                <span>Dashboard</span>
-            </a>
-            <a href="#" class="sidebar-item" data-view="courses" onclick="navigateTo('courses')">
-                <span class="material-symbols-round">school</span>
-                <span>Courses</span>
-            </a>
-            <a href="#" class="sidebar-item" data-view="quiz" onclick="navigateTo('quiz')">
-                <span class="material-symbols-round">quiz</span>
-                <span>Quiz</span>
-            </a>
-            <a href="#" class="sidebar-item" data-view="results" onclick="navigateTo('results')">
-                <span class="material-symbols-round">analytics</span>
-                <span>Results</span>
-            </a>
-            <a href="#" class="sidebar-item" data-view="leaderboard" onclick="navigateTo('leaderboard')">
-                <span class="material-symbols-round">leaderboard</span>
-                <span>Leaderboard</span>
-            </a>
-            <a href="#" class="sidebar-item" data-view="inbox" onclick="navigateTo('inbox')">
-                <span class="material-symbols-round">inbox</span>
-                <span>Inbox</span>
-                <span id="inbox-badge" class="badge" style="display: none;">0</span>
-            </a>
-            <a href="#" class="sidebar-item" data-view="subscription" onclick="navigateTo('subscription')">
-                <span class="material-symbols-round">workspace_premium</span>
-                <span>Subscription</span>
-            </a>
-            <a href="#" class="sidebar-item" data-view="profile" onclick="navigateTo('profile')">
-                <span class="material-symbols-round">person</span>
-                <span>Profile</span>
-            </a>
-            <a href="#" class="sidebar-item" data-view="support" onclick="navigateTo('support')">
-                <span class="material-symbols-round">support</span>
-                <span>Support</span>
-            </a>
-        </div>
-        <div class="sidebar-footer">
-            <button id="logout-btn" class="sidebar-logout" onclick="handleLogout()">
-                <span class="material-symbols-round">logout</span>
-                <span>Logout</span>
-            </button>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main id="main-content" class="main-content">
-        <!-- Top Bar -->
+        <!-- TOP BAR -->
         <header class="topbar">
-            <button id="sidebar-toggle" class="topbar-menu" aria-label="Toggle sidebar">
-                <span class="material-symbols-round">menu</span>
+            <button class="menu-btn" id="menuBtn" aria-label="Toggle sidebar">
+                <span class="material-icons-round">menu</span>
             </button>
-            <div class="topbar-center">
-                <img src="examforge-logo.png" alt="ExamForge" class="topbar-logo">
-                <h2 class="topbar-title">ExamForge</h2>
+
+            <a class="topbar-logo" href="#">
+                <img src="512.png" alt="ExamForge">
+                <span class="wordmark">Exam<span>forge</span></span>
+            </a>
+
+            <div class="topbar-search">
+                <div class="search-box">
+                    <span class="material-icons-round">search</span>
+                    <input type="text" id="globalSearch" placeholder="Search course code or title..."
+                        autocomplete="off">
+                </div>
             </div>
+
+            <!-- Mobile search toggle (visible only on small screens) -->
+            <button class="mobile-search-btn icon-btn" id="mobileSearchBtn" aria-label="Search">
+                <span class="material-icons-round">search</span>
+            </button>
+
             <div class="topbar-actions">
-                <button class="topbar-icon-btn" onclick="navigateTo('inbox')" aria-label="Notifications">
-                    <span class="material-symbols-round">notifications</span>
-                    <span id="topbar-inbox-badge" class="badge" style="display: none;">0</span>
+                <label class="theme-switch" title="Toggle Dark/Light Mode">
+                    <input type="checkbox" class="theme-toggle-checkbox">
+                    <span class="slider">
+                        <span class="material-icons-round icon-light">light_mode</span>
+                        <span class="material-icons-round icon-dark">dark_mode</span>
+                    </span>
+                </label>
+
+                <!-- Notifications -->
+                <button class="icon-btn" data-view="inbox" aria-label="Notifications">
+                    <span class="material-icons-round">notifications</span>
+                    <span class="notif-badge"></span>
                 </button>
-                <button class="topbar-icon-btn" onclick="navigateTo('profile')" aria-label="Profile">
-                    <span class="material-symbols-round">account_circle</span>
-                </button>
+
+                <!-- Profile -->
+                <div class="avatar" id="profileBtn" data-view="settings" aria-label="Profile">--</div>
             </div>
         </header>
 
-        <!-- Views Container -->
-        <div class="views-container">
-            <!-- Dashboard View -->
-            <section id="view-dashboard" class="view active">
-                <div class="view-header">
-                    <h2 class="view-title">Dashboard</h2>
-                    <p class="view-subtitle">Your learning overview</p>
-                </div>
-                <div class="dashboard-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <span class="material-symbols-round">local_fire_department</span>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="stat-streak">0</span>
-                            <span class="stat-label">Day Streak</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <span class="material-symbols-round">trending_up</span>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="stat-weekly-best">0%</span>
-                            <span class="stat-label">Weekly Best</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <span class="material-symbols-round">trackpad_round</span>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="stat-accuracy">0%</span>
-                            <span class="stat-label">Accuracy Trend</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <span class="material-symbols-round">military_tech</span>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="stat-exa-rating">0</span>
-                            <span class="stat-label">EXA Rating</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="dashboard-section">
-                    <h3 class="section-title">Recent Activity</h3>
-                    <div id="recent-activity" class="activity-list">
-                        <p class="empty-state">No recent activity. Start a quiz to begin tracking!</p>
-                    </div>
-                </div>
-                <div class="dashboard-section">
-                    <h3 class="section-title">Quick Actions</h3>
-                    <div class="quick-actions">
-                        <button class="action-btn" onclick="navigateTo('quiz')">
-                            <span class="material-symbols-round">play_arrow</span>
-                            Start Quiz
-                        </button>
-                        <button class="action-btn" onclick="navigateTo('courses')">
-                            <span class="material-symbols-round">book</span>
-                            Browse Courses
-                        </button>
-                        <button class="action-btn" onclick="navigateTo('results')">
-                            <span class="material-symbols-round">bar_chart</span>
-                            View Results
-                        </button>
-                    </div>
-                </div>
-            </section>
+        <!-- MAIN LAYOUT -->
+        <div class="main-wrap">
 
-            <!-- Courses View -->
-            <section id="view-courses" class="view">
-                <div class="view-header">
-                    <h2 class="view-title">Courses</h2>
-                    <p class="view-subtitle">Select a course to practice</p>
-                </div>
-                <div class="search-bar">
-                    <span class="material-symbols-round">search</span>
-                    <input type="text" id="course-search" placeholder="Search courses..." oninput="debounceSearch()">
-                </div>
-                <div id="courses-container" class="courses-grid">
-                    <!-- Courses loaded dynamically -->
-                </div>
-            </section>
+            <!-- SIDEBAR -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-inner">
 
-            <!-- Quiz View -->
-            <section id="view-quiz" class="view">
-                <div class="view-header">
-                    <h2 class="view-title">Quiz</h2>
-                    <p class="view-subtitle">Test your knowledge</p>
-                </div>
-                <div id="quiz-setup" class="quiz-setup">
-                    <div class="setup-card">
-                        <h3 class="setup-title">Select Subject</h3>
-                        <select id="quiz-subject" class="setup-select" onchange="updateTopics()">
-                            <option value="">Choose a subject...</option>
-                        </select>
-                    </div>
-                    <div class="setup-card">
-                        <h3 class="setup-title">Select Topic</h3>
-                        <select id="quiz-topic" class="setup-select">
-                            <option value="">Choose a topic...</option>
-                        </select>
-                    </div>
-                    <div class="setup-card">
-                        <h3 class="setup-title">Quiz Mode</h3>
-                        <div class="mode-selector">
-                            <label class="mode-option">
-                                <input type="radio" name="quiz-mode" value="strict" checked>
-                                <div class="mode-card">
-                                    <span class="material-symbols-round">gavel</span>
-                                    <span class="mode-name">Strict</span>
-                                    <span class="mode-desc">No second chances</span>
-                                </div>
-                            </label>
-                            <label class="mode-option">
-                                <input type="radio" name="quiz-mode" value="mock">
-                                <div class="mode-card">
-                                    <span class="material-symbols-round">school</span>
-                                    <span class="mode-name">Mock</span>
-                                    <span class="mode-desc">Practice mode</span>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="setup-card">
-                        <h3 class="setup-title">Time Limit</h3>
-                        <div class="time-selector">
-                            <label class="time-option">
-                                <input type="radio" name="quiz-time" value="5" checked>
-                                <span>5 min</span>
-                            </label>
-                            <label class="time-option">
-                                <input type="radio" name="quiz-time" value="10">
-                                <span>10 min</span>
-                            </label>
-                            <label class="time-option">
-                                <input type="radio" name="quiz-time" value="15">
-                                <span>15 min</span>
-                            </label>
-                            <label class="time-option">
-                                <input type="radio" name="quiz-time" value="30">
-                                <span>30 min</span>
-                            </label>
-                        </div>
-                    </div>
-                    <button class="btn-primary btn-large" onclick="startQuiz()">
-                        <span class="material-symbols-round">play_arrow</span>
-                        Start Quiz
+                    <span class="nav-section">Main</span>
+
+                    <button class="nav-item active" data-view="dashboard">
+                        <span class="material-icons-round">dashboard</span>
+                        <span class="nav-text">Dashboard</span>
                     </button>
-                </div>
-                <div id="quiz-container" class="quiz-container" style="display: none;">
-                    <!-- Quiz content loaded dynamically -->
-                </div>
-            </section>
 
-            <!-- Results View -->
-            <section id="view-results" class="view">
-                <div class="view-header">
-                    <h2 class="view-title">Results</h2>
-                    <p class="view-subtitle">Your performance analytics</p>
-                </div>
-                <div id="results-container" class="results-container">
-                    <!-- Results loaded dynamically -->
-                </div>
-            </section>
+                    <button class="nav-item" data-view="library">
+                        <span class="material-icons-round">local_library</span>
+                        <span class="nav-text">Exam Library</span>
+                    </button>
 
-            <!-- Leaderboard View -->
-            <section id="view-leaderboard" class="view">
-                <div class="view-header">
-                    <h2 class="view-title">Leaderboard</h2>
-                    <p class="view-subtitle">Top performers this week</p>
-                </div>
-                <div id="leaderboard-container" class="leaderboard-container">
-                    <!-- Leaderboard loaded dynamically -->
-                </div>
-            </section>
+                    <button class="nav-item" data-view="subscriptions">
+                        <span class="material-icons-round">card_membership</span>
+                        <span class="nav-text">Subscriptions</span>
+                    </button>
 
-            <!-- Inbox View -->
-            <section id="view-inbox" class="view">
-                <div class="view-header">
-                    <h2 class="view-title">Inbox</h2>
-                    <p class="view-subtitle">Notifications and updates</p>
-                </div>
-                <div id="inbox-container" class="inbox-container">
-                    <!-- Inbox loaded dynamically -->
-                </div>
-            </section>
+                    <button class="nav-item" data-view="schedule">
+                        <span class="material-icons-round">calendar_month</span>
+                        <span class="nav-text">Schedule</span>
+                    </button>
 
-            <!-- Subscription View -->
-            <section id="view-subscription" class="view">
-                <div class="view-header">
-                    <h2 class="view-title">Subscription</h2>
-                    <p class="view-subtitle">Manage your access</p>
-                </div>
-                <div id="subscription-container" class="subscription-container">
-                    <!-- Subscription content loaded dynamically -->
-                </div>
-            </section>
+                    <button class="nav-item" data-view="results">
+                        <span class="material-icons-round">analytics</span>
+                        <span class="nav-text">Results</span>
+                    </button>
+                    <button class="nav-item" data-view="master" id="nav-master" style="display: none;">
+                        <span class="material-icons-round">admin_panel_settings</span>
+                        <span class="nav-text">Master Control</span>
+                    </button>
+                    <div class="nav-divider"></div>
+                    <span class="nav-section">Account</span>
 
-            <!-- Profile View -->
-            <section id="view-profile" class="view">
-                <div class="view-header">
-                    <h2 class="view-title">Profile</h2>
-                    <p class="view-subtitle">Your account settings</p>
-                </div>
-                <div id="profile-container" class="profile-container">
-                    <!-- Profile content loaded dynamically -->
-                </div>
-            </section>
+                    <button class="nav-item" data-view="settings">
+                        <span class="material-icons-round">person_outline</span>
+                        <span class="nav-text">Profile</span>
+                    </button>
 
-            <!-- Support View -->
-            <section id="view-support" class="view">
-                <div class="view-header">
-                    <h2 class="view-title">Support</h2>
-                    <p class="view-subtitle">Get help and contact us</p>
+                    <div class="nav-spacer"></div>
+
+                    <div class="sidebar-footer">
+                        <div class="status-row">
+                            <div class="status-dot"></div>
+                            <span class="status-label">System online</span>
+                        </div>
+                        <button class="nav-item logout-btn" id="logoutBtn">
+                            <span class="material-icons-round">logout</span>
+                            <span class="nav-text">Log out</span>
+                        </button>
+                    </div>
+
                 </div>
-                <div id="support-container" class="support-container">
-                    <!-- Support content loaded dynamically -->
-                </div>
-            </section>
+            </aside>
+
+            <!-- WORKSPACE -->
+            <main class="workspace" id="workspace">
+                <!-- Content rendered by JS -->
+            </main>
+
         </div>
-    </main>
+    </div>
 
-    <!-- Toast Container -->
-    <div id="toast-container" class="toast-container"></div>
+    <nav class="bottom-nav" id="bottomNav" aria-label="Mobile navigation">
+        <button class="bottom-nav-item" data-view="dashboard" aria-label="Dashboard">
+            <span class="material-icons-round">dashboard</span>
+            <span class="bottom-nav-label">Home</span>
+        </button>
+        <button class="bottom-nav-item" data-view="library" aria-label="Exam Library">
+            <span class="material-icons-round">local_library</span>
+            <span class="bottom-nav-label">Library</span>
+        </button>
+        <button class="bottom-nav-item" data-view="subscriptions" aria-label="Subscriptions">
+            <span class="material-icons-round">card_membership</span>
+            <span class="bottom-nav-label">Plans</span>
+        </button>
+        <button class="bottom-nav-item" data-view="schedule" aria-label="Schedule">
+            <span class="material-icons-round">calendar_month</span>
+            <span class="bottom-nav-label">Schedule</span>
+        </button>
+        <button class="bottom-nav-item" data-view="results" aria-label="Results">
+            <span class="material-icons-round">analytics</span>
+            <span class="bottom-nav-label">Results</span>
+        </button>
+        <button class="bottom-nav-item" data-view="master" id="nav-master-bottom" style="display:none;" aria-label="Admin">
+            <span class="material-icons-round">admin_panel_settings</span>
+            <span class="bottom-nav-label">Admin</span>
+        </button>
+    </nav>
 
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <!-- MOBILE SEARCH OVERLAY -->
+    <div class="search-overlay" id="searchOverlay">
+        <div class="search-box">
+            <span class="material-icons-round">search</span>
+            <input type="text" id="mobileSearchInput" placeholder="Search course code or title..." autocomplete="off">
+        </div>
+    </div>
 
-    <!-- App Scripts -->
-    <script src="firebase-config.js"></script>
-    <script src="cache.js"></script>
-    <script src="sync.js"></script>
-    <script src="login.js"></script>
-    <script src="quiz.js"></script>
-    <script src="app.js"></script>
+    <script>
+        // Register the Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered successfully with scope:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+    <script src="app.js?v=5" type="module"></script>
 </body>
+
 </html>
