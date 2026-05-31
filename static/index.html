@@ -881,6 +881,98 @@
       70% { box-shadow: 0 0 0 10px transparent; }
       100% { box-shadow: 0 0 0 0 transparent; }
     }
+
+    /* ── Copy button on message bubbles ──────────────── */
+    .copy-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.7rem;
+      padding: 2px 5px;
+      border-radius: 4px;
+      opacity: 0.25;
+      transition: opacity 0.2s, background 0.2s, transform 0.15s;
+      color: var(--text-secondary);
+      line-height: 1;
+      z-index: 2;
+    }
+    .copy-btn:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .copy-btn:active {
+      transform: scale(0.9);
+    }
+    .copy-btn.copied {
+      opacity: 1;
+      color: var(--success);
+    }
+
+    /* ── Retry button inside message bubbles ─────────── */
+    .retry-btn {
+      position: absolute;
+      top: 6px;
+      right: 30px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.7rem;
+      padding: 2px 5px;
+      border-radius: 4px;
+      opacity: 0.25;
+      transition: opacity 0.2s, background 0.2s, transform 0.15s;
+      color: var(--text-secondary);
+      line-height: 1;
+      z-index: 2;
+    }
+    .retry-btn:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .retry-btn:active {
+      transform: scale(0.9);
+    }
+
+    /* ── Error retry button (prominent, below message) ── */
+    .error-retry {
+      position: static;
+      opacity: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 0;
+      margin-left: 14px;
+      margin-bottom: 8px;
+      background: var(--error-dim);
+      color: var(--error);
+      border: 1px solid rgba(255, 107, 138, 0.3);
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      align-self: flex-start;
+      font-family: var(--font-sans);
+    }
+    .error-retry:hover {
+      background: rgba(255, 107, 138, 0.25);
+    }
+    .error-retry:active {
+      transform: scale(0.97);
+    }
+
+    /* ── Thinking time display ──────────────────────── */
+    .thinking-time {
+      font-size: 0.72rem;
+      color: var(--thinking-color);
+      opacity: 0.85;
+      margin-left: 6px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -967,6 +1059,8 @@
       let abortController = null;
       let messageHistory  = [];
       let totalCost       = 0;
+      let thinkingStartTime = null;
+      let thinkingTimer    = null;
 
       // ─── Auto-resize textarea ────────────────────────────────────
       function autoResize() {
@@ -1092,6 +1186,85 @@
         }
 
         chat.appendChild(div);
+
+        // ── Add copy & retry buttons for agent messages ──
+        if (role === 'agent') {
+          // Copy button 📋
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'copy-btn';
+          copyBtn.textContent = '📋';
+          copyBtn.title = 'Copy message';
+          copyBtn.setAttribute('aria-label', 'Copy message');
+          copyBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const text = div.textContent || content || '';
+            navigator.clipboard.writeText(text).then(() => {
+              copyBtn.textContent = '✅';
+              copyBtn.classList.add('copied');
+              setTimeout(() => {
+                copyBtn.textContent = '📋';
+                copyBtn.classList.remove('copied');
+              }, 2000);
+            }).catch(() => {
+              // Fallback for older browsers
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              ta.style.position = 'fixed';
+              ta.style.opacity = '0';
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              copyBtn.textContent = '✅';
+              copyBtn.classList.add('copied');
+              setTimeout(() => {
+                copyBtn.textContent = '📋';
+                copyBtn.classList.remove('copied');
+              }, 2000);
+            });
+          });
+          div.appendChild(copyBtn);
+
+          // Small retry button inside bubble 🔄
+          const retryBtn = document.createElement('button');
+          retryBtn.className = 'retry-btn';
+          retryBtn.textContent = '🔄';
+          retryBtn.title = 'Resend last user message';
+          retryBtn.setAttribute('aria-label', 'Resend last user message');
+          retryBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const lastUserMsg = chat.querySelector('.message.user:last-child');
+            if (lastUserMsg) {
+              const text = lastUserMsg.textContent || '';
+              if (text.trim()) {
+                div.remove();
+                streamResponse(text.trim());
+              }
+            }
+          });
+          div.appendChild(retryBtn);
+        }
+
+        // ── For error messages, add a prominent retry button below ──
+        if (type === 'error') {
+          const errorRetry = document.createElement('button');
+          errorRetry.className = 'retry-btn error-retry';
+          errorRetry.textContent = '🔄 Retry';
+          errorRetry.title = 'Resend last user message';
+          errorRetry.addEventListener('click', function() {
+            const lastUserMsg = chat.querySelector('.message.user:last-child');
+            if (lastUserMsg) {
+              const text = lastUserMsg.textContent || '';
+              if (text.trim()) {
+                div.remove();
+                errorRetry.remove();
+                streamResponse(text.trim());
+              }
+            }
+          });
+          chat.appendChild(errorRetry);
+        }
+
         scrollToBottom();
         return div;
       }
@@ -1105,7 +1278,9 @@
           el.id = 'thinkingIndicator';
           chat.appendChild(el);
         }
+        const elapsedDisplay = getElapsedTimeDisplay();
         el.innerHTML = '<div class="spinner"></div> ' + text +
+          ' <span class="thinking-time" id="thinkingTime">' + elapsedDisplay + '</span>' +
           ' <span class="thinking-bounce"><span></span><span></span><span></span></span>';
         // Make sure thinking stays visible
         const inputArea = document.getElementById('inputArea');
@@ -1117,6 +1292,7 @@
 
       // ─── Remove thinking indicator ──────────────────────────────
       function removeThinking() {
+        clearThinkingTimer();
         const el = document.getElementById('thinkingIndicator');
         if (el) {
           el.style.transition = 'opacity 0.2s ease';
@@ -1124,6 +1300,33 @@
           setTimeout(() => {
             if (el && el.parentNode) el.remove();
           }, 200);
+        }
+      }
+
+      // ─── Thinking Timer Helpers ─────────────────────────────────
+      function clearThinkingTimer() {
+        if (thinkingTimer) {
+          clearInterval(thinkingTimer);
+          thinkingTimer = null;
+        }
+        thinkingStartTime = null;
+      }
+
+      function getElapsedTimeDisplay() {
+        if (!thinkingStartTime) return '⏱️ 0s';
+        const elapsed = Math.floor((Date.now() - thinkingStartTime) / 1000);
+        if (elapsed < 60) {
+          return '⏱️ Thinking for ' + elapsed + ' seconds…';
+        }
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        return '⏱️ Thinking for ' + mins + 'm ' + secs + 's…';
+      }
+
+      function updateThinkingTime() {
+        const timeEl = document.getElementById('thinkingTime');
+        if (timeEl) {
+          timeEl.textContent = getElapsedTimeDisplay();
         }
       }
 
@@ -1507,9 +1710,16 @@
         const div = document.createElement('div');
         div.className = 'message thinking';
         div.id = 'thinkingIndicator';
-        div.innerHTML = '<div class="spinner"></div> Agent is thinking…<span class="thinking-bounce"><span></span><span></span><span></span></span>';
+        div.innerHTML = '<div class="spinner"></div> Agent is thinking…' +
+          '<span class="thinking-time" id="thinkingTime">⏱️ 0s</span>' +
+          '<span class="thinking-bounce"><span></span><span></span><span></span></span>';
         chat.appendChild(div);
         scrollToBottom(true);
+
+        // Start the thinking timer
+        clearThinkingTimer();
+        thinkingStartTime = Date.now();
+        thinkingTimer = setInterval(updateThinkingTime, 1000);
       }
 
       // ─── UI State Management ────────────────────────────────────
