@@ -1713,7 +1713,6 @@ async function mcLoadDailyQuizzes() {
     if (!grid) return;
 
         try {
-            await _throttledRefresh('daily_quizzes');
             const quizzes = (await sync.collection('daily_quizzes')) || [];
             quizzes.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
@@ -1824,7 +1823,6 @@ async function mcLoadDailyAdvices() {
     if (!grid) return;
 
         try {
-            await _throttledRefresh('daily_advices');
             const advices = (await sync.query('daily_advices', [orderBy('createdAt', 'desc')])) || [];
             if (!advices.length) {
             grid.innerHTML = `
@@ -5248,7 +5246,6 @@ window.adminPromptNotification = function(userId) {
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
             // Fetch dynamic events
-            await _throttledRefresh('subscription_events');
             const events = await sync.collection('subscription_events');
             events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
@@ -5636,7 +5633,6 @@ window.adminPromptNotification = function(userId) {
         // Use cache if already loaded, otherwise fetch from Firestore
         if (!libCourseCache.length) {
             try {
-                await _throttledRefresh('unicourses');
                 const allCourses = await sync.collection('unicourses');
                 // Fetch topic counts in parallel
                 const courses = await Promise.all(allCourses.map(async c => {
@@ -5921,7 +5917,6 @@ window.adminPromptNotification = function(userId) {
             </div>`;
 
         try {
-            await _throttledRefresh('users/' + auth.currentUser.uid + '/schedule');
             const schedItems = await sync.collection('users/' + auth.currentUser.uid + '/schedule');
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
         } catch(e) { console.error(e); }
@@ -7345,7 +7340,6 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        await _throttledRefresh('subscription_events');
         const events = (await sync.collection('subscription_events')) || [];
         events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
