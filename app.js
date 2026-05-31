@@ -7596,25 +7596,25 @@ window.mcViewSubEventDetails = async function(eventId) {
     overlay.id = 'ef-se-details-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:2000;animation:fadeIn 0.2s ease;';
     overlay.innerHTML = `
-        <div style="display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
             <button onclick="this.closest('#ef-se-details-overlay').remove()"
-                style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                style="width:32px;height:32px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                 <span class="material-icons-round">arrow_back</span>
             </button>
-            <div style="width:40px;height:40px;border-radius:10px;background:rgba(124,58,237,0.08);border:1.5px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <div style="width:32px;height:32px;border-radius:6px;background:rgba(124,58,237,0.08);border:1.5px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <span class="material-icons-round" style="color:#7c3aed;">event_note</span>
             </div>
             <div style="flex:1;min-width:0;">
-                <div id="ef-se-det-title" style="font-weight:900;font-size:1.05rem;color:var(--text);">Loading Event details...</div>
+                <div id="ef-se-det-title" style="font-weight:900;font-size:0.85rem;color:var(--text);">Loading Event details...</div>
                 <div id="ef-se-det-meta" style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Event ID: <code style="font-family:var(--font-mono);font-size:0.65rem;">${eventId}</code></div>
             </div>
             <button onclick="this.closest('#ef-se-details-overlay').remove()"
-                style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                style="width:32px;height:32px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                 <span class="material-icons-round">close</span>
             </button>
         </div>
         
-        <div id="ef-se-det-body" style="flex:1;overflow-y:auto;padding:24px;background:var(--bg);display:flex;flex-direction:column;gap:24px;">
+        <div id="ef-se-det-body" style="flex:1;overflow-y:auto;padding:14px;background:var(--bg);display:flex;flex-direction:column;gap:14px;">
             <div style="text-align:center;padding:56px;color:var(--text-muted);">
                 <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;">autorenew</span>
                 <div style="margin-top:12px;font-size:0.8rem;">Fetching data...</div>
@@ -7622,6 +7622,16 @@ window.mcViewSubEventDetails = async function(eventId) {
         </div>`;
     document.body.appendChild(overlay);
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    
+    // Force refresh all event data before loading
+    try {
+        await Promise.all([
+            sync.refresh('subscription_events/' + eventId),
+            sync.refresh('subscription_events/' + eventId + '/registrations'),
+            sync.refresh('subscription_events/' + eventId + '/keys'),
+            sync.refresh('mock_exams').catch(() => {}),
+        ]);
+    } catch(e) {}
     
     try {
         const ev = await sync.doc('subscription_events/' + eventId);
