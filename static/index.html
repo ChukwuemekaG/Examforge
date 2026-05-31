@@ -1235,7 +1235,11 @@
             e.stopPropagation();
             const lastUserMsg = chat.querySelector('.message.user:last-child');
             if (lastUserMsg) {
-              const text = lastUserMsg.textContent || '';
+              // Clone to avoid modifying the DOM, remove meta spans, get clean text
+              const clone = lastUserMsg.cloneNode(true);
+              const metaElements = clone.querySelectorAll('.message-meta');
+              metaElements.forEach(el => el.remove());
+              const text = clone.textContent || '';
               if (text.trim()) {
                 div.remove();
                 streamResponse(text.trim());
@@ -1254,8 +1258,19 @@
           errorRetry.addEventListener('click', function() {
             const lastUserMsg = chat.querySelector('.message.user:last-child');
             if (lastUserMsg) {
-              const text = lastUserMsg.textContent || '';
+              // Clone to avoid modifying the DOM, remove meta spans, get clean text
+              const clone = lastUserMsg.cloneNode(true);
+              const metaElements = clone.querySelectorAll('.message-meta');
+              metaElements.forEach(el => el.remove());
+              const text = clone.textContent || '';
               if (text.trim()) {
+                // Force reset streaming state
+                isStreaming = false;
+                if (abortController) {
+                  abortController = null;
+                }
+                // Re-enable input
+                setSendingState(false);
                 div.remove();
                 errorRetry.remove();
                 streamResponse(text.trim());
