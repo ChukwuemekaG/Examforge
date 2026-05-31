@@ -8764,23 +8764,6 @@ window.mcBroadcastEventResults = async function(eventId) {
                 });
             }
             
-            // Fill in any subjects the student didn't attempt
-            for (const [uid, data] of Object.entries(studentResults)) {
-                const attemptedSubjects = new Set(data.subjects.map(s => s.name));
-                for (const subj of subjects) {
-                    if (!attemptedSubjects.has(subj.name)) {
-                        data.subjects.push({
-                            name: subj.name,
-                            creditUnit: subj.creditUnit,
-                            score: null,
-                            correct: 0,
-                            total: 0,
-                            grade: null
-                        });
-                    }
-                }
-            }
-            
             if (Object.keys(studentResults).length === 0) {
                 return window.showEFModal("No Data", "No student attempts found. Students need to take the exams first.", "OK", null, true);
             }
