@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ExamForge Agent</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --surface: #ffffff;
+      --primary: #4f46e5;
+      --primary-light: #818cf8;
+      --text: #1e293b;
+      --text-secondary: #64748b;
+      --error: #ef4444;
+      --error-bg: #fee2e2;
+      --user-bubble: #4f46e5;
+      --agent-bubble: #f1f5f9;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow);
+      z-index: 10;
+    }
+    .header-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .header-cost {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      background: var(--agent-bubble);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    /* Chat area */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .message {
+      max-width: 85%;
+      padding: 12px 14px;
+      border-radius: 18px;
+      line-height: 1.45;
+      font-size: 0.95rem;
+      word-wrap: break-word;
+      animation: fadeInUp 0.2s ease;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .message.user {
+      align-self: flex-end;
+      background: var(--user-bubble);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .message.agent {
+      align-self: flex-start;
+      background: var(--agent-bubble);
+      border-bottom-left-radius: 4px;
+    }
+    .message.error {
+      background: var(--error-bg);
+      color: var(--error);
+      border: 1px solid var(--error);
+      align-self: flex-start;
+    }
+    .message .meta {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .message .meta span {
+      background: rgba(0,0,0,0.05);
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+    .message.user .meta span {
+      background: rgba(255,255,255,0.2);
+      color: white;
+    }
+
+    .pr-link {
+      display: inline-block;
+      margin-top: 8px;
+      color: white;
+      background: #16a34a;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    /* Thinking indicator */
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      background: var(--agent-bubble);
+      border-radius: 18px;
+      align-self: flex-start;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--primary-light);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Input area */
+    .input-area {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      box-shadow: 0 -1px 3px rgba(0,0,0,0.05);
+    }
+    .input-area input {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      font-size: 0.95rem;
+      outline: none;
+      background: var(--bg);
+    }
+    .input-area button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 42px; height: 42px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .input-area button:active {
+      background: #3730a3;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 480px) {
+      .message { max-width: 90%; font-size: 0.9rem; }
+    }
+
+    /* Markdown inside agent messages */
+    .message.agent p { margin-bottom: 6px; }
+    .message.agent ul, .message.agent ol { padding-left: 18px; margin-bottom: 6px; }
+    .message.agent code {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+    .message.agent pre {
+      background: rgba(0,0,0,0.05);
+      padding: 8px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-title">🤖 ExamForge Agent</div>
+    <div class="header-cost" id="totalCost">$0.00</div>
+  </header>
+  <div class="chat-container" id="chat"></div>
+  <div class="input-area">
+    <input type="text" id="input" placeholder="Ask something or command code…" autocomplete="off" />
+    <button id="sendBtn">➤</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const totalCostEl = document.getElementById('totalCost');
+
+    function appendMessage(role, text, isError = false, meta = null, prLink = null) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      if (isError) div.className += ' error';
+
+      if (role === 'agent' && !isError) {
+        // Render markdown for agent responses
+        div.innerHTML = marked.parse(text);
+      } else {
+        div.textContent = text;
+      }
+
+      if (prLink) {
+        const a = document.createElement('a');
+        a.href = prLink;
+        a.target = '_blank';
+        a.className = 'pr-link';
+        a.textContent = '🔗 Open Pull Request';
+        div.appendChild(a);
+      }
+
+      if (meta) {
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'meta';
+        if (meta.tokens) metaDiv.innerHTML += `<span>🔢 ${meta.tokens}</span>`;
+        if (meta.cost) metaDiv.innerHTML += `<span>💵 ${meta.cost}</span>`;
+        div.appendChild(metaDiv);
+      }
+
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showThinking() {
+      const div = document.createElement('div');
+      div.className = 'thinking';
+      div.id = 'thinkingIndicator';
+      div.innerHTML = '<div class="spinner"></div> Agent is thinking…';
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function hideThinking() {
+      const el = document.getElementById('thinkingIndicator');
+      if (el) el.remove();
+    }
+
+    function updateTotalCost(cost) {
+      totalCostEl.textContent = `$${cost.toFixed(6)}`;
+    }
+
+    async function sendMessage() {
+      const message = input.value.trim();
+      if (!message) return;
+      appendMessage('user', message);
+      input.value = '';
+
+      showThinking();
+      sendBtn.disabled = true;
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({message})
+        });
+        const data = await res.json();
+        hideThinking();
+
+        const isError = data.status === 'error';
+        appendMessage(
+          'agent',
+          data.message,
+          isError,
+          { tokens: data.tokens, cost: data.cost },
+          data.pr_link
+        );
+
+        if (data.total_cost !== undefined) {
+          updateTotalCost(data.total_cost);
+        }
+      } catch (err) {
+        hideThinking();
+        appendMessage('agent', `Network error: ${err.message}`, true);
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Auto-focus on load
+    input.focus();
+  </script>
+</body>
+</html>
