@@ -207,6 +207,26 @@ export class SyncManager {
     this._memCache.delete(key);
   }
 
+  /**
+   * Clears all IndexedDB cache entries whose path starts with a given base path
+   * followed by '?', i.e. related query caches like 'mock_exams?q=...'.
+   *
+   * This is called by refresh() to ensure query caches are invalidated when
+   * the underlying collection is refreshed.
+   *
+   * @param {string} path - The base Firestore path (e.g. 'mock_exams').
+   * @returns {Promise<void>}
+   */
+  async _clearRelatedQueryCaches(path) {
+    const allEntries = await this._cache.entries();
+    const prefix = path + '?';
+    for (const entry of allEntries) {
+      if (entry.path && entry.path.startsWith(prefix)) {
+        await this._cache.delete(entry.path);
+      }
+    }
+  }
+
   // ─── Private Internals ────────────────────────────────────────────────────
 
   // (Sweeper removed — IndexedDB is now the persistent source of truth)
@@ -786,6 +806,17 @@ export class SyncManager {
     // Collection path
     const cacheKey = buildCacheKey(path);
     this._clearMemCache(cacheKey);
+
+    // Clear any related query caches from mem cache (e.g. 'mock_exams?q=...')
+    for (const key of this._memCache.keys()) {
+      if (key.startsWith(path + '?')) this._memCache.delete(key);
+    }
+
+    // Also clear related query caches from IndexedDB
+    this._clearRelatedQueryCaches(path).catch(err =>
+      console.warn('[SyncManager] Error clearing related query caches:', err)
+    );
+
     return this._dedupedFetch(cacheKey, () => this._fetchCollection(path));
   }
 

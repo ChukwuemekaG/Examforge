@@ -4917,7 +4917,7 @@ window.adminPromptNotification = function(userId) {
             <div class="page-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
                 <div>
                     <div class="page-title dashboard-title" style="font-size: 1.75rem; font-weight: 800;">Dashboard</div>
-                    <div class="page-sub" style="color: var(--text-muted);">Welcome back, ${firstName}</div>
+                    <div class="page-sub" style="color: var(--text-muted);font-weight:800;font-size:0.85rem;">Welcome back, ${firstName}</div>
                 </div>
                 <button class="btn btn-primary" onclick="efNavigate('library')" style="display: flex; align-items: center; gap: 8px;">
                     <span class="material-icons-round">add</span> Start Exam
@@ -8528,7 +8528,7 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
 
 window.mcPreloadEventMock = async function(eventId, subject) {
     try {
-        await sync.refresh('mock_exams');
+        await sync.refresh('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)]);
         const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', subject)])) || [];
         if (mockResults.length > 0) {
             const m = mockResults[0];
