@@ -1,9 +1,10 @@
 """
-Orchestrator Agent — the central brain of the TalkCody system.
+Orchestrator Agent — Tool-Calling Loop for the TalkCody system.
 
-This module receives user input, classifies the intent using DeepSeek,
-delegates to the appropriate sub-agent, and streams all results back
-via a generator that yields SSE-style event dictionaries.
+This module replaces the old intent-classification pattern with a modern
+tool-calling orchestrator.  DeepSeek receives a list of available tools and
+calls them step by step, showing its reasoning along the way.  The loop
+continues until the model produces a final answer with no more tool calls.
 
 Architecture
 ------------
@@ -11,7 +12,7 @@ All sub-agents exist as separate modules in the project:
 
 - ``explore_agent.py``    — explore_file, web_search, explore_project
 - ``plan_agent.py``       — generate_plan
-- ``coding_agent.py``     — implement_changes
+- ``coding_agent.py``     — implement_changes, read_file_content, write_file
 - ``review_agent.py``     — review_changes, review_project
 - ``document_agent.py``   — generate_docs, generate_readme
 - ``test_agent.py``       — generate_tests
@@ -64,6 +65,7 @@ Usage
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
@@ -77,24 +79,23 @@ import requests
 # so they MUST be available at module level in this file.
 
 from config import (                                        # noqa: F401 – re-exported for plan_agent
-    MODEL_PRICING,
-    DEFAULT_MODEL,
-    PROJECT_ROOT,
-    GIT_TOKEN,
-    GITHUB_REPO,
-    REPO_NAME,
     client,
     calculate_cost,
     add_cost,
     get_session_cost,
     reset_session,
+    MODEL_PRICING,
+    PROJECT_ROOT,
+    GIT_TOKEN,
+    GITHUB_REPO,
+    DEFAULT_MODEL,
 )
 
 # ─── Sub-agent imports ────────────────────────────────────────────────────────
 
-from plan_agent import generate_plan
-from coding_agent import implement_changes
 from explore_agent import explore_file, web_search, explore_project
+from plan_agent import generate_plan
+from coding_agent import implement_changes, read_file_content
 from review_agent import review_changes
 from document_agent import generate_docs
 from test_agent import generate_tests
@@ -102,146 +103,740 @@ import memory as memory_module
 
 
 # ========================================================================
-#  1.  INTENT CLASSIFICATION
+#  CONSTANTS
 # ========================================================================
 
-_INTENT_SYSTEM_PROMPT = """\
-You are an intent classification assistant. Your job is to analyse a user's \
-input and determine what they want to do.
+_MAX_ITERATIONS = 20
+"""Maximum number of tool-calling iterations per request."""
 
-Classify the intent into exactly one of these categories:
-
-- "modify"    — The user wants to CHANGE existing code / files.
-- "question"  — The user wants ANALYSIS, EXPLANATION, or UNDERSTANDING of code.
-- "explore"   — The user wants to SEE or DISPLAY raw file contents (no analysis).
-- "plan"      — The user wants a plan for a task BEFORE implementing it.
-- "code"      — The user wants to WRITE NEW CODE (files) or implement something.
-- "review"    — The user wants a code review of existing code or changes.
-- "document"  — The user wants documentation generated.
-- "test"      — The user wants unit tests written.
-- "memory"    — The user wants to remember something, recall memory, or forget.
-- "todo"      — The user wants to manage a todo list.
-- "rollback"  — The user wants to undo or revert the last change.
-
-CRITICAL — Distinguish "explore" vs "question" carefully:
-
-**"explore"** — User wants to SEE / DISPLAY raw file contents (dump the file as-is).
-  Keywords: show me, read this, display the contents of, open, view, list, what's in
-  Examples:
-  - "show me the file"          \u2192 explore
-  - "read this file"            \u2192 explore
-  - "display the contents of"   \u2192 explore
-  - "open app.js"               \u2192 explore
-  - "what is in this file"      \u2192 explore
-  - "list the files in src"     \u2192 explore
-
-**"question"** — User wants ANALYSIS, EXPLANATION, or UNDERSTANDING of code.
-  Keywords: study, understand, explain, analyze, tell me about, how does, what does, why does
-  Examples:
-  - "study this file"           \u2192 question
-  - "understand this code"      \u2192 question
-  - "explain app.js"           \u2192 question
-  - "analyze this"             \u2192 question
-  - "tell me about app.js"     \u2192 question
-  - "how does this work"       \u2192 question
-  - "what does this function do" \u2192 question
-  - "look at app.js and understand it thoroughly" \u2192 question
-  - "review this code for me"  \u2192 question
-
-**RULE:** If the user says "study", "understand", "explain", "analyze", or "tell me about" a file,
-this is a **question** intent (they want analysis), NOT explore.
-Only classify as "explore" if they explicitly want to SEE the raw content.
-
-Also extract:
-- "task" — A concise description of what the user wants (rewrite it clearly).
-- "push" — Boolean, default true. Whether to push to remote after modifications.
-- "files" — A list of file paths if the user mentions specific files, else [].
-
-Return ONLY a JSON object with this schema:
-{"intent": "...", "task": "...", "push": true/false, "files": [...]}
-"""
+_IGNORE_DIRS = {
+    ".git", "__pycache__", "venv", ".venv", "node_modules",
+    ".idea", ".vscode", "dist", "build", ".egg-info",
+    ".tox", ".mypy_cache", ".pytest_cache", ".coding_agent_backups",
+}
+_TEXT_EXTENSIONS = {
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".scss",
+    ".json", ".md", ".yml", ".yaml", ".txt", ".toml", ".ini", ".cfg",
+    ".env", ".gitignore", ".sql", ".sh", ".bat", ".xml", ".vue",
+    ".rb", ".php", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".hpp",
+}
 
 
-def classify_intent(
-    user_input: str,
-    model: str = DEFAULT_MODEL,
-) -> Dict[str, Any]:
-    """Analyse *user_input* to determine the user's intent.
+# ========================================================================
+#  SYSTEM PROMPT FOR THE TOOL-CALLING AGENT
+# ========================================================================
 
-    Uses DeepSeek (with ``response_format="json_object"``) to classify the
-    input into one of the supported intents and extract the task, push flag,
-    and any mentioned file paths.
+_SYSTEM_PROMPT = """\
+You are an expert AI coding assistant. You have access to a set of tools that \
+allow you to read, write, explore, and manage code.
+
+**How to use tools:**
+- Think step by step about what needs to be done.
+- Call ONE tool at a time. Each tool call returns results you can use.
+- Show your reasoning before and after each tool call.
+- Continue calling tools until the task is complete.
+- When you are finished, provide a clear summary of what was done.
+
+**Rules:**
+- Always read a file before writing to it, unless you are creating a new file.
+- Use `explore_project` first to understand the project structure when relevant.
+- Commit changes with meaningful messages after writing code.
+- Push to remote only when explicitly requested or when the task requires it.
+- Generate documentation and tests as appropriate for the task.
+- You can review code at any point to check quality.
+- Max 20 tool calls per request. Be efficient.
+
+**Available tools:**"""
+
+
+# ========================================================================
+#  TOOL DEFINITIONS (DeepSeek Function Calling)
+# ========================================================================
+
+def _build_available_tools() -> List[Dict[str, Any]]:
+    """Return the list of function-calling tool definitions for DeepSeek.
+
+    Each tool follows the OpenAI/DeepSeek function-calling schema with
+    ``type: "function"`` and a ``function`` block containing the name,
+    description, and parameter schema.
+    """
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "description": "Read the contents of a file from the project. "
+                               "Provide the relative path from the project root.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Relative path to the file (e.g. 'src/main.py').",
+                        },
+                    },
+                    "required": ["path"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "write_file",
+                "description": "Create or overwrite a file with new content. "
+                               "Use this to implement code changes. "
+                               "Parent directories are created automatically.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Relative path from project root (e.g. 'src/button.py').",
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "The complete file content to write.",
+                        },
+                    },
+                    "required": ["path", "content"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "explore_project",
+                "description": "Walk the project directory and list all files. "
+                               "Also reads the most important files for context. "
+                               "Use this to understand the project structure.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "web_search",
+                "description": "Search the web using DuckDuckGo. "
+                               "Use this to find documentation, examples, or troubleshooting info.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query string.",
+                        },
+                    },
+                    "required": ["query"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "read_todos",
+                "description": "Read the list of current todo items from memory.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "write_todo",
+                "description": "Add or update a todo item in the todo list.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "content": {
+                            "type": "string",
+                            "description": "The todo item content (e.g. 'Fix login bug').",
+                        },
+                        "status": {
+                            "type": "string",
+                            "enum": ["pending", "done"],
+                            "description": "Set to 'done' to mark a todo as completed, "
+                                           "'pending' to add a new one.",
+                        },
+                    },
+                    "required": ["content", "status"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "git_commit",
+                "description": "Stage all changes and commit them with a message. "
+                               "Creates a new branch automatically based on the commit message.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "description": "The commit message describing the changes.",
+                        },
+                    },
+                    "required": ["message"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "git_push",
+                "description": "Push the current branch to the remote repository.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "branch_name": {
+                            "type": "string",
+                            "description": "The branch name to push. "
+                                           "Usually the one created by git_commit.",
+                        },
+                    },
+                    "required": ["branch_name"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "create_pull_request",
+                "description": "Create a GitHub Pull Request from the current branch.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "The title of the pull request.",
+                        },
+                    },
+                    "required": ["title"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "rollback_commit",
+                "description": "Revert the last commit on the default branch. "
+                               "Use this to undo the most recent change.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "review_files",
+                "description": "Review one or more files for bugs, security issues, "
+                               "performance problems, and code quality. "
+                               "Provide the file paths as a JSON array.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "files_json": {
+                            "type": "string",
+                            "description": "A JSON array of relative file paths "
+                                           "to review (e.g. '[\"src/main.py\", \"src/utils.py\"]').",
+                        },
+                    },
+                    "required": ["files_json"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "generate_docs",
+                "description": "Generate comprehensive documentation for a feature or the project. "
+                               "Provide a clear task description of what to document.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task": {
+                            "type": "string",
+                            "description": "Description of what to document "
+                                           "(e.g. 'Document the auth module API').",
+                        },
+                    },
+                    "required": ["task"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "generate_tests",
+                "description": "Generate unit tests for a feature or module. "
+                               "Provide a clear task description of what to test.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task": {
+                            "type": "string",
+                            "description": "Description of what to test "
+                                           "(e.g. 'Write tests for the login endpoint').",
+                        },
+                    },
+                    "required": ["task"],
+                },
+            },
+        },
+    ]
+
+
+# ========================================================================
+#  TOOL EXECUTORS
+# ========================================================================
+
+def _collect_generator_events(
+    gen: Generator[Dict[str, Any], None, None],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Iterate a sub-agent generator, collecting all events and returning a result string.
 
     Parameters
     ----------
-    user_input : str
-        The raw text the user sent to the agent.
-    model : str, optional
-        The DeepSeek model identifier.  Defaults to :data:`DEFAULT_MODEL`.
+    gen : Generator[Dict, None, None]
+        The sub-agent generator to run.
+    events : list
+        The event list to append to (already has the initial thinking event).
 
     Returns
     -------
-    dict
-        A dictionary with keys ``intent``, ``task``, ``push``, and ``files``.
-        On failure (API call or parse error) returns a fallback dict with
-        intent ``"question"`` and the original input as the task.
+    str
+        A text representation of the result, suitable for sending back to DeepSeek.
     """
+    result_lines: List[str] = []
+    for event in gen:
+        events.append(event)
+        etype = event.get("type", "")
+        if etype == "file":
+            path = event.get("path", "?")
+            content = event.get("content", "")
+            result_lines.append(f"### {path}\n\n```\n{content[:5000]}\n```")
+            if len(content) > 5000:
+                result_lines[-1] += "\n*(content truncated to 5000 chars)*"
+        elif etype == "file_listing":
+            files = event.get("files", [])
+            result_lines.append(f"Project contains {event.get('total', len(files))} files.")
+            result_lines.append("\n".join(files[:200]))
+            if len(files) > 200:
+                result_lines.append(f"... and {len(files) - 200} more files.")
+        elif etype == "search_results":
+            results = event.get("results", [])
+            if results:
+                for i, r in enumerate(results, 1):
+                    result_lines.append(f"{i}. **{r.get('title', 'Untitled')}**")
+                    result_lines.append(f"   URL: {r.get('url', 'N/A')}")
+                    snippet = r.get('snippet', '')
+                    if snippet:
+                        result_lines.append(f"   > {snippet[:300]}")
+            else:
+                result_lines.append("No search results found.")
+        elif etype == "review":
+            result_lines.append(f"### Review: {event.get('file', '?')}")
+            result_lines.append(f"Score: {event.get('score', '?')}/100")
+            issues = event.get("issues", [])
+            for issue in issues:
+                sev = issue.get("severity", "low").upper()
+                desc = issue.get("description", issue.get("message", ""))
+                result_lines.append(f"[{sev}] {desc}")
+        elif etype == "document":
+            title = event.get("title", "Documentation")
+            content = event.get("content", "")
+            result_lines.append(f"### {title}")
+            result_lines.append(content[:5000])
+        elif etype == "code":
+            fpath = event.get("file", "?")
+            result_lines.append(f"Written: {fpath}")
+        elif etype == "plan":
+            steps = event.get("steps", [])
+            result_lines.append(f"Plan: {event.get('summary', '')}")
+            for i, step in enumerate(steps, 1):
+                result_lines.append(f"  {i}. {step.get('description', str(step))}")
+        elif etype == "action":
+            result_lines.append(f"✅ {event.get('content', '')}")
+        elif etype == "pr":
+            result_lines.append(f"Pull Request: {event.get('url', '')}")
+        elif etype == "done":
+            msg = event.get("message") or event.get("content", "")
+            if msg:
+                result_lines.append(f"✅ {msg}")
+        elif etype == "error":
+            result_lines.append(f"❌ {event.get('content', 'Unknown error')}")
+
+    if not result_lines:
+        return "Operation completed (no detailed result available)."
+    return "\n\n".join(result_lines)
+
+
+def _execute_read_file(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``read_file`` tool."""
+    path = args["path"]
+    events.append({"type": "thinking", "content": f"📖 Reading file: {path}..."})
+    gen = explore_file(path)
+    return _collect_generator_events(gen, events)
+
+
+def _execute_write_file(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``write_file`` tool."""
+    path = args["path"]
+    content = args["content"]
+    events.append({"type": "thinking", "content": f"✍️ Writing file: {path}..."})
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": _INTENT_SYSTEM_PROMPT},
-                {"role": "user", "content": user_input},
-            ],
-            temperature=0.0,
-            response_format={"type": "json_object"},
+        abs_path = (PROJECT_ROOT / path).resolve()
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        abs_path.write_text(content, encoding="utf-8")
+        preview = content[:100].replace("\n", "\\n")
+        events.append({
+            "type": "code",
+            "file": path,
+            "content": preview,
+        })
+        events.append({"type": "done", "content": f"Written {path} ({len(content)} chars)."})
+        return f"Successfully wrote {path} ({len(content)} characters)."
+    except OSError as e:
+        err = f"Failed to write {path}: {e}"
+        events.append({"type": "error", "content": err})
+        return err
+
+
+def _execute_explore_project(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``explore_project`` tool."""
+    events.append({"type": "thinking", "content": "🔍 Exploring project structure..."})
+    gen = explore_project()
+    return _collect_generator_events(gen, events)
+
+
+def _execute_web_search(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``web_search`` tool."""
+    query = args["query"]
+    events.append({"type": "thinking", "content": f"🌐 Searching web for: {query}"})
+    gen = web_search(query)
+    return _collect_generator_events(gen, events)
+
+
+def _execute_read_todos(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``read_todos`` tool."""
+    events.append({"type": "thinking", "content": "📋 Reading todos..."})
+    todos = memory_module.memory_read(target="topic", scope="project", file_name="todos")
+    if todos and todos.strip():
+        events.append({"type": "todo", "operation": "list", "content": todos})
+        return f"Current todos:\n\n{todos}"
+    return "No todos found."
+
+
+def _execute_write_todo(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``write_todo`` tool."""
+    content = args["content"]
+    status = args.get("status", "pending")
+    events.append({"type": "thinking", "content": f"📋 {'Completing' if status == 'done' else 'Adding'} todo: {content}"})
+
+    if status == "done":
+        # Mark as done by rewriting with [x]
+        all_todos = memory_module.memory_read(target="topic", scope="project", file_name="todos")
+        if content in all_todos:
+            updated = all_todos.replace(f"- [ ] {content}", f"- [x] {content}")
+            success = memory_module.memory_write(
+                target="topic", scope="project", content=updated, file_name="todos", mode="replace"
+            )
+        else:
+            success = memory_module.memory_write(
+                target="topic", scope="project",
+                content=f"- [x] {content}\n", file_name="todos", mode="append"
+            )
+    else:
+        success = memory_module.memory_write(
+            target="topic", scope="project",
+            content=f"- [ ] {content}\n", file_name="todos", mode="append"
         )
 
-        # ── Track cost ───────────────────────────────────────────────────
-        usage = response.usage
-        if usage:
-            cost = calculate_cost(model, usage.prompt_tokens, usage.completion_tokens)
-            add_cost(cost)
+    if success:
+        events.append({"type": "todo", "operation": "add", "content": content})
+        return f"Todo {'completed' if status == 'done' else 'added'}: {content}"
+    return f"Failed to update todo: {content}"
 
-        raw = response.choices[0].message.content
-        if raw:
-            data = json.loads(raw)
-            intent = str(data.get("intent", "question")).lower().strip()
-            task = str(data.get("task", user_input))
-            push = bool(data.get("push", True))
-            files = list(data.get("files", []))
-            return {"intent": intent, "task": task, "push": push, "files": files}
 
-    except Exception as exc:
-        # Log but don't crash — fall through to the default
-        print(f"[agent] classify_intent error: {exc}")
+def _execute_git_commit(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``git_commit`` tool."""
+    message = args["message"]
+    events.append({"type": "thinking", "content": f"✅ Committing changes: {message}"})
+    gen = _git_commit_and_push(message, push=False, branch_name=_sanitise_branch_name(message))
+    return _collect_generator_events(gen, events)
 
-    # Safe fallback
-    return {"intent": "question", "task": user_input, "push": True, "files": []}
+
+def _execute_git_push(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``git_push`` tool."""
+    branch_name = args["branch_name"]
+    events.append({"type": "thinking", "content": f"🚀 Pushing branch '{branch_name}' to remote..."})
+
+    try:
+        repo = Repo(str(PROJECT_ROOT))
+        origin = repo.remotes.origin
+        repo_url = f"https://x-access-token:{GIT_TOKEN}@github.com/{GITHUB_REPO}.git"
+        origin.set_url(repo_url)
+        origin.push(branch_name)
+        events.append({"type": "action", "content": f"Pushed '{branch_name}' to remote."})
+        return f"Successfully pushed branch '{branch_name}' to remote."
+    except GitCommandError as e:
+        err = f"Push failed: {e}"
+        events.append({"type": "error", "content": err})
+        return err
+    except Exception as e:
+        err = f"Push failed: {e}"
+        events.append({"type": "error", "content": err})
+        return err
+
+
+def _execute_create_pull_request(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``create_pull_request`` tool."""
+    title = args["title"]
+    events.append({"type": "thinking", "content": f"📦 Creating pull request: {title}"})
+
+    # Determine current branch name
+    try:
+        repo = Repo(str(PROJECT_ROOT))
+        branch_name = repo.active_branch.name
+    except Exception:
+        branch_name = _sanitise_branch_name(title)
+
+    pr_url = create_pull_request(branch_name, title)
+    if pr_url:
+        events.append({"type": "pr", "url": pr_url})
+        return f"Pull Request created: {pr_url}"
+    else:
+        err = "PR creation failed (check GIT_TOKEN and GITHUB_REPO settings)."
+        events.append({"type": "error", "content": err})
+        return err
+
+
+def _execute_rollback_commit(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``rollback_commit`` tool."""
+    events.append({"type": "thinking", "content": "⏪ Rolling back last commit..."})
+    gen = rollback_changes(push=True)
+    return _collect_generator_events(gen, events)
+
+
+def _execute_review_files(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``review_files`` tool."""
+    files_json = args["files_json"]
+    try:
+        files = json.loads(files_json)
+        if isinstance(files, str):
+            files = [files]
+    except (json.JSONDecodeError, TypeError):
+        files = [files_json]
+
+    files_str = ", ".join(files[:5])
+    events.append({"type": "thinking", "content": f"🔍 Reviewing {len(files)} file(s): {files_str}..."})
+
+    task_summary = "Review code changes"
+    gen = review_changes(files, task_summary)
+    return _collect_generator_events(gen, events)
+
+
+def _execute_generate_docs(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``generate_docs`` tool."""
+    task = args["task"]
+    events.append({"type": "thinking", "content": f"📝 Generating documentation for: {task}..."})
+
+    # Build files context automatically
+    files_context = _build_files_context(task)
+    gen = generate_docs(task, files_context)
+    return _collect_generator_events(gen, events)
+
+
+def _execute_generate_tests(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``generate_tests`` tool."""
+    task = args["task"]
+    events.append({"type": "thinking", "content": f"🧪 Generating tests for: {task}..."})
+
+    # Build files context automatically
+    files_context = _build_files_context(task)
+    gen = generate_tests(task, files_context)
+    return _collect_generator_events(gen, events)
+
+
+# ── Tool Handler Registry ────────────────────────────────────────────────────
+
+_TOOL_HANDLERS: Dict[str, Any] = {
+    "read_file": _execute_read_file,
+    "write_file": _execute_write_file,
+    "explore_project": _execute_explore_project,
+    "web_search": _execute_web_search,
+    "read_todos": _execute_read_todos,
+    "write_todo": _execute_write_todo,
+    "git_commit": _execute_git_commit,
+    "git_push": _execute_git_push,
+    "create_pull_request": _execute_create_pull_request,
+    "rollback_commit": _execute_rollback_commit,
+    "review_files": _execute_review_files,
+    "generate_docs": _execute_generate_docs,
+    "generate_tests": _execute_generate_tests,
+}
 
 
 # ========================================================================
-#  2.  GIT / GITHUB HELPERS
+#  TOOL EXECUTION DISPATCHER
 # ========================================================================
 
-def get_repo() -> Tuple[Repo, Any]:
-    """Open the Git repository at :data:`PROJECT_ROOT` and return it along
-    with the ``origin`` remote.
+def _execute_tool(
+    tool_name: str,
+    tool_args: Dict[str, Any],
+) -> Tuple[List[Dict[str, Any]], str]:
+    """Execute a tool by name with the given arguments.
+
+    Parameters
+    ----------
+    tool_name : str
+        The name of the tool to execute.
+    tool_args : dict
+        The arguments to pass to the tool handler.
 
     Returns
     -------
     tuple
-        ``(repo, origin)`` — a ``git.Repo`` instance and its ``origin`` remote.
-
-    Raises
-    ------
-    GitCommandError
-        If the directory is not a valid Git repository or has no remote.
+        ``(events, result_string)`` — the list of events to yield to the
+        SSE stream, and the text result to send back to DeepSeek.
     """
-    repo = Repo(str(PROJECT_ROOT))
-    origin = repo.remotes.origin
-    return repo, origin
+    handler = _TOOL_HANDLERS.get(tool_name)
+    if not handler:
+        err = f"Unknown tool: '{tool_name}'."
+        return [{"type": "error", "content": err}], err
 
+    events: List[Dict[str, Any]] = []
+    try:
+        result = handler(tool_args, events)
+        return events, result
+    except Exception as exc:
+        err = f"Tool '{tool_name}' execution failed: {exc}"
+        events.append({"type": "error", "content": err})
+        import traceback
+        traceback.print_exc()
+        return events, err
+
+
+# ========================================================================
+#  FILES CONTEXT BUILDER
+# ========================================================================
+
+def _build_files_context(task: str) -> str:
+    """Build a text representation of the project's files for context.
+
+    Walks the project tree and reads important files, then formats them
+    as a string suitable for passing to ``generate_docs`` or
+    ``generate_tests``.
+
+    Parameters
+    ----------
+    task : str
+        The task description (used to scope which files to include).
+
+    Returns
+    -------
+    str
+        A formatted string containing file paths and contents.
+    """
+    IMPORTANT = {
+        "index.html", "app.js", "main.js", "style.css", "package.json",
+        "README.md", "requirements.txt", "config.py", "agent.py",
+        "server.py", "pyproject.toml",
+    }
+
+    root_path = Path(PROJECT_ROOT).resolve()
+    all_files: List[Path] = []
+    for f in root_path.rglob("*"):
+        try:
+            rel = f.relative_to(root_path)
+        except ValueError:
+            continue
+        if any(part in _IGNORE_DIRS for part in rel.parts):
+            continue
+        if f.is_file() and f.suffix.lower() in _TEXT_EXTENSIONS:
+            all_files.append(f)
+
+    all_files.sort(
+        key=lambda f: (
+            0 if f.name in IMPORTANT else 1,
+            str(f.relative_to(root_path)).lower(),
+        ),
+    )
+
+    sections: List[str] = []
+    total_chars = 0
+    max_chars = 100_000
+    max_files = 30
+
+    for f in all_files:
+        if len(sections) >= max_files or total_chars >= max_chars:
+            break
+        try:
+            rel = str(f.relative_to(root_path))
+            content = f.read_text(encoding="utf-8", errors="replace")
+            if len(content) > 10_000:
+                content = content[:10_000] + "\n# … (truncated)"
+            sections.append(f"--- {rel} ---\n{content}")
+            total_chars += len(content)
+        except (OSError, PermissionError):
+            continue
+
+    return "\n\n".join(sections)
+
+
+# ========================================================================
+#  GIT / GITHUB HELPERS
+# ========================================================================
 
 def _sanitise_branch_name(task: str, max_len: int = 48) -> str:
     """Turn a task description into a valid git branch name.
@@ -262,15 +857,34 @@ def _sanitise_branch_name(task: str, max_len: int = 48) -> str:
     return f"agent/{safe[:max_len]}"
 
 
+def get_repo() -> Tuple[Repo, Any]:
+    """Open the Git repository at :data:`PROJECT_ROOT` and return it along
+    with the ``origin`` remote.
+
+    Returns
+    -------
+    tuple
+        ``(repo, origin)`` — a ``git.Repo`` instance and its ``origin`` remote.
+
+    Raises
+    ------
+    GitCommandError
+        If the directory is not a valid Git repository or has no remote.
+    """
+    repo = Repo(str(PROJECT_ROOT))
+    origin = repo.remotes.origin
+    return repo, origin
+
+
 def create_pull_request(branch: str, title: str) -> str:
     """Create a pull request on GitHub via the REST API.
 
     Parameters
     ----------
     branch : str
-        The head branch name (e.g. ``"agent/add-dark-mode"``).
+        The head branch name (e.g. ``\"agent/add-dark-mode\"``).
     title : str
-        The PR title (will be prefixed with ``"AI agent: "``).
+        The PR title (will be prefixed with ``\"AI agent: \"``).
 
     Returns
     -------
@@ -474,564 +1088,6 @@ def rollback_changes(push: bool = True) -> Generator[Dict[str, Any], None, None]
     yield {"type": "done", "content": "Rollback complete."}
 
 
-# ========================================================================
-#  3.  QUESTION ANSWERING
-# ========================================================================
-
-def _walk_project_files(root_path: Path) -> List[str]:
-    """Walk *root_path* and return relative paths of all text files,
-    skipping ignored directories and binary extensions.
-
-    Parameters
-    ----------
-    root_path : Path
-        The absolute project root directory.
-
-    Returns
-    -------
-    list of str
-        Relative file paths (e.g. ``"src/main.py"``) sorted alphabetically.
-    """
-    IGNORE_DIRS = {
-        ".git", "__pycache__", "venv", ".venv", "node_modules",
-        ".idea", ".vscode", "dist", "build", ".egg-info",
-        ".tox", ".mypy_cache", ".pytest_cache", ".coding_agent_backups",
-    }
-    TEXT_EXTENSIONS = {
-        ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".scss",
-        ".json", ".md", ".yml", ".yaml", ".txt", ".toml", ".ini", ".cfg",
-        ".env", ".gitignore", ".sql", ".sh", ".bat", ".xml", ".vue",
-        ".rb", ".php", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".hpp",
-    }
-
-    files: List[str] = []
-    for f in root_path.rglob("*"):
-        try:
-            rel = f.relative_to(root_path)
-        except ValueError:
-            continue
-        if any(part in IGNORE_DIRS for part in rel.parts):
-            continue
-        if f.is_file() and f.suffix.lower() in TEXT_EXTENSIONS:
-            files.append(str(rel))
-
-    files.sort(key=lambda x: x.lower())
-    return files
-
-
-def answer_question(
-    user_input: str,
-    model: str = DEFAULT_MODEL,
-) -> Generator[Dict[str, Any], None, None]:
-    """Answer a question about the codebase by intelligently selecting
-    relevant files.
-
-    Instead of reading a fixed set of files in priority order, this function:
-
-    1. Walks the project to get a list of all file paths (no contents yet).
-    2. Asks DeepSeek to identify which files are most relevant to the
-       user's question (sending only the file list + question).
-    3. Reads the contents of only those selected files.
-    4. Streams the final answer back, token by token.
-
-    Parameters
-    ----------
-    user_input : str
-        The user's question (e.g. *"How does the auth module work?"*).
-    model : str, optional
-        The DeepSeek model identifier.  Defaults to :data:`DEFAULT_MODEL`.
-
-    Yields
-    ------
-    dict
-        Events: ``thinking``, ``done`` (with answer in ``message`` and
-        accumulated cost in ``cost``), ``error``.
-    """
-    # ── Constants ────────────────────────────────────────────────────────
-    max_files_to_select = 10
-    per_file_chars = 12_000
-
-    # ── Step 1: Scanning ────────────────────────────────────────────────
-    yield {"type": "thinking", "content": "Scanning project files…"}
-
-    root_path = Path(PROJECT_ROOT).resolve()
-    all_files = _walk_project_files(root_path)
-
-    if not all_files:
-        yield {"type": "error", "content": "No project files found to analyse."}
-        return
-
-    # ── Step 2: Ask DeepSeek which files are relevant ───────────────────
-    yield {"type": "thinking", "content": "Identifying relevant files…"}
-
-    file_list_str = "\n".join(all_files)
-    selection_system = (
-        "You are a codebase navigation assistant. Given a list of project files "
-        "and a user's question, identify which files are most relevant. "
-        "Return a JSON object with two keys: 'files' (a list of exact file paths "
-        f"from the list, up to {max_files_to_select}) and 'reasoning' "
-        "(a short explanation of why those files were selected). "
-        "Only include file paths that actually appear in the provided list."
-    )
-    selection_prompt = (
-        f"User question: {user_input}\n\n"
-        f"Project files:\n{file_list_str}\n\n"
-        f"Which of these files are most relevant to answer the user's question? "
-        f"Return your answer as JSON."
-    )
-
-    selection_messages = [
-        {"role": "system", "content": selection_system},
-        {"role": "user", "content": selection_prompt},
-    ]
-
-    try:
-        selection_response = client.chat.completions.create(
-            model=model,
-            messages=selection_messages,
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-    except Exception as exc:
-        yield {"type": "error", "content": f"File selection API call failed: {exc}"}
-        return
-
-    # ── Track selection cost ────────────────────────────────────────────
-    usage = selection_response.usage
-    if usage:
-        sel_cost = calculate_cost(model, usage.prompt_tokens, usage.completion_tokens)
-        add_cost(sel_cost)
-
-    # ── Parse selected files from response ──────────────────────────────
-    selected_files: List[str] = []
-    raw = selection_response.choices[0].message.content
-    if raw:
-        try:
-            data = json.loads(raw)
-            selected_files = [
-                p for p in data.get("files", [])[:max_files_to_select]
-                if isinstance(p, str) and p in all_files
-            ]
-        except (json.JSONDecodeError, TypeError, ValueError):
-            pass
-
-    # If DeepSeek didn't select anything valid, fall back to a small safe set
-    if not selected_files:
-        # Pick the first few files as a minimal fallback
-        selected_files = all_files[:min(3, len(all_files))]
-
-    yield {
-        "type": "thinking",
-        "content": f"Reading {len(selected_files)} file(s)…",
-    }
-
-    # ── Step 3: Read selected files ─────────────────────────────────────
-    code_context: List[str] = []
-    total_chars = 0
-
-    for rel_path in selected_files:
-        abs_path = root_path / rel_path
-        try:
-            content = abs_path.read_text(encoding="utf-8", errors="replace")
-        except (OSError, PermissionError):
-            continue
-        if len(content) > per_file_chars:
-            content = content[:per_file_chars] + "\n# … (truncated)"
-        code_context.append(f"--- {rel_path} ---\n{content}")
-        total_chars += len(content)
-
-    context_text = "\n\n".join(code_context)
-
-    # ── Step 4: Answer with context, streamed ──────────────────────────
-    system_msg = (
-        "You are a helpful codebase assistant. Answer the user's question "
-        "about the codebase concisely using Markdown. Reference specific "
-        "file names, function names, and code snippets where relevant."
-    )
-    messages = [
-        {"role": "system", "content": system_msg},
-        {
-            "role": "user",
-            "content": (
-                f"## Codebase Context\n\n{context_text}\n\n"
-                f"## Question\n\n{user_input}"
-            ),
-        },
-    ]
-
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=0.3,
-            stream=True,
-        )
-    except Exception as exc:
-        yield {"type": "error", "content": f"DeepSeek API call failed: {exc}"}
-        return
-
-    full_answer_parts: List[str] = []
-    for chunk in response:
-        if chunk.choices and len(chunk.choices) > 0:
-            delta = chunk.choices[0].delta
-            if delta and delta.content:
-                token = delta.content
-                full_answer_parts.append(token)
-                yield {"type": "thinking", "content": token}
-
-    answer = "".join(full_answer_parts)
-
-    # ── Track answer cost ───────────────────────────────────────────────
-    # Usage may be available on the final streaming chunk or the response
-    answer_usage = getattr(response, "usage", None)
-    if answer_usage:
-        answer_cost = calculate_cost(
-            model, answer_usage.prompt_tokens, answer_usage.completion_tokens
-        )
-        add_cost(answer_cost)
-
-    yield {"type": "done", "message": answer, "cost": get_session_cost()}
-
-
-# ========================================================================
-#  4.  MEMORY & TODO HANDLERS
-# ========================================================================
-
-def handle_memory_operation(
-    user_input: str,
-) -> Generator[Dict[str, Any], None, None]:
-    """Handle memory and todo operations.
-
-    Recognised patterns:
-
-    - ``"remember X"`` / ``"remember that X"`` — Write to memory.
-    - ``"what do you remember?"`` / ``"recall"`` — Read from memory.
-    - ``"forget everything"`` / ``"clear memory"`` — Reset memory.
-
-    Parameters
-    ----------
-    user_input : str
-        The user's raw input string.
-
-    Yields
-    ------
-    dict
-        Events: ``memory`` with operation results, ``done``, ``error``.
-    """
-    lower = user_input.strip().lower()
-
-    # ── Write to memory ─────────────────────────────────────────────────
-    if lower.startswith("remember") or lower.startswith("remember that"):
-        # Extract the content after "remember" / "remember that"
-        content = user_input
-        for prefix in ("remember that ", "remember "):
-            if content.lower().startswith(prefix):
-                content = content[len(prefix):].strip()
-                break
-        if not content:
-            yield {"type": "error", "content": "What should I remember?"}
-            return
-
-        success = memory_module.memory_write(
-            target="index",
-            scope="project",
-            content=f"- {content}\n",
-            mode="append",
-        )
-        if success:
-            yield {
-                "type": "memory",
-                "operation": "write",
-                "content": f"Remembered: {content}",
-            }
-            yield {"type": "done", "content": f"✅ I'll remember that: *{content}*"}
-        else:
-            yield {"type": "error", "content": "Failed to write to memory."}
-        return
-
-    # ── Read from memory ────────────────────────────────────────────────
-    if any(phrase in lower for phrase in ("what do you remember", "recall", "what memory")):
-        stored = memory_module.memory_read(target="index", scope="project")
-        if stored and stored.strip():
-            yield {
-                "type": "memory",
-                "operation": "read",
-                "content": stored,
-            }
-            yield {"type": "done", "content": f"Here's what I remember:\n\n{stored}"}
-        else:
-            yield {
-                "type": "memory",
-                "operation": "read",
-                "content": "",
-            }
-            yield {"type": "done", "content": "I don't have any stored memories yet."}
-        return
-
-    # ── Clear / forget ──────────────────────────────────────────────────
-    if any(phrase in lower for phrase in ("forget everything", "clear memory", "reset memory")):
-        success = memory_module.memory_write(
-            target="index",
-            scope="project",
-            content="# Project Memory\n\n",
-            mode="replace",
-        )
-        if success:
-            yield {"type": "memory", "operation": "clear", "content": "Memory cleared."}
-            yield {"type": "done", "content": "🧹 Memory cleared. I've forgotten everything."}
-        else:
-            yield {"type": "error", "content": "Failed to clear memory."}
-        return
-
-    # ── Default: show current memory state ──────────────────────────────
-    stored = memory_module.memory_read(target="index", scope="project")
-    if stored and stored.strip():
-        yield {
-            "type": "memory",
-            "operation": "read",
-            "content": stored,
-        }
-        yield {"type": "done", "content": f"Here's what I remember:\n\n{stored}"}
-    else:
-        yield {"type": "done", "content": "I don't have any stored memories yet."}
-
-
-def handle_todo_operation(
-    user_input: str,
-) -> Generator[Dict[str, Any], None, None]:
-    """Handle todo list operations.
-
-    Simple todo management using the memory system as backend storage.
-    Patterns:
-
-    - ``"add todo X"`` / ``"todo: X"`` — Add a todo.
-    - ``"show todos"`` / ``"list todos"`` — Show all todos.
-    - ``"clear todos"`` / ``"done all"`` — Clear all todos.
-
-    Parameters
-    ----------
-    user_input : str
-        The user's raw input string.
-
-    Yields
-    ------
-    dict
-        Events: ``todo`` with operation results, ``done``, ``error``.
-    """
-    lower = user_input.strip().lower()
-
-    # ── Add todo ────────────────────────────────────────────────────────
-    if any(phrase in lower for phrase in ("add todo", "todo:", "new todo", "create todo")):
-        content = user_input
-        for prefix in ("add todo ", "todo: ", "new todo: ", "new todo ", "create todo "):
-            idx = content.lower().find(prefix)
-            if idx >= 0:
-                content = content[idx + len(prefix):].strip()
-                break
-        if not content:
-            yield {"type": "error", "content": "What should I add to the todo list?"}
-            return
-
-        success = memory_module.memory_write(
-            target="topic",
-            scope="project",
-            content=f"- [ ] {content}\n",
-            file_name="todos",
-            mode="append",
-        )
-        if success:
-            yield {
-                "type": "todo",
-                "operation": "add",
-                "content": content,
-            }
-            yield {"type": "done", "content": f"✅ Added todo: *{content}*"}
-        else:
-            yield {"type": "error", "content": "Failed to add todo."}
-        return
-
-    # ── List todos ──────────────────────────────────────────────────────
-    if any(phrase in lower for phrase in ("show todos", "list todos", "my todos", "what todos")):
-        todos = memory_module.memory_read(target="topic", scope="project", file_name="todos")
-        if todos and todos.strip():
-            yield {
-                "type": "todo",
-                "operation": "list",
-                "content": todos,
-            }
-            yield {"type": "done", "content": f"**My Todos:**\n\n{todos}"}
-        else:
-            yield {"type": "done", "content": "No todos yet. Add one with *remember to X* or *add todo X*."}
-        return
-
-    # ── Clear todos ─────────────────────────────────────────────────────
-    if any(phrase in lower for phrase in ("clear todos", "done all", "remove all todos", "reset todos")):
-        success = memory_module.memory_write(
-            target="topic",
-            scope="project",
-            content="",
-            file_name="todos",
-            mode="replace",
-        )
-        if success:
-            yield {"type": "todo", "operation": "clear", "content": "Todos cleared."}
-            yield {"type": "done", "content": "🧹 All todos cleared."}
-        else:
-            yield {"type": "error", "content": "Failed to clear todos."}
-        return
-
-    # ── Fallback ────────────────────────────────────────────────────────
-    yield {"type": "done", "content": "Todo command not recognised. Try: *add todo X*, *show todos*, or *clear todos*."}
-
-
-# ========================================================================
-#  5.  EXPLORE DELEGATION
-# ========================================================================
-
-def handle_explore_intent(
-    user_input: str,
-    files: List[str],
-    model: str = DEFAULT_MODEL,
-) -> Generator[Dict[str, Any], None, None]:
-    """Delegate to the explore agent based on the user's input.
-
-    Determines whether the user wants to:
-    - Read a specific file (if files are mentioned)
-    - Search the web (if input looks like a search query)
-    - Explore the full project structure (default)
-
-    Parameters
-    ----------
-    user_input : str
-        The user's raw input.
-    files : list of str
-        File paths extracted during intent classification.
-    model : str
-        The DeepSeek model identifier.
-
-    Yields
-    ------
-    dict
-        Events from the chosen explore_agent function.
-    """
-    lower = user_input.lower()
-
-    # ── If specific files were mentioned, read them ─────────────────────
-    if files:
-        for file_path in files:
-            yield from explore_file(file_path, model=model)
-        return
-
-    # ── If it looks like a web search query ─────────────────────────────
-    search_keywords = ("search for ", "search ", "look up ", "find online ", "web search ")
-    if any(keyword in lower for keyword in search_keywords):
-        # Extract query after the keyword
-        query = user_input
-        for keyword in search_keywords:
-            idx = query.lower().find(keyword)
-            if idx >= 0:
-                query = query[idx + len(keyword):].strip()
-                break
-        yield from web_search(query, model=model)
-        return
-
-    # ── Read a specific file by name ────────────────────────────────────
-    # Check if user mentions "read X", "show X", "open X", "file X"
-    read_keywords = ("read ", "show ", "open ", "view ", "cat ", "file ")
-    for keyword in read_keywords:
-        if keyword in lower:
-            idx = lower.find(keyword)
-            file_candidate = user_input[idx + len(keyword):].strip().split()[0] if user_input[idx + len(keyword):].strip() else ""
-            if file_candidate:
-                yield from explore_file(file_candidate, model=model)
-                return
-
-    # ── Default: explore the full project ───────────────────────────────
-    yield from explore_project(model=model)
-
-
-# ========================================================================
-#  6.  BUILD FILES CONTEXT (for plan / documentation / test)
-# ========================================================================
-
-def _build_files_context(task: str, model: str = DEFAULT_MODEL) -> str:
-    """Build a text representation of the project's files for use as
-    context in plan, documentation, or test generation.
-
-    Walks the project tree and reads important files, then formats them
-    as a string.
-
-    Parameters
-    ----------
-    task : str
-        The task description (used for the thinking event).
-    model : str
-        The DeepSeek model identifier (passed through).
-
-    Returns
-    -------
-    str
-        A formatted string containing file paths and contents.
-    """
-    IGNORE_DIRS = {
-        ".git", "__pycache__", "venv", ".venv", "node_modules",
-        ".idea", ".vscode", "dist", "build", ".egg-info",
-        ".tox", ".mypy_cache", ".pytest_cache", ".coding_agent_backups",
-    }
-    TEXT_EXTENSIONS = {
-        ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".scss",
-        ".json", ".md", ".yml", ".yaml", ".txt", ".toml", ".ini",
-    }
-    IMPORTANT = {
-        "index.html", "app.js", "main.js", "style.css", "package.json",
-        "README.md", "requirements.txt", "config.py", "agent.py",
-        "server.py", "pyproject.toml",
-    }
-
-    root_path = Path(PROJECT_ROOT).resolve()
-    all_files: List[Path] = []
-    for f in root_path.rglob("*"):
-        try:
-            rel = f.relative_to(root_path)
-        except ValueError:
-            continue
-        if any(part in IGNORE_DIRS for part in rel.parts):
-            continue
-        if f.is_file() and f.suffix.lower() in TEXT_EXTENSIONS:
-            all_files.append(f)
-
-    all_files.sort(
-        key=lambda f: (
-            0 if f.name in IMPORTANT else 1,
-            str(f.relative_to(root_path)).lower(),
-        ),
-    )
-
-    sections: List[str] = []
-    total_chars = 0
-    max_chars = 100_000
-    max_files = 30
-
-    for f in all_files:
-        if len(sections) >= max_files or total_chars >= max_chars:
-            break
-        try:
-            rel = str(f.relative_to(root_path))
-            content = f.read_text(encoding="utf-8", errors="replace")
-            if len(content) > 10_000:
-                content = content[:10_000] + "\n# … (truncated)"
-            sections.append(f"--- {rel} ---\n{content}")
-            total_chars += len(content)
-        except (OSError, PermissionError):
-            continue
-
-    return "\n\n".join(sections)
-
-
-# ========================================================================
-#  7.  GIT COMMIT / PUSH HELPERS (for modify/code intent)
-# ========================================================================
-
 def _git_commit_and_push(
     task: str,
     push: bool,
@@ -1111,7 +1167,7 @@ def _git_commit_and_push(
 
 
 # ========================================================================
-#  8.  MAIN ORCHESTRATOR
+#  MAIN ORCHESTRATOR (Tool-Calling Loop)
 # ========================================================================
 
 def run_agent(
@@ -1119,16 +1175,15 @@ def run_agent(
     model: str = DEFAULT_MODEL,
     deploy_enabled: bool = False,
 ) -> Generator[Dict[str, Any], None, None]:
-    """Main orchestrator — the central entry point for the TalkCody system.
+    """Main orchestrator — tool-calling loop for the TalkCody system.
 
     This generator:
-    1. Yields a ``thinking`` event to show activity.
-    2. Classifies the user's intent via :func:`classify_intent`.
-    3. Delegates to the appropriate sub-agent.
-    4. For ``modify`` / ``code`` intents, additionally performs Git commit,
-       push, PR creation, and optional auto-deploy.
-    5. Passes through all events from sub-agents.
-    6. Yields a final ``done`` event with total session cost.
+    1. Yields an initial ``thinking`` event.
+    2. Sends the user message to DeepSeek with a system prompt and tools.
+    3. Processes each tool call from DeepSeek, yielding events and
+       returning results.
+    4. Continues the loop until DeepSeek produces a final answer.
+    5. Yields a final ``done`` event with total session cost.
 
     Parameters
     ----------
@@ -1138,7 +1193,8 @@ def run_agent(
         The DeepSeek model identifier.  Defaults to :data:`DEFAULT_MODEL`.
     deploy_enabled : bool, optional
         If ``True``, automatically merge the PR after pushing (default
-        ``False``).
+        ``False``).  This flag is passed through for compatibility but
+        auto-deploy is now managed by the tool-calling agent.
 
     Yields
     ------
@@ -1147,179 +1203,138 @@ def run_agent(
 
     Examples
     --------
-    >>> for event in run_agent("What does the config module do?"):
+    >>> for event in run_agent("Explore the project structure"):
     ...     if event["type"] == "done":
-    ...         print(event.get("message", event["content"]))
+    ...         print(event.get("content", ""))
     """
     try:
         # ── 1. Initial thinking ─────────────────────────────────────────
-        yield {"type": "thinking", "content": "Analysing your request…"}
+        yield {"type": "thinking", "content": "🤔 Analyzing your request..."}
 
-        # ── 2. Classify intent ──────────────────────────────────────────
-        intent_data = classify_intent(user_input, model=model)
-        intent = intent_data.get("intent", "question")
-        task = intent_data.get("task", user_input)
-        push = intent_data.get("push", True)
-        files = intent_data.get("files", [])
+        # ── 2. Build the messages and tools ─────────────────────────────
+        tools = _build_available_tools()
 
-        yield {
-            "type": "thinking",
-            "content": f"Intent: **{intent}** — {task[:100]}{'…' if len(task) > 100 else ''}",
-        }
+        system_prompt = _SYSTEM_PROMPT + "\n\n" + "\n".join(
+            f"- **{t['function']['name']}**: {t['function']['description']}"
+            for t in tools
+        )
 
-        # ── 3. Route to the appropriate sub-agent ───────────────────────
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_input},
+        ]
 
-        if intent == "question":
-            # ── Answer question about the codebase ──────────────────────
-            yield from answer_question(user_input, model=model)
-
-        elif intent == "explore":
-            # ── Explore files / project / web ───────────────────────────
-            yield from handle_explore_intent(user_input, files, model=model)
-
-        elif intent == "plan":
-            # ── Generate a plan ─────────────────────────────────────────
-            yield {"type": "thinking", "content": "Building project context for planning…"}
-            files_context = _build_files_context(task, model=model)
-            yield from generate_plan(task, files_context, model=model)
-
-        elif intent in ("code", "modify"):
-            # ── Implement code changes ──────────────────────────────────
-            yield {"type": "thinking", "content": "Building project context for implementation…"}
-
-            # Step 1: Walk all project files
-            root_path = Path(PROJECT_ROOT).resolve()
-            all_files = _walk_project_files(root_path)
-            file_list_str = "\n".join(all_files)
-
-            # Step 2: Show initial thinking
-            yield {"type": "thinking", "content": "🔍 Analyzing your request..."}
-
-            # Step 3: Ask DeepSeek to analyze and think step by step
-            analysis_system = (
-                "You are an expert developer analyzing a user's request. "
-                "Think step by step about what the user wants and what needs to be changed. "
-                "Show your reasoning process clearly and thoroughly."
-            )
-            analysis_prompt = (
-                f"The user wants: {task}\n\n"
-                f"Here are all the project files:\n{file_list_str}\n\n"
-                "Analyze what the user is asking for. Think step by step:\n"
-                "1. What is the user asking for?\n"
-                "2. What files need to be modified?\n"
-                "3. What changes need to be made in each file?\n"
-                "4. What is the implementation plan?\n\n"
-                "Output your analysis."
-            )
-
-            # Step 4: Stream the analysis
+        # ── 3. Tool-calling loop ────────────────────────────────────────
+        for iteration in range(_MAX_ITERATIONS):
+            # ── 3a. Call DeepSeek ──────────────────────────────────────
             try:
                 response = client.chat.completions.create(
                     model=model,
-                    messages=[
-                        {"role": "system", "content": analysis_system},
-                        {"role": "user", "content": analysis_prompt},
-                    ],
-                    temperature=0.0,
-                    stream=True,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto",
+                    temperature=0.3,
                 )
             except Exception as exc:
-                yield {"type": "error", "content": f"Analysis API call failed: {exc}"}
+                yield {"type": "error", "content": f"DeepSeek API call failed: {exc}"}
+                yield {"type": "done", "cost": get_session_cost()}
                 return
 
-            analysis_parts: List[str] = []
-            for chunk in response:
-                if chunk.choices and len(chunk.choices) > 0:
-                    delta = chunk.choices[0].delta
-                    if delta and delta.content:
-                        token = delta.content
-                        analysis_parts.append(token)
-                        yield {"type": "thinking", "content": token}
+            # ── 3b. Track cost ─────────────────────────────────────────
+            usage = response.usage
+            if usage:
+                cost = calculate_cost(model, usage.prompt_tokens, usage.completion_tokens)
+                add_cost(cost)
 
-            analysis = "".join(analysis_parts)
+            # ── 3c. Extract the assistant message ──────────────────────
+            assistant_message = response.choices[0].message
 
-            # Step 5: Build files context and proceed with implementation
-            yield {"type": "thinking", "content": "Proceeding with implementation…"}
-            files_context = _build_files_context(task, model=model)
+            # ── 3d. Handle tool calls ──────────────────────────────────
+            if assistant_message.tool_calls:
+                # Add assistant message to conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": assistant_message.content or "",
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        }
+                        for tc in assistant_message.tool_calls
+                    ],
+                })
 
-            # Use the analysis as the plan description
-            plan_text = (
-                f"## Task\n\n{task}\n\n"
-                f"## Analysis / Plan\n\n{analysis}\n\n"
-                f"## Files Context\n\n{files_context}\n\n"
-                "Implement the changes described in the task. Modify the "
-                "necessary files using the write_file tool."
-            )
+                # Process each tool call
+                for tool_call in assistant_message.tool_calls:
+                    tool_name = tool_call.function.name
+                    try:
+                        tool_args = json.loads(tool_call.function.arguments)
+                    except json.JSONDecodeError:
+                        tool_args = {}
 
-            # Track whether code was actually written
-            code_written = False
-            branch_name = _sanitise_branch_name(task)
+                    # Show what's happening
+                    emoji = {
+                        "read_file": "📖",
+                        "write_file": "✍️",
+                        "explore_project": "🔍",
+                        "web_search": "🌐",
+                        "read_todos": "📋",
+                        "write_todo": "📋",
+                        "git_commit": "✅",
+                        "git_push": "🚀",
+                        "create_pull_request": "📦",
+                        "rollback_commit": "⏪",
+                        "review_files": "🔍",
+                        "generate_docs": "📝",
+                        "generate_tests": "🧪",
+                    }.get(tool_name, "🔧")
 
-            for event in implement_changes(task, plan_text, model=model):
-                if event["type"] == "done":
-                    code_written = True
-                    yield event
-                elif event["type"] == "error":
-                    yield event
-                    # Don't proceed to git operations if code failed
-                    return
-                else:
-                    yield event
+                    # Include reasoning if present
+                    reasoning = assistant_message.content or ""
+                    if reasoning:
+                        yield {"type": "thinking", "content": reasoning}
 
-            if code_written:
-                # ── Git commit, push, PR ────────────────────────────────
-                yield from _git_commit_and_push(task, push, branch_name)
+                    yield {
+                        "type": "thinking",
+                        "content": f"{emoji} Calling tool: **{tool_name}**",
+                    }
 
-                # ── Auto-deploy ─────────────────────────────────────────
-                if deploy_enabled and push:
-                    yield from auto_deploy(branch_name)
+                    # Execute the tool
+                    tool_events, tool_result = _execute_tool(tool_name, tool_args)
 
-        elif intent == "review":
-            # ── Review code ─────────────────────────────────────────────
-            if files:
-                yield from review_changes(files, task, model=model)
-            else:
-                # If no specific files, gather changed or all relevant files
-                yield {"type": "thinking", "content": "No specific files provided for review. Exploring project…"}
-                yield from review_changes(
-                    [str(p.relative_to(PROJECT_ROOT))
-                     for p in Path(PROJECT_ROOT).rglob("*.py")
-                     if ".git" not in str(p) and "__pycache__" not in str(p)],
-                    task,
-                    model=model,
-                )
+                    # Yield all events from the tool execution
+                    for event in tool_events:
+                        yield event
 
-        elif intent == "document":
-            # ── Generate documentation ─────────────────────────────────
-            yield {"type": "thinking", "content": "Building project context for documentation…"}
-            files_context = _build_files_context(task, model=model)
-            yield from generate_docs(task, files_context, model=model)
+                    # Add tool result to conversation
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": tool_result,
+                    })
 
-        elif intent == "test":
-            # ── Generate tests ──────────────────────────────────────────
-            yield {"type": "thinking", "content": "Building project context for test generation…"}
-            files_context = _build_files_context(task, model=model)
-            yield from generate_tests(task, files_context, model=model)
+                # Continue the loop to process the next DeepSeek response
+                continue
 
-        elif intent == "memory":
-            # ── Memory operations ───────────────────────────────────────
-            yield from handle_memory_operation(user_input)
+            # ── 3e. No tool calls — final answer ───────────────────────
+            content = assistant_message.content or ""
+            if content:
+                yield {"type": "thinking", "content": content}
 
-        elif intent == "todo":
-            # ── Todo operations ─────────────────────────────────────────
-            yield from handle_todo_operation(user_input)
+            yield {"type": "done", "content": content, "cost": get_session_cost()}
+            return
 
-        elif intent == "rollback":
-            # ── Rollback last commit ────────────────────────────────────
-            yield from rollback_changes(push=push)
-
-        else:
-            # ── Unknown intent — fall back to question answering ────────
-            yield {
-                "type": "thinking",
-                "content": f"Unrecognised intent '{intent}'. Falling back to answering as a question…",
-            }
-            yield from answer_question(user_input, model=model)
+        # ── 4. Max iterations reached ────────────────────────────────────
+        yield {
+            "type": "error",
+            "content": f"Maximum of {_MAX_ITERATIONS} tool calls reached. "
+                        "The task may not be fully complete.",
+        }
+        yield {"type": "done", "cost": get_session_cost()}
 
     except Exception as exc:
         yield {
@@ -1328,17 +1343,11 @@ def run_agent(
         }
         import traceback
         traceback.print_exc()
-
-    finally:
-        # ── Always yield a final done event with cost ───────────────────
-        yield {
-            "type": "done",
-            "cost": get_session_cost(),
-        }
+        yield {"type": "done", "cost": get_session_cost()}
 
 
 # ========================================================================
-#  9.  COMPATIBILITY ALIAS
+#  COMPATIBILITY ALIASES
 # ========================================================================
 
 def run_agent_stream(
@@ -1367,12 +1376,10 @@ def run_agent_stream(
 
 
 # ========================================================================
-# 10.  CLI ENTRY POINT
+#  CLI ENTRY POINT
 # ========================================================================
 
 if __name__ == "__main__":
-    import sys
-
     def _print_event(event: Dict[str, Any]) -> None:
         """Pretty-print a single event to the console."""
         etype = event.get("type", "unknown")
@@ -1391,8 +1398,7 @@ if __name__ == "__main__":
             print(f"📋 Plan: {event.get('summary', '')[:120]}")
             steps = event.get("steps", [])
             if steps:
-                print(f"   └─ {len(steps)} step(s), "
-                      f"difficulty: {event.get('estimated_difficulty', '?')}")
+                print(f"   └─ {len(steps)} step(s)")
         elif etype == "review":
             print(f"🔍 Review: {event.get('file', '?')} — "
                   f"Score: {event.get('score', '?')}/100, "
@@ -1421,7 +1427,8 @@ if __name__ == "__main__":
         elif etype == "done":
             msg = event.get("message") or event.get("content", "")
             cost = event.get("cost", 0.0)
-            print(f"✅ {msg}" if msg else f"✅ Done (cost: ${cost:.6f})")
+            if msg:
+                print(f"✅ {msg}")
             if cost:
                 print(f"💰 Total session cost: ${cost:.6f}")
         elif etype == "error":

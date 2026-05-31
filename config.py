@@ -68,8 +68,8 @@ Defaults to an empty string if not set.
 # ── Model Configuration ───────────────────────────────────────────────────────
 
 MODEL_PRICING: dict = {
-    "deepseek-chat":     {"input": 0.27, "output": 1.10},
-    "deepseek-reasoner": {"input": 0.55, "output": 2.19},
+    "deepseek-v4-flash": {"input": 0.27, "output": 1.10},
+    "deepseek-v4-pro":   {"input": 0.55, "output": 2.19},
 }
 """
 Pricing per model in USD per million tokens.
@@ -80,12 +80,12 @@ Keys are model names; each value is a dict with ``"input"`` and
 .. code-block:: python
 
     MODEL_PRICING = {
-        "deepseek-chat":     {"input": 0.27, "output": 1.10},   # $/1M tokens
-        "deepseek-reasoner": {"input": 0.55, "output": 2.19},   # $/1M tokens
+        "deepseek-v4-flash": {"input": 0.27, "output": 1.10},   # $/1M tokens
+        "deepseek-v4-pro":   {"input": 0.55, "output": 2.19},   # $/1M tokens
     }
 """
 
-DEFAULT_MODEL: str = "deepseek-chat"
+DEFAULT_MODEL: str = "deepseek-v4-flash"
 """
 The default model identifier used when no explicit model is specified.
 """
@@ -116,12 +116,12 @@ def calculate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> fl
 
     Uses the per-model pricing in :data:`MODEL_PRICING`.  If *model*
     is not found in the pricing table, falls back to
-    ``deepseek-chat`` pricing.
+    ``deepseek-v4-flash`` pricing.
 
     Parameters
     ----------
     model : str
-        The model identifier (e.g. ``"deepseek-chat"``).
+        The model identifier (e.g. ``"deepseek-v4-flash"``).
     prompt_tokens : int
         Number of input (prompt) tokens consumed.
     completion_tokens : int
@@ -134,10 +134,10 @@ def calculate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> fl
 
     Example
     -------
-    >>> calculate_cost("deepseek-chat", 500_000, 100_000)
+    >>> calculate_cost("deepseek-v4-flash", 500_000, 100_000)
     0.245
     """
-    pricing = MODEL_PRICING.get(model, MODEL_PRICING["deepseek-chat"])
+    pricing = MODEL_PRICING.get(model, MODEL_PRICING["deepseek-v4-flash"])
     input_cost = (prompt_tokens / 1_000_000) * pricing["input"]
     output_cost = (completion_tokens / 1_000_000) * pricing["output"]
     return input_cost + output_cost
