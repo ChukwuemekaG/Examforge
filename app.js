@@ -848,11 +848,10 @@ function setupAdminListeners() {
 
         // Reveal bottom nav and notification bell after every page render
         setTimeout(() => {
-            // Hide preloader
+            // Hide preloader instantly — syncs with nav/bell reveal
             const preloader = document.getElementById('app-preloader');
             if (preloader) {
-                preloader.classList.add('fade-out');
-                setTimeout(() => preloader.remove(), 500);
+                preloader.style.display = 'none';
             }
             // Show bottom nav and notification bell on mobile
             if (window.innerWidth <= 768) {
