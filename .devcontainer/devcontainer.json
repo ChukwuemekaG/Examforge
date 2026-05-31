@@ -1,0 +1,21 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
+    "ghcr.io/devcontainers-contrib/features/firebase-cli:1": {}
+  },
+  "postCreateCommand": "pip install openai gitpython",
+  "customizations": {
+    "codespaces": {
+      "secrets": {
+        "DEEPSEEK_API_KEY": "sk-0e9be2cc0fae46d9bc0f452bdd45b0cc",
+        "GITHUB_TOKEN": "YOUR_PERSONAL_ACCESS_TOKEN"
+      }
+    }
+  }
+}
