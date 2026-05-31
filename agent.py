@@ -438,12 +438,28 @@ def rollback_changes(push: bool = True) -> Generator[Dict[str, Any], None, None]
         # Non-fatal — may not be needed
         pass
 
+    # Stash local changes to prevent "overwritten by merge" errors
+    stashed = False
+    try:
+        if repo.is_dirty(untracked_files=True):
+            yield {"type": "thinking", "content": "📦 Stashing local changes before revert..."}
+            repo.git.stash("push", "--include-untracked", "-m", "auto-stash-before-revert")
+            stashed = True
+    except GitCommandError:
+        pass
+
     try:
         repo.git.revert("HEAD", no_edit=True, m=1)
         yield {"type": "action", "content": "Last commit reverted locally."}
     except GitCommandError as exc:
         yield {"type": "error", "content": f"Revert failed: {exc}"}
         return
+
+    if stashed:
+        try:
+            repo.git.stash("pop")
+        except GitCommandError:
+            pass
 
     if push:
         try:

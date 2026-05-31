@@ -67,3 +67,12 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# Python cache & virtual environment
+__pycache__/
+*.pyc
+venv/
+
+# TalkCody agent artifacts
+.talkcody/
+.coding_agent_backups/
