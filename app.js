@@ -163,6 +163,63 @@ window._showMaintenanceScreen = function() {
     document.body.appendChild(overlay);
 };
 
+// ─── Maintenance mode check (1 read, cached in localStorage) ───
+window._maintenanceOverlay = null;
+
+window._checkMaintenance = async function(userRole) {
+    // Never block admins
+    if (userRole === 'admin') return false;
+    
+    // Check localStorage cache first (0 reads)
+    try {
+        const cached = localStorage.getItem('ef_maintenance');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.active && Date.now() - parsed.timestamp < 300000) {
+                window._showMaintenancePage();
+                return true;
+            }
+            if (!parsed.active && Date.now() - parsed.timestamp < 300000) {
+                return false; // cached as inactive, skip read
+            }
+        }
+    } catch(e) {}
+    
+    // Read the config doc (1 read total)
+    try {
+        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const snap = await getDoc(doc(db, 'config', 'maintenance'));
+        const data = snap.data() || {};
+        const isActive = data.active === true;
+        
+        // Cache result for 5 minutes
+        localStorage.setItem('ef_maintenance', JSON.stringify({ active: isActive, timestamp: Date.now() }));
+        
+        if (isActive) {
+            window._showMaintenancePage();
+            return true;
+        }
+        return false;
+    } catch(e) {
+        return false; // on error, let them through
+    }
+};
+
+window._showMaintenancePage = function() {
+    if (document.getElementById('ef-maintenance-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'ef-maintenance-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;padding:24px;gap:16px;';
+    overlay.innerHTML = `
+        <div style="width:80px;height:80px;border-radius:50%;background:rgba(254,105,97,0.1);display:flex;align-items:center;justify-content:center;">
+            <span class="material-icons-round" style="font-size:2.4rem;color:#fe6961;">construction</span>
+        </div>
+        <div style="font-size:1.4rem;font-weight:900;color:var(--text);text-align:center;">Under Maintenance</div>
+        <div style="font-size:0.85rem;color:var(--text-muted);text-align:center;max-width:360px;line-height:1.5;">ExamForge is currently under maintenance. We'll be back shortly. Thank you for your patience.</div>
+    `;
+    document.body.appendChild(overlay);
+};
+
 // ─── Throttled cache refresh (prevents stale data without excessive reads) ───
 window._lastRefresh = {};
 window._throttledRefresh = async function(path, minIntervalMs = 15000) {
@@ -614,6 +671,10 @@ function setupAdminListeners() {
                     window.addEventListener('online', () => showBanner(false));
                 }
 
+                // ─── Check maintenance mode (blocks non-admins) ───
+                const maintenanceBlocked = await window._checkMaintenance(userData.stats.role);
+                if (maintenanceBlocked) return; // Stop here — maintenance overlay shown
+                
                 init();
                 // ─── Floating notification bell (mobile) ───
                 if (!document.getElementById('ef-notif-floating')) {
@@ -1114,6 +1175,10 @@ async function renderMaster() {
         <div class="mc-stat-bar" id="mc-stats">
             <div class="mc-stat"><div class="mc-stat-val" id="mc-s-users">—</div><div class="mc-stat-lbl">Students</div></div>
             <div class="mc-stat"><div class="mc-stat-val" id="mc-s-courses">—</div><div class="mc-stat-lbl">Courses</div></div>
+            <div class="mc-stat" id="mc-maint-toggle" style="cursor:pointer;" title="Toggle maintenance mode">
+                <div class="mc-stat-val" id="mc-s-maint">OFF</div>
+                <div class="mc-stat-lbl">Maintenance</div>
+            </div>
         </div>
 
         <div class="mc-tab-bar">
@@ -1179,6 +1244,33 @@ async function mcLoadStats() {
         const el = id => document.getElementById(id);
         if (el('mc-s-users')) el('mc-s-users').textContent = userCountSnap.data().count;
         if (el('mc-s-courses')) el('mc-s-courses').textContent = (courses || []).length;
+        
+        // Check and display maintenance status
+        const maintEl = document.getElementById('mc-s-maint');
+        const maintToggle = document.getElementById('mc-maint-toggle');
+        if (maintEl && maintToggle) {
+            try {
+                const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                const maintSnap = await getDoc(doc(db, 'config', 'maintenance'));
+                const isActive = maintSnap.exists() && maintSnap.data().active === true;
+                maintEl.textContent = isActive ? 'ON' : 'OFF';
+                maintEl.style.color = isActive ? '#dc2626' : '#16a34a';
+                
+                // Toggle on click
+                maintToggle.onclick = async () => {
+                    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                    const newState = !isActive;
+                    await setDoc(doc(db, 'config', 'maintenance'), { active: newState });
+                    // Clear all users' localStorage cache
+                    try { localStorage.removeItem('ef_maintenance'); } catch(e) {}
+                    maintEl.textContent = newState ? 'ON' : 'OFF';
+                    maintEl.style.color = newState ? '#dc2626' : '#16a34a';
+                    window.showEFModal("Maintenance Mode", newState ? "Maintenance mode is ON. Students will see the maintenance screen." : "Maintenance mode is OFF. Students can access the app normally.", "OK", null, true);
+                };
+            } catch(e) {
+                maintEl.textContent = 'ERR';
+            }
+        }
     } catch (e) { console.error(e); }
 }
 
