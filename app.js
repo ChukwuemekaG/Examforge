@@ -630,12 +630,7 @@ function setupAdminListeners() {
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
                 // ─── Warm caches in background for instant view loads ───
                 sync.collection('users/' + user.uid + '/schedule').catch(() => {});
-                // If admin, pre-warm admin collections too
-                if (userDataFromSync && userDataFromSync.role === 'admin') {
-                    sync.collection('users').catch(() => {});
-                    sync.collection('daily_quizzes').catch(() => {});
-                    sync.query('daily_advices', [orderBy('createdAt', 'desc')]).catch(() => {});
-                }
+                // Admin collections are loaded on demand when the admin tab is opened
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
                     if (Notification.permission === 'default') {
@@ -4735,13 +4730,13 @@ function renderUserList(users) {
 
 async function fetchAdminStats() {
     try {
-        const allUsers = await sync.collection('users');
-        document.getElementById('admin-total-students').innerText = allUsers.length;
-        
-        try {
-            const allExams = await sync.collection('exams');
-            document.getElementById('admin-total-exams').innerText = allExams.length;
-        } catch { document.getElementById('admin-total-exams').innerText = "0"; }
+        const { collection, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const [userCountSnap, examCountSnap] = await Promise.all([
+            getCountFromServer(collection(db, 'users')),
+            getCountFromServer(collection(db, 'exams'))
+        ]);
+        document.getElementById('admin-total-students').innerText = userCountSnap.data().count;
+        document.getElementById('admin-total-exams').innerText = examCountSnap.data().count;
     } catch (err) { console.error(err); }
 }
 
