@@ -140,14 +140,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 // ─── Throttled cache refresh (prevents stale data without excessive reads) ───
-const _lastRefresh = {};
-async function _throttledRefresh(path, minIntervalMs = 15000) {
+window._lastRefresh = {};
+window._throttledRefresh = async function(path, minIntervalMs = 15000) {
     const now = Date.now();
-    const last = _lastRefresh[path];
+    const last = window._lastRefresh[path];
     if (last && (now - last < minIntervalMs)) return;
-    _lastRefresh[path] = now;
+    window._lastRefresh[path] = now;
     try { await sync.refresh(path); } catch(e) {}
-}
+};
 
 // Real-time dashboard UI update (called by subscriber when user data changes)
 window.updateDashboardUI = function() {
@@ -538,14 +538,20 @@ function setupAdminListeners() {
                 // Initial load from cache
                 sync.subscribe('users/' + user.uid, refreshUserData);
 
-                // Periodic refresh every 60 seconds to pick up changes
+                // ─── Live refresh cycle ───
+                // Refreshes key collections every 30 seconds so all views stay live
+                const LIVE_PATHS = [
+                    'users/' + user.uid,
+                    'users/' + user.uid + '/schedule',
+                    'subscription_events',
+                    'daily_quizzes',
+                    'daily_advices'
+                ];
                 setInterval(() => {
-                    sync.refresh('users/' + user.uid).then(() => {
-                        sync.doc('users/' + user.uid).then(data => {
-                            if (data) refreshUserData(data);
-                        });
-                    }).catch(() => {});
-                }, 60000);
+                    LIVE_PATHS.forEach(path => {
+                        sync.refresh(path).catch(() => {});
+                    });
+                }, 30000);
 
                 // ─── One-time migration: copy old subcollection results to recentResults ───
                 if (userData.recentResults && userData.recentResults.length === 0) {
@@ -691,6 +697,10 @@ function setupAdminListeners() {
         localStorage.setItem('examforge-theme', themeName);
         const isDark = themeName === 'dark';
         themeCheckboxes.forEach(cb => { if (cb.checked !== isDark) cb.checked = isDark; });
+        // Preserve body padding for bottom nav on mobile
+        if (window.innerWidth <= 768) {
+            document.body.style.paddingBottom = 'calc(var(--bottom-nav-h) + 16px)';
+        }
     }
 
     const initialTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -838,6 +848,13 @@ function setupAdminListeners() {
 
         // Reveal bottom nav and notification bell after every page render
         setTimeout(() => {
+            // Hide preloader
+            const preloader = document.getElementById('app-preloader');
+            if (preloader) {
+                preloader.classList.add('fade-out');
+                setTimeout(() => preloader.remove(), 500);
+            }
+            // Show bottom nav and notification bell on mobile
             if (window.innerWidth <= 768) {
                 const navEl = document.getElementById('bottomNav');
                 if (navEl) navEl.style.display = 'flex';
