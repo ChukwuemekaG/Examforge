@@ -1,5 +1,5 @@
 """
-Orchestrator Agent — Tool-Calling Loop for the TalkCody system.
+Orchestrator Agent -- Tool-Calling Loop for the TalkCody system.
 
 This module replaces the old intent-classification pattern with a modern
 tool-calling orchestrator.  DeepSeek receives a list of available tools and
@@ -10,13 +10,13 @@ Architecture
 ------------
 All sub-agents exist as separate modules in the project:
 
-- ``explore_agent.py``    — explore_file, web_search, explore_project
-- ``plan_agent.py``       — generate_plan
-- ``coding_agent.py``     — implement_changes, read_file_content, write_file
-- ``review_agent.py``     — review_changes, review_project
-- ``document_agent.py``   — generate_docs, generate_readme
-- ``test_agent.py``       — generate_tests
-- ``memory.py``           — memory_read, memory_write
+- ``explore_agent.py``    -- explore_file, web_search, explore_project
+- ``plan_agent.py``       -- generate_plan
+- ``coding_agent.py``     -- implement_changes, read_file_content, write_file
+- ``review_agent.py``     -- review_changes, review_project
+- ``document_agent.py``   -- generate_docs, generate_readme
+- ``test_agent.py``       -- generate_tests
+- ``memory.py``           -- memory_read, memory_write
 
 Shared configuration lives in ``config.py``.  This module re-exports
 the key symbols so that sub-agents (especially ``plan_agent.py``) can
@@ -27,23 +27,23 @@ Event Protocol
 Every generator in this system yields ``dict`` objects with at least a
 ``"type"`` key.  Common types:
 
-- ``thinking``       — Progress / status message shown to the user.
-- ``plan``           — A structured implementation plan (from plan_agent).
-- ``code``           — A file being created or modified (from coding_agent).
-- ``action``         — A non-code action taken (e.g. git push).
-- ``review``         — A code review result (from review_agent).
-- ``document``       — Generated documentation (from document_agent).
-- ``question``       — A question directed at the user (e.g. plan approval).
-- ``search_results`` — Web search results (from explore_agent).
-- ``file``           — File contents (from explore_agent).
-- ``file_listing``   — A list of project files (from explore_agent).
-- ``memory``         — Memory operation result.
-- ``todo``           — Todo list operation result.
-- ``pr``             — Pull-request URL.
-- ``branch``         — Branch name.
-- ``deploy``         — Deployment status.
-- ``done``           — Signals completion of a phase or the whole flow.
-- ``error``          — An error occurred.
+- ``thinking``       -- Progress / status message shown to the user.
+- ``plan``           -- A structured implementation plan (from plan_agent).
+- ``code``           -- A file being created or modified (from coding_agent).
+- ``action``         -- A non-code action taken (e.g. git push).
+- ``review``         -- A code review result (from review_agent).
+- ``document``       -- Generated documentation (from document_agent).
+- ``question``       -- A question directed at the user (e.g. plan approval).
+- ``search_results`` -- Web search results (from explore_agent).
+- ``file``           -- File contents (from explore_agent).
+- ``file_listing``   -- A list of project files (from explore_agent).
+- ``memory``         -- Memory operation result.
+- ``todo``           -- Todo list operation result.
+- ``pr``             -- Pull-request URL.
+- ``branch``         -- Branch name.
+- ``deploy``         -- Deployment status.
+- ``done``           -- Signals completion of a phase or the whole flow.
+- ``error``          -- An error occurred.
 
 Usage
 -----
@@ -126,27 +126,33 @@ _TEXT_EXTENSIONS = {
 #  SYSTEM PROMPT FOR THE TOOL-CALLING AGENT
 # ========================================================================
 
-_SYSTEM_PROMPT = """\
-You are an expert AI coding assistant. You have access to a set of tools that \
-allow you to read, write, explore, and manage code.
+ORCHESTRATOR_SYSTEM_PROMPT = """\
+You are an expert software engineering AI assistant with access to a codebase. \
+You reason step by step, use tools strategically, and produce high-quality results.
 
-**How to use tools:**
-- Think step by step about what needs to be done.
-- Call ONE tool at a time. Each tool call returns results you can use.
-- Show your reasoning before and after each tool call.
-- Continue calling tools until the task is complete.
-- When you are finished, provide a clear summary of what was done.
+## Your Process
+1. **Understand** - Analyze what the user is asking. Read relevant files to understand context.
+2. **Plan** - Create a clear step-by-step plan before making changes.
+3. **Implement** - Make the changes one file at a time.
+4. **Review** - Review your changes for quality.
+5. **Deliver** - Commit, push, and create PRs as needed.
 
-**Rules:**
-- Always read a file before writing to it, unless you are creating a new file.
-- Use `explore_project` first to understand the project structure when relevant.
-- Commit changes with meaningful messages after writing code.
-- Push to remote only when explicitly requested or when the task requires it.
-- Generate documentation and tests as appropriate for the task.
-- You can review code at any point to check quality.
-- Max 20 tool calls per request. Be efficient.
+## Rules
+- Always read files before modifying them to understand current content
+- Show your reasoning clearly before each tool call
+- Be thorough - explore the full project context when needed
+- For complex tasks, gather all information first, then plan, then implement
+- If you encounter errors, diagnose and fix them
+- Generate complete, production-quality code
 
-**Available tools:**"""
+## Available Tools
+{TOOLS_DESCRIPTION}
+
+Think step by step. Call one tool at a time. Continue until the task is complete."""
+
+# ── Backwards-compatible alias ────────────────────────────────────────────────
+
+_SYSTEM_PROMPT = ORCHESTRATOR_SYSTEM_PROMPT
 
 
 # ========================================================================
@@ -747,7 +753,7 @@ def _execute_tool(
     Returns
     -------
     tuple
-        ``(events, result_string)`` — the list of events to yield to the
+        ``(events, result_string)`` -- the list of events to yield to the
         SSE stream, and the text result to send back to DeepSeek.
     """
     handler = _TOOL_HANDLERS.get(tool_name)
@@ -864,7 +870,7 @@ def get_repo() -> Tuple[Repo, Any]:
     Returns
     -------
     tuple
-        ``(repo, origin)`` — a ``git.Repo`` instance and its ``origin`` remote.
+        ``(repo, origin)`` -- a ``git.Repo`` instance and its ``origin`` remote.
 
     Raises
     ------
@@ -893,7 +899,7 @@ def create_pull_request(branch: str, title: str) -> str:
         failure.
     """
     if not GIT_TOKEN or not GITHUB_REPO:
-        print("[agent] GIT_TOKEN or GITHUB_REPO not set — cannot create PR.")
+        print("[agent] GIT_TOKEN or GITHUB_REPO not set -- cannot create PR.")
         return ""
 
     url = f"https://api.github.com/repos/{GITHUB_REPO}/pulls"
@@ -929,7 +935,7 @@ def create_pull_request(branch: str, title: str) -> str:
             print(f"[agent] PR creation request failed: {exc}")
             return ""
 
-    print("[agent] Could not create PR — neither 'main' nor 'master' worked.")
+    print("[agent] Could not create PR -- neither 'main' nor 'master' worked.")
     return ""
 
 
@@ -1049,7 +1055,7 @@ def rollback_changes(push: bool = True) -> Generator[Dict[str, Any], None, None]
     try:
         origin.pull()
     except GitCommandError:
-        # Non-fatal — may not be needed
+        # Non-fatal -- may not be needed
         pass
 
     # Stash local changes to prevent "overwritten by merge" errors
@@ -1175,7 +1181,7 @@ def run_agent(
     model: str = DEFAULT_MODEL,
     deploy_enabled: bool = False,
 ) -> Generator[Dict[str, Any], None, None]:
-    """Main orchestrator — tool-calling loop for the TalkCody system.
+    """Main orchestrator -- tool-calling loop for the TalkCody system.
 
     This generator:
     1. Yields an initial ``thinking`` event.
@@ -1211,12 +1217,25 @@ def run_agent(
         # ── 1. Initial thinking ─────────────────────────────────────────
         yield {"type": "thinking", "content": "🤔 Analyzing your request..."}
 
+        # ── 1b. Use pro model for code tasks ───────────────────────────
+        _code_keywords = ["add", "change", "modify", "create", "implement", "fix",
+                         "write", "update", "refactor", "build", "make", "delete",
+                         "remove", "rename", "move"]
+        _task_lower = user_input.lower()
+        if any(kw in _task_lower for kw in _code_keywords):
+            if model == DEFAULT_MODEL:
+                model = "deepseek-v4-pro"
+
         # ── 2. Build the messages and tools ─────────────────────────────
         tools = _build_available_tools()
 
-        system_prompt = _SYSTEM_PROMPT + "\n\n" + "\n".join(
+        tools_description = "\n".join(
             f"- **{t['function']['name']}**: {t['function']['description']}"
             for t in tools
+        )
+
+        system_prompt = ORCHESTRATOR_SYSTEM_PROMPT.replace(
+            "{TOOLS_DESCRIPTION}", tools_description
         )
 
         messages: List[Dict[str, Any]] = [
@@ -1268,6 +1287,11 @@ def run_agent(
                     ],
                 })
 
+                # Yield the reasoning as ONE thinking event (not streamed tokens)
+                reasoning = assistant_message.content or ""
+                if reasoning:
+                    yield {"type": "thinking", "content": reasoning}
+
                 # Process each tool call
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
@@ -1276,7 +1300,7 @@ def run_agent(
                     except json.JSONDecodeError:
                         tool_args = {}
 
-                    # Show what's happening
+                    # Build a descriptive message with the right emoji for each tool
                     emoji = {
                         "read_file": "📖",
                         "write_file": "✍️",
@@ -1293,14 +1317,51 @@ def run_agent(
                         "generate_tests": "🧪",
                     }.get(tool_name, "🔧")
 
-                    # Include reasoning if present
-                    reasoning = assistant_message.content or ""
-                    if reasoning:
-                        yield {"type": "thinking", "content": reasoning}
+                    # Build a human-friendly description from the arguments
+                    if tool_name == "read_file":
+                        path = tool_args.get("path", "?")
+                        description = f"Reading file: {path}"
+                    elif tool_name == "write_file":
+                        path = tool_args.get("path", "?")
+                        description = f"Writing file: {path}"
+                    elif tool_name == "explore_project":
+                        description = "Exploring project structure"
+                    elif tool_name == "web_search":
+                        query = tool_args.get("query", "?")
+                        description = f"Searching web for: {query[:80]}"
+                    elif tool_name == "read_todos":
+                        description = "Reading todos"
+                    elif tool_name == "write_todo":
+                        c = tool_args.get("content", "?")
+                        status = tool_args.get("status", "pending")
+                        act = "Completing" if status == "done" else "Adding"
+                        description = f"{act} todo: {c[:60]}"
+                    elif tool_name == "git_commit":
+                        msg = tool_args.get("message", "?")
+                        description = f"Committing changes: {msg[:60]}"
+                    elif tool_name == "git_push":
+                        branch = tool_args.get("branch_name", "?")
+                        description = f"Pushing branch: {branch}"
+                    elif tool_name == "create_pull_request":
+                        title = tool_args.get("title", "?")
+                        description = f"Creating pull request: {title[:60]}"
+                    elif tool_name == "rollback_commit":
+                        description = "Rolling back last commit"
+                    elif tool_name == "review_files":
+                        files = tool_args.get("files_json", "?")
+                        description = f"Reviewing files: {files[:80]}"
+                    elif tool_name == "generate_docs":
+                        task = tool_args.get("task", "?")
+                        description = f"Generating docs for: {task[:60]}"
+                    elif tool_name == "generate_tests":
+                        task = tool_args.get("task", "?")
+                        description = f"Generating tests for: {task[:60]}"
+                    else:
+                        description = f"Calling tool: {tool_name}"
 
                     yield {
                         "type": "thinking",
-                        "content": f"{emoji} Calling tool: **{tool_name}**",
+                        "content": f"{emoji} {description}",
                     }
 
                     # Execute the tool
@@ -1320,7 +1381,7 @@ def run_agent(
                 # Continue the loop to process the next DeepSeek response
                 continue
 
-            # ── 3e. No tool calls — final answer ───────────────────────
+            # ── 3e. No tool calls -- final answer ───────────────────────
             content = assistant_message.content or ""
             if content:
                 yield {"type": "thinking", "content": content}
@@ -1355,7 +1416,7 @@ def run_agent_stream(
     model_name: str = DEFAULT_MODEL,
     deploy_enabled: bool = False,
 ) -> Generator[Dict[str, Any], None, None]:
-    """Alias for :func:`run_agent` — provides backward compatibility with
+    """Alias for :func:`run_agent` -- provides backward compatibility with
     server code that imports ``run_agent_stream`` from the old agent module.
 
     Parameters
@@ -1400,7 +1461,7 @@ if __name__ == "__main__":
             if steps:
                 print(f"   └─ {len(steps)} step(s)")
         elif etype == "review":
-            print(f"🔍 Review: {event.get('file', '?')} — "
+            print(f"🔍 Review: {event.get('file', '?')} -- "
                   f"Score: {event.get('score', '?')}/100, "
                   f"Issues: {len(event.get('issues', []))}")
         elif etype == "document":
