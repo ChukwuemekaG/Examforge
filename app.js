@@ -738,7 +738,9 @@ function setupAdminListeners() {
                     }
                     // FCM removed - notifications work via Firestore
                 }
-            } catch (error) { console.error(error); init(); }
+            } catch (error) { console.error(error); }
+            // Always initialize the app after user setup (success or error)
+            init();
         } else {
             localStorage.removeItem('ef_logged_in');
             if (userListenerUnsubscribe) { userListenerUnsubscribe(); userListenerUnsubscribe = null; }
