@@ -5421,29 +5421,10 @@ window.adminPromptNotification = function(userId) {
             return;
         }
 
-        // Load latest 3 courses from Firestore (cached by SyncManager)
-        if (!libCourseCache.length) {
-            try {
-                const lc = await sync.query('unicourses', [limit(2)]) || [];
-                libCourseCache = lc.sort((a, b) => {
-                    const lvA = parseInt(a.level) || 0;
-                    const lvB = parseInt(b.level) || 0;
-                    return lvA !== lvB ? lvA - lvB : (a.id || '').localeCompare(b.id || '');
-                });
-                uniCourses = libCourseCache; // keep outer var in sync for legacy compat
-            } catch (e) {
-                console.error(e);
-                document.getElementById('libGrid').innerHTML = `
-                    <div class="empty-state">
-                        <span class="material-icons-round">error_outline</span>
-                        <div class="empty-title">Failed to load library</div>
-                        <div class="empty-desc">${e.message}</div>
-                    </div>`;
-                return;
-            }
-        }
-
-        renderLibGrid();
+        // Search-only library — no course listing loaded.
+        // Student types a course code/title and hits Enter → 1 doc read.
+        libCourseCache = [];  // Clear any cached data
+        renderLibGrid();  // Shows the empty/search-prompt state
     }
 
     function renderLibGrid() {
@@ -5451,39 +5432,53 @@ window.adminPromptNotification = function(userId) {
         if (!grid) return;
 
         const q = libQuery.toLowerCase().trim();
-        const filtered = libCourseCache.filter(c =>
-            !q ||
-            c.id.toLowerCase().includes(q) ||
-            c.title.toLowerCase().includes(q) ||
-            (c.level || '').toLowerCase().includes(q)
-        );
 
-        if (!filtered.length) {
+        if (!q) {
+            // Show search prompt
             grid.innerHTML = `
                 <div class="empty-state">
-                    <span class="material-icons-round">search_off</span>
-                    <div class="empty-title">No results for "${libQuery}"</div>
-                    <div class="empty-desc">Try a different course code or keyword.</div>
+                    <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;">search</span>
+                    <div class="empty-title">Search for a Course</div>
+                    <div class="empty-desc">Type a course code (e.g., GST 101) or title above, then press Enter.</div>
                 </div>`;
             return;
         }
 
-        grid.innerHTML = filtered.map(c => `
-            <div class="card course-card">
-                <div class="card-eyebrow">
-                    <span class="course-code">${c.id.toUpperCase()}</span>
-                    ${c.level ? `<span class="level-tag">${c.level}</span>` : ''}
-                </div>
-                <div class="card-title">${c.title}</div>
-                <div class="card-desc">
-                    ${c.description || `${c.topicCount} topic${c.topicCount !== 1 ? 's' : ''} available`}
-                </div>
-                <button class="btn btn-primary btn-block"
-                    onclick="window.openCourse('${encodeURIComponent(c.id)}', '${encodeURIComponent(c.title)}')">
-                    <span class="material-icons-round">play_arrow</span> Enter Course
-                </button>
-            </div>
-        `).join('');
+        // Search by document ID — 1 doc read
+        (async () => {
+            try {
+                const courseDoc = await sync.doc('unicourses/' + q.replace(/\s+/g, ''));
+                if (courseDoc && courseDoc.title) {
+                    const c = { id: q.replace(/\s+/g, ''), ...courseDoc };
+                    grid.innerHTML = `
+                    <div class="card course-card" style="cursor:pointer;" onclick="window.loadTopics('${c.id}', '${(c.title||'').replace(/'/g, "\\'")}')">
+                        <div class="card-eyebrow">
+                            <span class="course-code">${c.id.toUpperCase()}</span>
+                            ${c.level ? `<span class="level-tag">${c.level}</span>` : ''}
+                        </div>
+                        <div class="card-title">${c.title}</div>
+                        <div class="card-desc">${c.description || ''}</div>
+                        <button class="btn btn-primary btn-block">
+                            <span class="material-icons-round">play_arrow</span> Enter Course
+                        </button>
+                    </div>`;
+                } else {
+                    grid.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-icons-round">search_off</span>
+                        <div class="empty-title">Course not found</div>
+                        <div class="empty-desc">No course matches "${q}". Try a different code (e.g., GST 101, MTH 101).</div>
+                    </div>`;
+                }
+            } catch(e) {
+                grid.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-icons-round">error_outline</span>
+                    <div class="empty-title">Search failed</div>
+                    <div class="empty-desc">${e.message}</div>
+                </div>`;
+            }
+        })();
     }
 
     function attachLibEvents() {
@@ -5527,7 +5522,13 @@ window.adminPromptNotification = function(userId) {
         });
 
         libSearch.addEventListener('keydown', e => {
-            if (e.key === 'Escape' || e.key === 'Enter') suggPanel.style.display = 'none';
+            if (e.key === 'Escape') suggPanel.style.display = 'none';
+            // Search on Enter
+            if (e.key === 'Enter') {
+                libQuery = libSearch.value.trim();
+                suggPanel.style.display = 'none';
+                renderLibGrid();  // This now searches Firestore
+            }
         });
 
         document.addEventListener('click', e => {
@@ -7514,7 +7515,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         if (window._regListener) { try { window._regListener(); } catch(e) {} }
 
         window._regListener = onSnapshot(
-            query(collection(db, 'subscription_events/' + eventId + '/registrations'), orderBy('registeredAt', 'desc')),
+            collection(db, 'subscription_events/' + eventId + '/registrations'),
             (snap) => {
                 // Reset counts
                 normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
