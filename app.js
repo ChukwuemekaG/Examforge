@@ -5346,6 +5346,30 @@ window.adminPromptNotification = function(userId) {
                     });
                 });
 
+                // Also append to _data/registrations doc (1 doc for all students, 0 reads)
+                try {
+                    await updateDoc(doc(db, 'subscription_events', eventId, '_data', 'registrations'), {
+                        students: arrayUnion({
+                            uid: uid,
+                            subjects: selected,
+                            displayName: auth.currentUser.displayName || '',
+                            email: auth.currentUser.email || '',
+                            registeredAt: new Date().toISOString()
+                        })
+                    });
+                } catch(e) {
+                    // Doc doesn't exist yet, create it
+                    await setDoc(doc(db, 'subscription_events', eventId, '_data', 'registrations'), {
+                        students: [{
+                            uid: uid,
+                            subjects: selected,
+                            displayName: auth.currentUser.displayName || '',
+                            email: auth.currentUser.email || '',
+                            registeredAt: new Date().toISOString()
+                        }]
+                    });
+                }
+
                 modal.remove();
                 window.showEFModal("Success", "Registration successful! You will be notified when your exams are ready.", "AWESOME", null, true);
 
@@ -7375,10 +7399,11 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                 }
                 
                 // 2. Find all registrations for this event
-                const regDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
+                const regDataDoc = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+                const regDocs = regDataDoc?.students || [];
                 const regData = {};
                 regDocs.forEach(r => {
-                    regData[r.id] = r.subjects || [];
+                    regData[r.uid] = r.subjects || [];
                 });
                 
                 const ev = await sync.doc('subscription_events/' + eventId);
@@ -7617,11 +7642,12 @@ window.mcViewSubEventDetails = async function(eventId) {
             </div>
         `;
         
-        // ── Registration count via getCountFromServer (1 read, regardless of count) ──
+        // ── Registration count via sync.doc read from _data/registrations (1 read, all students) ──
         let totalRegistrations = 0;
         try {
-            const countSnap = await getCountFromServer(collection(db, 'subscription_events/' + eventId + '/registrations'));
-            totalRegistrations = countSnap.data().count;
+            const regDataDoc = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+            const allStudents = regDataDoc?.students || [];
+            totalRegistrations = allStudents.length;
         } catch(e) {
             console.error('Count error:', e);
         }
@@ -7741,8 +7767,9 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
     
     try {
         // 1. Fetch all registrations
-        const registrationDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
-        const registrations = registrationDocs.map(r => ({ uid: r.id, ...r }));
+        const regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+        const registrationDocs = regData?.students || [];
+        const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
         
         if (registrations.length === 0) {
             container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:0.8rem;">No students registered yet.</div>';
@@ -7894,8 +7921,9 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
 
 window.mcExportRegTableCSV = async function(eventId) {
     try {
-        const registrationDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
-        const registrations = registrationDocs.map(r => ({ uid: r.id, ...r }));
+        const regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+        const registrationDocs = regData?.students || [];
+        const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
         if (registrations.length === 0) return window.showEFModal("No Data", "No registered students.", "OK", null, true);
         
         const ev = await sync.doc('subscription_events/' + eventId);
@@ -7975,8 +8003,9 @@ window.mcExportRegTableCSV = async function(eventId) {
 
 window.mcExportRegTablePDF = async function(eventId) {
     try {
-        const registrationDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
-        const registrations = registrationDocs.map(r => ({ uid: r.id, ...r }));
+        const regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+        const registrationDocs = regData?.students || [];
+        const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
         if (registrations.length === 0) return window.showEFModal("No Data", "No registered students.", "OK", null, true);
         
         const ev = await sync.doc('subscription_events/' + eventId);
@@ -8500,10 +8529,11 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
     window.showEFModal("Release Mock", `Are you sure you want to release the ${subject} mock to all registered students?`, "RELEASE", async () => {
         try {
             // 1. Find all students who registered for this subject
-            const regDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
+            const regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+            const regDocs = regData?.students || [];
             const uids = [];
             regDocs.forEach(r => {
-                if (r.subjects && r.subjects.includes(subject)) uids.push(r.id);
+                if (r.subjects && r.subjects.includes(subject)) uids.push(r.uid);
             });
             
             if (uids.length === 0) {
