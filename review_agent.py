@@ -74,7 +74,7 @@ Rules:
 - Do **not** include any text outside the JSON object.
 """.strip()
 
-DEFAULT_MODEL = "deepseek-chat"
+DEFAULT_MODEL = "deepseek-v4-flash"
 
 # Directories and extensions to skip when reviewing a project
 IGNORE_DIRS = {
@@ -136,8 +136,6 @@ TEXT_EXTENSIONS = {
     ".kt",
     ".gradle",
     ".properties",
-    ".tsx",
-    ".jsx",
     ".mjs",
     ".cjs",
     ".mts",
@@ -407,6 +405,8 @@ def review_changes(
     total_issues = 0
     scores: List[int] = []
     total_cost = 0.0
+    batched_count = 0
+    total_to_review = len(files_changed)
 
     for file_path in files_changed:
         # Resolve the file path
@@ -511,6 +511,14 @@ def review_changes(
             "content": _format_review_text(display_path, score, sanitised_issues, summary),
         }
 
+        batched_count += 1
+        if batched_count % 5 == 0 or batched_count == total_to_review:
+            avg_score_current = round(sum(scores) / len(scores), 1) if scores else 0
+            yield {
+                "type": "thinking",
+                "content": f"📊 Review progress: {batched_count}/{total_to_review} files complete ({avg_score_current:.0f}% avg score so far).",
+            }
+
     # ── Compute aggregate stats ─────────────────────────────────
     avg_score = round(sum(scores) / len(scores), 1) if scores else 0
 
@@ -605,10 +613,6 @@ def review_project(
     # ── Delegate to review_changes ───────────────────────────────
     # We iterate through review_changes and re-yield its events,
     # ensuring a consistent top-level done event with project-level stats.
-    total_issues = 0
-    total_cost = 0.0
-    scores: List[int] = []
-
     for event in review_changes(relative_paths, task, model=model):
         if event["type"] == "done":
             # Capture the aggregate stats from the sub-generator
@@ -625,7 +629,6 @@ def review_project(
                 "cost": round(total_cost, 8),
             }
         elif event["type"] == "review":
-            scores.append(event.get("score", 100))
             yield event
         else:
             yield event
