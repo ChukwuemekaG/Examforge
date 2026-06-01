@@ -270,7 +270,7 @@ window.updateDashboardUI = function() {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        const courses = await sync.query('unicourses', [orderBy('id', 'asc'), limit(3)]) || [];
+        const courses = await sync.query('unicourses', [limit(3)]) || [];
         coursesListDiv.innerHTML = ""; // Clear loading text
 
         // Loop through each course
@@ -1222,7 +1222,7 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        const courses = await sync.query('unicourses', [orderBy('id', 'asc'), limit(2)]) || [];
+        const courses = await sync.query('unicourses', [limit(2)]) || [];
         const el = id => document.getElementById(id);
         // User count removed to eliminate getCountFromServer reads
         if (el('mc-s-users')) el('mc-s-users').textContent = '-';
@@ -1419,8 +1419,8 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const courses = await sync.query('unicourses', [orderBy('id', 'asc'), limit(2)]) || [];
-            courses.sort((a,b)=>a.id.localeCompare(b.id));
+            const courses = await sync.query('unicourses', [limit(2)]) || [];
+            courses.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
             if (!courses.length) {
@@ -5538,11 +5538,11 @@ window.adminPromptNotification = function(userId) {
         // Load latest 3 courses from Firestore (cached by SyncManager)
         if (!libCourseCache.length) {
             try {
-                const lc = await sync.query('unicourses', [orderBy('id', 'asc'), limit(3)]) || [];
+                const lc = await sync.query('unicourses', [limit(3)]) || [];
                 libCourseCache = lc.sort((a, b) => {
                     const lvA = parseInt(a.level) || 0;
                     const lvB = parseInt(b.level) || 0;
-                    return lvA !== lvB ? lvA - lvB : a.id.localeCompare(b.id);
+                    return lvA !== lvB ? lvA - lvB : (a.id || '').localeCompare(b.id || '');
                 });
                 uniCourses = libCourseCache; // keep outer var in sync for legacy compat
             } catch (e) {
@@ -7607,11 +7607,6 @@ window.mcViewSubEventDetails = async function(eventId) {
         </div>`;
     document.body.appendChild(overlay);
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
-    
-    // Force refresh event doc before loading
-    try {
-        await sync.refresh('subscription_events/' + eventId);
-    } catch(e) {}
     
     try {
         const ev = await sync.doc('subscription_events/' + eventId);
