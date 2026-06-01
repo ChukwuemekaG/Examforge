@@ -5585,13 +5585,20 @@ window.adminPromptNotification = function(userId) {
         if (!libCourseCache.length) {
             try {
                 const allCourses = await sync.collection('unicourses');
-                // Fetch topic counts in parallel
+                // Fetch topic counts in parallel — check topicCount field on doc first (0 extra reads)
                 const courses = await Promise.all(allCourses.map(async c => {
-                    let topicCount = 0;
-                    try {
-                        const topics = await sync.collection('unicourses/' + c.id + '/topics');
-                        topicCount = topics.length;
-                    } catch (_) {}
+                    let topicCount = c.topicCount || 0;
+                    // If topicCount is missing from the doc, fetch topics once
+                    if (!topicCount) {
+                        try {
+                            const topics = await sync.collection('unicourses/' + c.id + '/topics');
+                            topicCount = topics.length;
+                            // Silently persist topicCount to the course doc for future single-read loads
+                            if (topicCount > 0) {
+                                updateDoc(doc(db, 'unicourses', c.id), { topicCount }).catch(() => {});
+                            }
+                        } catch (_) {}
+                    }
                     return {
                         id: c.id,
                         title: c.title || c.id.toUpperCase(),
