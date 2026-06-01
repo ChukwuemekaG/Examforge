@@ -2833,26 +2833,23 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             </div>
         `;
 
-        // ── Real-time attempts listener ──
-        const attemptsQuery = query(collection(db, 'daily_quizzes', dqid, 'attempts'), orderBy('timestamp', 'desc'));
-        let attemptsListener = onSnapshot(attemptsQuery, (snap) => {
-            const newAttempts = snap.docs.map(d => d.data());
-            const newCount = newAttempts.length;
-            let newAvg = 0;
-            if (newCount > 0) {
-                newAvg = Math.round(newAttempts.reduce((s, a) => s + (a.score || 0), 0) / newCount);
-            }
-            
-            // Update summary stats
-            const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
-            const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
-            if (countEl) countEl.textContent = newCount;
-            if (avgEl) avgEl.textContent = newAvg + '%';
-            
-            // Rebuild table rows
-            const tbody = document.getElementById('ef-dq-det-body')?.querySelector('table tbody');
-            if (!tbody) return;
-            
+        // ── One-time attempts fetch (cache-first, no real-time listener) ──
+        const newAttempts = await sync.query('daily_quizzes/' + dqid + '/attempts', [orderBy('timestamp', 'desc')]) || [];
+        const newCount = newAttempts.length;
+        let newAvg = 0;
+        if (newCount > 0) {
+            newAvg = Math.round(newAttempts.reduce((s, a) => s + (a.score || 0), 0) / newCount);
+        }
+
+        // Update summary stats
+        const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
+        const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
+        if (countEl) countEl.textContent = newCount;
+        if (avgEl) avgEl.textContent = newAvg + '%';
+
+        // Build table
+        const tbody = document.getElementById('ef-dq-det-body')?.querySelector('table tbody');
+        if (tbody) {
             if (newCount === 0) {
                 tbody.innerHTML = '';
                 const container = tbody.closest('[data-at]');
@@ -2863,36 +2860,25 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                         <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz.</div>
                     </div>`;
                 }
-                return;
+            } else {
+                tbody.innerHTML = newAttempts.map(a => {
+                    const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
+                    const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
+                    const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
+                    return `
+                    <tr style="border-bottom:1.5px solid var(--border);">
+                        <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
+                            ${a.displayName}
+                            <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
+                        </td>
+                        <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
+                            <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
+                        </td>
+                        <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
+                        <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
+                    </tr>`;
+                }).join('');
             }
-            
-            tbody.innerHTML = newAttempts.map(a => {
-                const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
-                const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
-                const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
-                return `
-                <tr style="border-bottom:1.5px solid var(--border);">
-                    <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
-                        ${a.displayName}
-                        <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
-                    </td>
-                    <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
-                        <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
-                    </td>
-                    <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
-                    <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
-                </tr>`;
-            }).join('');
-        });
-        
-        // Clean up listener when overlay is removed
-        const detOverlay = document.getElementById('ef-dq-details-overlay');
-        if (detOverlay) {
-            const origClose = detOverlay.remove.bind(detOverlay);
-            detOverlay.remove = function() {
-                if (attemptsListener) attemptsListener();
-                origClose();
-            };
         }
 
         if (attemptCount > 0) {
