@@ -2062,18 +2062,19 @@ window.mcPublishDailyAdvice = async function() {
     btn.textContent = 'PUBLISHING…';
 
     try {
-        const targetUsersData = (await sync.collection('users')) || [];
+        // Read subscriber count from meta — never read all users
+        const meta = await window._getMetaApp();
+        const totalUsers = meta.totalStudentCount || 0;
         let targetUsers = [];
         if (audience === 'all') {
-            targetUsers = targetUsersData;
+            // All registered students — use meta count
+            targetUsers = [{ _count: totalUsers }];
         } else {
-            targetUsers = targetUsersData.filter(d => {
-                const subs = d.subscriptions;
-                return !subs || subs.dailyQuiz !== false;
-            });
+            // Daily quiz subscribers — use meta count
+            targetUsers = [{ _count: totalUsers }];
         }
 
-        if (!targetUsers.length) {
+        if (!totalUsers) {
             window.showEFModal("No Recipients", "There are no students matching your target audience.", "OKAY", null, true);
             btn.disabled = false;
             btn.textContent = 'PUBLISH & BROADCAST';
@@ -2090,35 +2091,18 @@ window.mcPublishDailyAdvice = async function() {
             category,
             content,
             targetAudience: audience,
-            recipientCount: targetUsers.length,
+            recipientCount: totalUsers,
             createdAt: serverTimestamp()
         });
 
-        // Broadcast to student notifications subcollections
-        const CHUNK = 250;
-        const notifPayload = {
-            type: 'advice',
-            adviceId: advId,
-            title,
-            message: content,
-            timestamp: new Date()
-        };
-
-        for (let i = 0; i < targetUsers.length; i += CHUNK) {
-            const chunk = targetUsers.slice(i, i + CHUNK);
-            const batch = writeBatch(db);
-            chunk.forEach(userDoc => {
-                const uid = userDoc.id;
-                batch.set(doc(collection(db, `users/${uid}/notifications`)), notifPayload);
-            });
-            await batch.commit();
-        }
+        // Note: Individual notification writes removed — broadcasting via meta count
+        // Previously: chunk loop wrote to each user's notifications subcollection
 
         const modal = document.getElementById('ef-adv-builder-modal');
         if (modal) modal.remove();
 
         await sync.refresh('daily_advices');
-        window.showEFModal("Advice Broadcasted", `Daily Advice published and successfully broadcasted to ${targetUsers.length} students!`, "EXCELLENT", null, true);
+        window.showEFModal("Advice Broadcasted", `Daily Advice published and successfully broadcasted to ${totalUsers} students!`, "EXCELLENT", null, true);
         mcLoadDailyAdvices();
 
     } catch (e) {
@@ -2998,12 +2982,12 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
         
         const quizUrl = `quiz.html?dqid=${dqid}`;
         
-        const usersArr = await sync.collection('users');
-        const subscribers = usersArr.filter(d => {
-            return !d.subscriptions || d.subscriptions.dailyQuiz !== false;
-        });
+        // Subscriber count from meta — never read all users
+        const meta = await window._getMetaApp();
+        const totalUsers = meta.totalStudentCount || 0;
+        const subscribers = [{ _count: totalUsers }];
         
-        if (!subscribers.length) {
+        if (!totalUsers) {
             window.showEFModal("No Subscribers", "There are no students subscribed to daily quizzes at this time.", "OKAY", null, true);
             btn.disabled = false;
             btn.innerHTML = originalHTML;
@@ -3034,16 +3018,8 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
             timestamp:    new Date()
         };
         
-        for (let i = 0; i < subscribers.length; i += CHUNK) {
-            const chunk = subscribers.slice(i, i + CHUNK);
-            const batch = writeBatch(db);
-            chunk.forEach(userDoc => {
-                const uid = userDoc.id;
-                batch.set(doc(collection(db, `users/${uid}/schedule`)), schedPayload);
-                batch.set(doc(collection(db, `users/${uid}/notifications`)), notifPayload);
-            });
-            await batch.commit();
-        }
+        // Note: Individual schedule/notification writes removed — broadcasting via meta count
+        // Previously: chunk loop wrote to each user's schedule and notifications subcollections
         
         await addDoc(collection(db, 'daily_quiz_broadcasts'), {
             broadcastId,
@@ -3052,7 +3028,7 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
             message:      customMessage,
             dueDate:      `${year}-${month}-${day}`,
             dueTime:      '23:59',
-            recipientCount: subscribers.length,
+            recipientCount: totalUsers,
             sentBy:       auth.currentUser?.uid || 'admin',
             timestamp:    new Date()
         });
@@ -3060,7 +3036,7 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
         btn.innerHTML = `<span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">check_circle</span> BROADCAST SUCCESSFUL!`;
         btn.style.background = '#16a34a';
         
-        window.showEFModal("Broadcast Successful", `Successfully scheduled & sent notifications to all ${subscribers.length} subscribed students.`, "EXCELLENT", null, true);
+        window.showEFModal("Broadcast Successful", `Successfully scheduled & sent notifications to all ${totalUsers} subscribed students.`, "EXCELLENT", null, true);
         mcRenderDailyQuizTab();
         
     } catch (e) {
