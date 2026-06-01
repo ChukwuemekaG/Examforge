@@ -298,21 +298,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const subjects = await Promise.all(courseIds.map(async (courseId, i) => {
-                    const topicsData = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
-                    let allQuestions = [], totalTimeLimit = 0;
-                    let anyNoCorrection = false;
-                    topicsData.forEach(d => {
-                        allQuestions.push(...(d.questions || []));
-                        totalTimeLimit += (d.timeLimit || 0);
-                        if (d.isCorrection === false) anyNoCorrection = true;
-                    });
-
-                    let courseTitle = rawTitles[i] || courseId.toUpperCase();
-                    try {
-                        const courseData = await sync.doc('unicourses/' + courseId);
-                        if (courseData) courseTitle = rawTitles[i] || courseData.title || courseId.toUpperCase();
-                    } catch (_) {}
-
+                    // Read course doc (1 read, has allQuestions field)
+                    const courseData = await sync.doc('unicourses/' + courseId);
+                    if (!courseData) {
+                        return { id: i, title: courseId.toUpperCase(), questions: [], userAnswers: [], currentQIdx: 0, timeSeconds: 0 };
+                    }
+                    
+                    let allQuestions = courseData.allQuestions || [];
+                    let totalTimeLimit = courseData.totalTimeLimit || 0;
+                    let anyNoCorrection = courseData.isCorrection === false;
+                    let courseTitle = rawTitles[i] || courseData.title || courseId.toUpperCase();
+                    
+                    // Fallback for courses without allQuestions (legacy data, one-time cost)
+                    if (!allQuestions.length) {
+                        const topicsData = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
+                        topicsData.forEach(d => {
+                            allQuestions.push(...(d.questions || []));
+                            totalTimeLimit += (d.timeLimit || 0);
+                            if (d.isCorrection === false) anyNoCorrection = true;
+                        });
+                        // Cache in course doc for future 1-read access
+                        try {
+                            await updateDoc(doc(db, 'unicourses', courseId), {
+                                allQuestions, totalTimeLimit, isCorrection: !anyNoCorrection
+                            });
+                        } catch(e) { console.error('Failed to cache allQuestions:', e); }
+                    }
+                    
                     const selected = [...allQuestions].sort(() => 0.5 - Math.random()).slice(0, Math.min(40, allQuestions.length));
                     return {
                         id: i, title: courseTitle,
@@ -349,24 +361,41 @@ document.addEventListener('DOMContentLoaded', () => {
             let subjectTitle = rawTitle || courseId.toUpperCase();
 
             if (topicId === '__full__') {
-                const topicsData = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
-                let anyStrict = false, anyMock = false, anyNoCorrection = false;
-                topicsData.forEach(d => {
-                    allQuestions.push(...(d.questions || []));
-                    totalTimeLimit += (d.timeLimit || 0);
-                    if (d.isStrict)            anyStrict      = true;
-                    if (d.isMock)              anyMock        = true;
-                    if (d.isCorrection===false) anyNoCorrection = true;
-                });
+                const courseData = await sync.doc('unicourses/' + courseId);
+                if (!courseData) throw new Error('Course not found');
+                
+                // Try allQuestions field (1 read for everything)
+                const cachedQuestions = courseData.allQuestions || [];
+                let anyStrict = courseData.isStrict || false;
+                let anyMock = courseData.isMock || false;
+                let anyNoCorrection = courseData.isCorrection === false;
+                totalTimeLimit = courseData.totalTimeLimit || 40;
+                subjectTitle = (courseData.title || courseId.toUpperCase()) + ' — Full Exam';
+                
+                if (cachedQuestions.length) {
+                    // allQuestions cached — 1 read done, use it directly
+                    allQuestions = cachedQuestions;
+                } else {
+                    // Fallback for courses without allQuestions (legacy data, one-time cost)
+                    const topicsData = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
+                    topicsData.forEach(d => {
+                        allQuestions.push(...(d.questions || []));
+                        totalTimeLimit += (d.timeLimit || 0);
+                        if (d.isStrict)            anyStrict      = true;
+                        if (d.isMock)              anyMock        = true;
+                        if (d.isCorrection===false) anyNoCorrection = true;
+                    });
+                    // Cache in course doc for future 1-read access
+                    try {
+                        await updateDoc(doc(db, 'unicourses', courseId), {
+                            allQuestions, totalTimeLimit, isStrict: anyStrict, isMock: anyMock, isCorrection: !anyNoCorrection
+                        });
+                    } catch(e) { console.error('Failed to cache allQuestions:', e); }
+                }
+                
                 examState.isStrict      = anyStrict || anyMock;
                 examState.isMock        = anyMock;
                 examState._isCorrection = !anyNoCorrection;
-                if (!rawTitle) {
-                    try {
-                        const courseData = await sync.doc('unicourses/' + courseId);
-                        if (courseData) subjectTitle = (courseData.title || courseId.toUpperCase()) + ' — Full Exam';
-                    } catch (_) {}
-                }
             } else {
                 const d = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
                 if (!d) throw new Error(`Topic '${topicId}' not found.`);
