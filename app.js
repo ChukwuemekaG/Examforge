@@ -940,39 +940,85 @@ function setupAdminListeners() {
         workspace.scrollTop = 0;
         document.documentElement.scrollTop = 0;
 
-        // Reveal bottom nav and notification bell after every page render
-        setTimeout(() => {
-            // Hide preloader instantly — syncs with nav/bell reveal
-            const preloader = document.getElementById('app-preloader');
-            if (preloader) {
-                preloader.style.display = 'none';
-            }
-            // Show bottom nav and notification bell on mobile
-            if (window.innerWidth <= 768) {
-                const navEl = document.getElementById('bottomNav');
-                if (navEl) navEl.style.display = 'flex';
-                const notifEl = document.getElementById('ef-notif-floating');
-                if (notifEl) notifEl.style.display = 'flex';
-            }
-        }, 2000);
-
         const state = { view, params };
         const url = '#' + view + (params.course ? '/' + encodeURIComponent(params.course) : '');
         if (replace) history.replaceState(state, '', url);
         else history.pushState(state, '', url);
 
-        switch (view) {
-            case 'dashboard': renderDashboard(); break;
-            case 'master': renderMaster(); break;
-            case 'subscriptions': renderSubscriptions(); break;
-            case 'library': renderLibrary(); break; // async, intentionally not awaited at router level
-            case 'topics': renderTopics(params); break;
-            case 'schedule': renderSchedule(); break; // async, intentionally not awaited
-            case 'results': renderResults(); break;
-            case 'inbox': renderInbox(); break;
-            case 'settings': renderSettings(); break;
-            default: renderDashboard();
-        }
+        // ─── TIMEOUT PROTECTION: Hide preloader after max 5 seconds, even if render hangs ───
+        let renderFinished = false;
+        let timeoutId = setTimeout(() => {
+            if (!renderFinished) {
+                console.warn(`[Navigate] Render for "${view}" exceeded 5s timeout — hiding preloader anyway`);
+                const preloader = document.getElementById('app-preloader');
+                if (preloader) {
+                    preloader.style.display = 'none';
+                }
+                // Show bottom nav and notification bell on mobile
+                if (window.innerWidth <= 768) {
+                    const navEl = document.getElementById('bottomNav');
+                    if (navEl) navEl.style.display = 'flex';
+                    const notifEl = document.getElementById('ef-notif-floating');
+                    if (notifEl) notifEl.style.display = 'flex';
+                }
+                // Show error if workspace is still empty
+                if (!workspace.innerHTML || workspace.innerHTML.trim() === '') {
+                    workspace.innerHTML = `<div style="padding:32px; text-align:center; color:var(--brand);">
+                        <div style="font-weight:700; margin-bottom:8px;">Page took too long to load</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:16px;">Check your internet connection and try refreshing the page.</div>
+                        <button class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
+                    </div>`;
+                }
+            }
+        }, 5000);
+
+        // Render and mark complete
+        (async () => {
+            try {
+                switch (view) {
+                    case 'dashboard': await renderDashboard(); break;
+                    case 'master': await renderMaster(); break;
+                    case 'subscriptions': await renderSubscriptions(); break;
+                    case 'library': await renderLibrary(); break;
+                    case 'topics': await renderTopics(params); break;
+                    case 'schedule': await renderSchedule(); break;
+                    case 'results': await renderResults(); break;
+                    case 'inbox': await renderInbox(); break;
+                    case 'settings': await renderSettings(); break;
+                    default: await renderDashboard();
+                }
+                renderFinished = true;
+                clearTimeout(timeoutId);
+                // Hide preloader only if we haven't timed out
+                const preloader = document.getElementById('app-preloader');
+                if (preloader) {
+                    preloader.style.display = 'none';
+                }
+                // Show bottom nav and notification bell on mobile
+                if (window.innerWidth <= 768) {
+                    const navEl = document.getElementById('bottomNav');
+                    if (navEl) navEl.style.display = 'flex';
+                    const notifEl = document.getElementById('ef-notif-floating');
+                    if (notifEl) notifEl.style.display = 'flex';
+                }
+            } catch (error) {
+                console.error(`[Navigate] Error rendering "${view}":`, error);
+                renderFinished = true;
+                clearTimeout(timeoutId);
+                const preloader = document.getElementById('app-preloader');
+                if (preloader) {
+                    preloader.style.display = 'none';
+                }
+                // Show error message
+                if (!workspace.innerHTML || workspace.innerHTML.includes('Loading')) {
+                    workspace.innerHTML = `<div style="padding:32px; text-align:center; color:var(--brand);">
+                        <div style="font-weight:700; margin-bottom:8px;">Failed to load page</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">${error.message}</div>
+                        <button class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
+                    </div>`;
+                }
+            }
+        })();
     }
     window.efNavigate = navigate;
 
@@ -4799,11 +4845,12 @@ window.adminPromptNotification = function(userId) {
 };
 
     async function renderDashboard() {
-        renderLoading(" ");
-        
-        // ─── Fetch fresh user data for accurate stats and schedule ───
         try {
-            const freshData = await sync.doc('users/' + auth.currentUser.uid);
+            renderLoading(" ");
+            
+            // ─── Fetch fresh user data for accurate stats and schedule ───
+            try {
+                const freshData = await sync.doc('users/' + auth.currentUser.uid);
             if (freshData) {
                 // Map flat Firestore doc to userData structure
                 userData.stats = {
@@ -5069,6 +5116,14 @@ window.adminPromptNotification = function(userId) {
             </div>
     `;
         fixTwoCol();
+        } catch (error) {
+            console.error('[renderDashboard] Fatal error:', error);
+            workspace.innerHTML = `<div style="padding:32px; text-align:center; color:var(--brand);">
+                <div style="font-weight:700; margin-bottom:8px; font-size:1.1rem;">Oops! Dashboard couldn't load</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:16px;">${error.message}</div>
+                <button class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
+            </div>`;
+        }
     }
 
     function fixTwoCol() {
