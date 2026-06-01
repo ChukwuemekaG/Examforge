@@ -222,6 +222,73 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window._metaApp) window._metaApp[field] = data;
     };
 
+    /**
+     * Ensures _meta/app is populated by doing a one-time read from collections.
+     * This runs ONCE — after this, all reads come from the cached meta doc.
+     */
+    window._ensureMetaApp = async function() {
+        const meta = await window._getMetaApp();
+        // If meta is already populated, skip
+        if (meta.courses.length > 0 || meta.dailyQuizzes.length > 0 || 
+            meta.dailyAdvices.length > 0 || meta.subscriptionEvents.length > 0) {
+            return;
+        }
+        
+        // One-time population from collections (this is the ONLY time we read collections)
+        try {
+            const [courses, quizzes, advices, events] = await Promise.all([
+                sync.collection('unicourses').catch(() => []),
+                sync.collection('daily_quizzes').catch(() => []),
+                sync.collection('daily_advices').catch(() => []),
+                sync.collection('subscription_events').catch(() => [])
+            ]);
+            
+            // Also get user count
+            let userCount = 0;
+            try {
+                const users = await sync.collection('users');
+                userCount = users.length;
+            } catch(e) {}
+            
+            const appData = {
+                courses: courses.map(c => ({
+                    id: c.id,
+                    title: c.title || c.id,
+                    level: c.level || '',
+                    description: c.description || '',
+                    topicCount: c.topicCount || 0
+                })),
+                dailyQuizzes: quizzes.map(q => ({
+                    id: q.id,
+                    title: q.title || '',
+                    createdAt: q.createdAt || null,
+                    date: q.date || '',
+                    duration: q.duration || 30,
+                    active: q.active !== false
+                })),
+                dailyAdvices: advices.map(a => ({
+                    id: a.id,
+                    title: a.title || '',
+                    content: a.content || '',
+                    createdAt: a.createdAt || null,
+                    category: a.category || ''
+                })),
+                subscriptionEvents: events.map(e => ({
+                    id: e.id,
+                    title: e.title || '',
+                    createdAt: e.createdAt || null,
+                    active: e.active !== false
+                })),
+                totalStudentCount: userCount
+            };
+            
+            await setDoc(doc(db, '_meta', 'app'), appData);
+            window._metaApp = appData;
+        } catch(e) {
+            console.error('Failed to populate _meta/app:', e);
+        }
+    };
+
     // Firebase User Data State
     let currentUser = null;
     let userData = {
@@ -691,6 +758,8 @@ function setupAdminListeners() {
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
                 // ─── Warm caches in background for instant view loads ───
                 sync.doc('users/' + user.uid).catch(() => {});  // Just read the user doc to warm cache
+                // Populate meta app silently in background
+                window._ensureMetaApp().catch(() => {});
                 // Admin collections are loaded on demand when the admin tab is opened
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
@@ -2095,6 +2164,11 @@ window.mcPublishDailyAdvice = async function() {
             createdAt: serverTimestamp()
         });
 
+        // Update meta app
+        const meta = await window._getMetaApp();
+        meta.dailyAdvices.push({ id: advId, title, content, createdAt: serverTimestamp(), category });
+        await window._updateMetaField('dailyAdvices', meta.dailyAdvices);
+
         // Note: Individual notification writes removed — broadcasting via meta count
         // Previously: chunk loop wrote to each user's notifications subcollection
 
@@ -2587,6 +2661,11 @@ window.mcSaveCreatedDailyQuiz = async function() {
             maxAttempts: maxAttempts,
             createdAt: serverTimestamp()
         });
+        
+        // Update meta app
+        const meta = await window._getMetaApp();
+        meta.dailyQuizzes.push({ id: dqid, title, createdAt: serverTimestamp(), date: '', duration: time, active: true });
+        await window._updateMetaField('dailyQuizzes', meta.dailyQuizzes);
         
         const modal = document.getElementById('ef-dq-builder-modal');
         if (modal) modal.remove();
@@ -3348,6 +3427,13 @@ window.mcOpenCreateCourseModal = function() {
         if (!id || !title) return alert('Please fill all fields.');
         try {
             await setDoc(doc(db,'unicourses',id), { title, level, createdAt: new Date() });
+            // Update meta app
+            const meta = await window._getMetaApp();
+            const courseSummary = { id, title: title || id, level: level || '', description: '', topicCount: 0 };
+            const existingIdx = meta.courses.findIndex(c => c.id === id);
+            if (existingIdx >= 0) meta.courses[existingIdx] = courseSummary;
+            else meta.courses.push(courseSummary);
+            await window._updateMetaField('courses', meta.courses);
             overlay.remove();
             mcRenderCoursesTab();
             mcLoadStats();
@@ -4667,6 +4753,11 @@ window.mcDeleteCourse = function(courseId, courseTitle) {
                 // Delete the main course doc
                 batch.delete(doc(db, 'unicourses', courseId));
                 await batch.commit();
+                
+                // Update meta app
+                const meta = await window._getMetaApp();
+                meta.courses = meta.courses.filter(c => c.id !== courseId);
+                await window._updateMetaField('courses', meta.courses);
 
                 window.showEFModal("Course Deleted", `The course "${courseTitle}" has been deleted successfully.`, "OKAY", null, true);
                 mcRenderCoursesTab();
@@ -7360,7 +7451,7 @@ window.mcSaveSubEvent = async function() {
 
     try {
         const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        await addDoc(collection(db, 'subscription_events'), {
+        const eventRef = await addDoc(collection(db, 'subscription_events'), {
             title,
             description: desc,
             availableSubjects,
@@ -7369,6 +7460,12 @@ window.mcSaveSubEvent = async function() {
             durationDays: 30, // default 30 days for mocks to be valid
             createdAt: serverTimestamp()
         });
+        
+        // Update meta app
+        const meta = await window._getMetaApp();
+        meta.subscriptionEvents.push({ id: eventRef.id, title, createdAt: serverTimestamp(), active: true });
+        await window._updateMetaField('subscriptionEvents', meta.subscriptionEvents);
+        
         await sync.refresh('subscription_events');
         document.getElementById('ef-subevent-modal')?.remove();
         window.showEFModal("Event Created", "Subscription event created successfully.", "OK", null, true);
@@ -7388,6 +7485,12 @@ window.mcDeleteSubEvent = function(eventId, title) {
             try {
                 const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                 await deleteDoc(doc(db, 'subscription_events', eventId));
+                
+                // Update meta app
+                const meta = await window._getMetaApp();
+                meta.subscriptionEvents = meta.subscriptionEvents.filter(e => e.id !== eventId);
+                await window._updateMetaField('subscriptionEvents', meta.subscriptionEvents);
+                
                 await sync.refresh('subscription_events');
                 window.mcLoadSubEvents();
             } catch (e) {
