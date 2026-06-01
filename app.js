@@ -208,7 +208,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window._getMetaApp = async function() {
         if (window._metaApp) return window._metaApp;
         const data = await sync.doc('_meta/app');
-        window._metaApp = data || { dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], totalStudentCount: 0 };
+        window._metaApp = {
+            dailyQuizzes: (data && data.dailyQuizzes) || [],
+            dailyAdvices: (data && data.dailyAdvices) || [],
+            subscriptionEvents: (data && data.subscriptionEvents) || [],
+            totalStudentCount: (data && data.totalStudentCount) || 0
+        };
         return window._metaApp;
     };
 
