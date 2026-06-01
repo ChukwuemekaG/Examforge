@@ -131,11 +131,103 @@ document.addEventListener('DOMContentLoaded', () => {
     let uniCourses = [];
     let resultsTab = 'history'; // 'history' | 'subscriptions'
 
+    // ─── Cache-first data access helpers ───
+
+    /** 
+     * Reads user data (profile + schedule + inbox) from a single document.
+     * Returns { profile, schedule, inbox, recentResults }
+     * Cached by SyncManager — subsequent calls cost 0 reads.
+     */
+    window._getUserData = async function(uid) {
+        const userDoc = await sync.doc('users/' + uid);
+        if (!userDoc) return { profile: null, schedule: [], inbox: [], recentResults: [] };
+        return {
+            profile: userDoc,
+            schedule: userDoc.schedule || [],
+            inbox: userDoc.inbox || [],
+            recentResults: userDoc.recentResults || []
+        };
+    };
+
+    /**
+     * Adds a schedule item to the user's embedded schedule array.
+     * Reads current doc, appends, writes back.
+     */
+    window._addScheduleItem = async function(uid, item) {
+        const userRef = doc(db, 'users', uid);
+        await updateDoc(userRef, {
+            schedule: arrayUnion(item)
+        });
+    };
+
+    /**
+     * Removes a schedule item from the user's embedded schedule array by id.
+     */
+    window._removeScheduleItem = async function(uid, itemId) {
+        const userDoc = await sync.doc('users/' + uid);
+        if (!userDoc || !userDoc.schedule) return;
+        const updated = userDoc.schedule.filter(s => s.id !== itemId);
+        await updateDoc(doc(db, 'users', uid), { schedule: updated });
+    };
+
+    /**
+     * Adds a notification/inbox item to the user's embedded inbox array.
+     */
+    window._addInboxItem = async function(uid, item) {
+        const userRef = doc(db, 'users', uid);
+        await updateDoc(userRef, {
+            inbox: arrayUnion(item)
+        });
+    };
+
+    /**
+     * Removes inbox items by id (for "clear all" functionality).
+     */
+    window._clearInboxItems = async function(uid) {
+        await updateDoc(doc(db, 'users', uid), { inbox: [] });
+    };
+
+    /**
+     * Removes a single inbox item by id.
+     */
+    window._removeInboxItem = async function(uid, itemId) {
+        const userDoc = await sync.doc('users/' + uid);
+        if (!userDoc || !userDoc.inbox) return;
+        const updated = userDoc.inbox.filter(n => n.id !== itemId);
+        await updateDoc(doc(db, 'users', uid), { inbox: updated });
+    };
+
+    // ─── Meta App Doc — Admin panel data helpers ───
+
+    /**
+     * Reads the _meta/app document which contains all admin panel data.
+     * One doc read replaces 4+ collection reads.
+     * Cached by SyncManager — subsequent calls cost 0 reads.
+     */
+    window._metaApp = null;
+    window._getMetaApp = async function() {
+        if (window._metaApp) return window._metaApp;
+        const data = await sync.doc('_meta/app');
+        window._metaApp = data || { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+        return window._metaApp;
+    };
+
+    /**
+     * Syncs a specific array field to the _meta/app document.
+     * Only the field that changed is updated (Firestore field-level merge).
+     */
+    window._updateMetaField = async function(field, data) {
+        await setDoc(doc(db, '_meta', 'app'), { [field]: data }, { merge: true });
+        // Refresh in-memory cache
+        if (window._metaApp) window._metaApp[field] = data;
+    };
+
     // Firebase User Data State
     let currentUser = null;
     let userData = {
         results: [],
         schedule: [],
+        inbox: [],
         stats: { streak: 0, highestStreak: 0, rank: 'N/A', lastExamDate: null, exaRating: 800 }
     };
 // ─── Throttled cache refresh (prevents stale data without excessive reads) ───
@@ -486,6 +578,8 @@ function setupAdminListeners() {
                         exaRating: 800,
                         streak: 0,
                         highestStreak: 0,
+                        schedule: [],
+                        inbox: [],
                         createdAt: serverTimestamp(),
                         role: 'student'
                     });
