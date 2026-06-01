@@ -7505,53 +7505,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         
         document.getElementById('ef-se-det-title').textContent = ev.title;
         
-        // ── Real-time registrations listener (1 standard read initial sync, real-time units for updates) ──
-        let totalRegistrations = 0;
-        const subjectCounts = {};
         const normalizedSubjects = (ev.availableSubjects || []).map(s => mcNormalizeSubject(s));
-        normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
-
-        // Clean up previous listener if any
-        if (window._regListener) { try { window._regListener(); } catch(e) {} }
-
-        window._regListener = onSnapshot(
-            collection(db, 'subscription_events/' + eventId + '/registrations'),
-            (snap) => {
-                // Reset counts
-                normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
-                totalRegistrations = snap.size;
-                
-                snap.docs.forEach(d => {
-                    const r = d.data();
-                    if (r.subjects) r.subjects.forEach(s => {
-                        const sn = typeof s === 'string' ? s : (s.name || s);
-                        if (subjectCounts[sn] !== undefined) subjectCounts[sn]++;
-                    });
-                });
-                
-                // Update stats display
-                const countEl = document.getElementById('ef-se-det-total-reg');
-                if (countEl) countEl.textContent = totalRegistrations;
-                
-                // Update subject student counts
-                normalizedSubjects.forEach(s => {
-                    const el = document.getElementById('ef-se-det-subj-' + s.name.replace(/\s+/g, '-'));
-                    if (el) el.textContent = subjectCounts[s.name];
-                });
-                
-                // Update registered students table heading
-                const regHeading = document.getElementById('ef-se-det-reg-heading');
-                if (regHeading) regHeading.textContent = `(${totalRegistrations} total)`;
-                
-                // Re-render student table on changes
-                if (window.mcRenderRegStudentsTable) {
-                    window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
-                }
-            },
-            (error) => {
-                console.error('Registration listener error:', error);
-            }
-        );
         
         // Render UI
         let subjectHTML = normalizedSubjects.map(s => {
@@ -7665,6 +7619,53 @@ window.mcViewSubEventDetails = async function(eventId) {
                 ${broadcastBtn}
             </div>
         `;
+        
+        // ── Real-time registrations listener (set up AFTER HTML elements exist) ──
+        let totalRegistrations = 0;
+        const subjectCounts = {};
+        normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
+
+        // Clean up previous listener if any
+        if (window._regListener) { try { window._regListener(); } catch(e) {} }
+
+        window._regListener = onSnapshot(
+            collection(db, 'subscription_events/' + eventId + '/registrations'),
+            (snap) => {
+                // Reset counts
+                normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
+                totalRegistrations = snap.size;
+                
+                snap.docs.forEach(d => {
+                    const r = d.data();
+                    if (r.subjects) r.subjects.forEach(s => {
+                        const sn = typeof s === 'string' ? s : (s.name || s);
+                        if (subjectCounts[sn] !== undefined) subjectCounts[sn]++;
+                    });
+                });
+                
+                // Update stats display
+                const countEl = document.getElementById('ef-se-det-total-reg');
+                if (countEl) countEl.textContent = totalRegistrations;
+                
+                // Update subject student counts
+                normalizedSubjects.forEach(s => {
+                    const el = document.getElementById('ef-se-det-subj-' + s.name.replace(/\s+/g, '-'));
+                    if (el) el.textContent = subjectCounts[s.name];
+                });
+                
+                // Update registered students table heading
+                const regHeading = document.getElementById('ef-se-det-reg-heading');
+                if (regHeading) regHeading.textContent = `(${totalRegistrations} total)`;
+                
+                // Re-render student table on changes
+                if (window.mcRenderRegStudentsTable) {
+                    window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
+                }
+            },
+            (error) => {
+                console.error('Registration listener error:', error);
+            }
+        );
         
         // Fetch and render student details table
         window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
