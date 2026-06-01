@@ -174,14 +174,12 @@ window._checkMaintenance = async function(userRole) {
         }
     } catch(e) {}
     
-    // Read the config doc (1 read total)
+    // Read the config doc via cache-first sync (1 read, cached forever in IndexedDB)
     try {
-        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const snap = await getDoc(doc(db, 'config', 'maintenance'));
-        const data = snap.data() || {};
-        const isActive = data.active === true;
+        const data = await sync.doc('config/maintenance');
+        const isActive = data && data.active === true;
         
-        // Cache result for 5 minutes
+        // Cache result for 5 minutes in localStorage (for quick check before app.js loads)
         localStorage.setItem('ef_maintenance', JSON.stringify({ active: isActive, timestamp: Date.now() }));
         
         if (isActive) {
@@ -394,18 +392,10 @@ function setupAdminListeners() {
     });
 }
     async function getNationalRanking(userRating) {
+        // Ranking disabled to eliminate getCountFromServer reads.
+        // Returns a placeholder to avoid breaking UI.
         try {
-            const { collection, query, where, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const [higherSnap, totalSnap] = await Promise.all([
-                getCountFromServer(query(collection(db, 'users'), where('exaRating', '>', userRating))),
-                getCountFromServer(collection(db, 'users'))
-            ]);
-            const higherCount = higherSnap.data().count;
-            const totalUsers = totalSnap.data().count;
-            const exactRank = higherCount + 1;
-            const displayTotal = Math.max(totalUsers, exactRank);
-            let percentile = exactRank === 1 ? 1 : Math.floor((exactRank / displayTotal) * 100);
-            return { rank: exactRank, total: displayTotal, percentile };
+            return { rank: '-', total: '-', percentile: 100 };
         } catch (error) {
             console.error("Ranking Error:", error);
             return { rank: '-', total: '-', percentile: 100 };
@@ -1224,23 +1214,19 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        const { collection, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const [userCountSnap, courses] = await Promise.all([
-            getCountFromServer(collection(db, 'users')),
-            sync.collection('unicourses')
-        ]);
+        const courses = await sync.collection('unicourses');
         const el = id => document.getElementById(id);
-        if (el('mc-s-users')) el('mc-s-users').textContent = userCountSnap.data().count;
+        // User count removed to eliminate getCountFromServer reads
+        if (el('mc-s-users')) el('mc-s-users').textContent = '-';
         if (el('mc-s-courses')) el('mc-s-courses').textContent = (courses || []).length;
         
-        // Check and display maintenance status
+        // Check and display maintenance status via cache-first sync.doc
         const maintEl = document.getElementById('mc-s-maint');
         const maintToggle = document.getElementById('mc-maint-toggle');
         if (maintEl && maintToggle) {
             try {
-                const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                const maintSnap = await getDoc(doc(db, 'config', 'maintenance'));
-                const isActive = maintSnap.exists() && maintSnap.data().active === true;
+                const maintData = await sync.doc('config/maintenance');
+                const isActive = maintData && maintData.active === true;
                 maintEl.textContent = isActive ? 'ON' : 'OFF';
                 maintEl.style.color = isActive ? '#dc2626' : '#16a34a';
                 
@@ -1249,7 +1235,8 @@ async function mcLoadStats() {
                     const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                     const newState = !isActive;
                     await setDoc(doc(db, 'config', 'maintenance'), { active: newState });
-                    // Clear all users' localStorage cache
+                    // Clear cache so next sync.doc re-fetches fresh data
+                    sync._clearMemCache('config/maintenance');
                     try { localStorage.removeItem('ef_maintenance'); } catch(e) {}
                     maintEl.textContent = newState ? 'ON' : 'OFF';
                     maintEl.style.color = newState ? '#dc2626' : '#16a34a';
@@ -1761,14 +1748,9 @@ async function mcLoadDailyQuizzes() {
 async function mcLoadDailyQuizSubCount() {
     const el = document.getElementById('mc-dq-sub-count');
     if (!el) return;
-    try {
-        const { collection, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const snap = await getCountFromServer(collection(db, 'users'));
-        el.textContent = `${snap.data().count} total registered students`;
-        el.style.color = '#16a34a';
-    } catch (e) {
-        el.textContent = 'Could not count users';
-    }
+    // Subscriber count removed to eliminate getCountFromServer reads
+    el.textContent = 'All registered students';
+    el.style.color = '#16a34a';
 }
 
 // ── DAILY ADVICE HUB ─────────────────────────────────────────
@@ -2749,11 +2731,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         }
         
         let subscriberCount = 0;
-        try {
-            const { collection, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const snap = await getCountFromServer(collection(db, 'users'));
-            subscriberCount = snap.data().count;
-        } catch (_) {}
+        // Subscriber count removed to eliminate getCountFromServer reads
         
         document.getElementById('ef-dq-det-body').innerHTML = `
             <!-- Share URL Banner -->
