@@ -2630,6 +2630,10 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         </div>`;
     document.body.appendChild(overlay);
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+        // Add cleanup for onSnapshot listener
+    overlay.addEventListener('remove', () => {
+        if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} window._attemptsListener = null; }
+    });
     
     try {
         const q = await sync.doc('daily_quizzes/' + dqid);
@@ -2643,13 +2647,60 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         
         const quizShareUrl = window.location.origin + '/quiz?dqid=' + dqid;
         
-        const attempts = (await sync.query('daily_quizzes/' + dqid + '/attempts', [orderBy('timestamp', 'desc')])) || [];
-
-        const attemptCount = attempts.length;
+        // ── Real-time attempts listener (1 standard read initial sync, real-time units for updates) ──
+        let attempts = [];
+        let attemptCount = 0;
         let avgScore = 0;
-        if (attemptCount > 0) {
-            avgScore = Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attemptCount);
-        }
+
+        if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} }
+
+        window._attemptsListener = onSnapshot(
+            query(collection(db, 'daily_quizzes/' + dqid + '/attempts'), orderBy('timestamp', 'desc')),
+            (snap) => {
+                attempts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                attemptCount = attempts.length;
+                avgScore = attemptCount > 0 ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attemptCount) : 0;
+                
+                // Update summary stats
+                const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
+                const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
+                if (countEl) countEl.textContent = attemptCount;
+                if (avgEl) avgEl.textContent = avgScore + '%';
+
+                // Rebuild table
+                const tbody = document.getElementById('ef-dq-det-body')?.querySelector('table tbody');
+                const container = document.querySelector('[data-at]');
+                if (container) {
+                    if (attemptCount === 0) {
+                        container.innerHTML = `<div style="text-align:center;padding:48px 24px;border:2px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:0.8rem;">
+                            <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:8px;">people_outline</span>
+                            <strong style="color:var(--text);">No attempts recorded yet</strong>
+                            <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz.</div>
+                        </div>`;
+                    } else if (tbody) {
+                        tbody.innerHTML = attempts.map(a => {
+                            const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
+                            const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
+                            const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
+                            return `<tr style="border-bottom:1.5px solid var(--border);">
+                                <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
+                                    ${a.displayName}
+                                    <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
+                                </td>
+                                <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
+                                    <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
+                                </td>
+                                <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
+                                <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
+                            </tr>`;
+                        }).join('');
+                    }
+                }
+            },
+            (error) => {
+                console.error('Attempts listener error:', error);
+            }
+        );
         
         let attemptsHTML = '';
         if (attemptCount === 0) {
@@ -2778,169 +2829,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             </div>
         `;
 
-        // ── One-time attempts fetch (cache-first, no real-time listener) ──
-        const newAttempts = await sync.query('daily_quizzes/' + dqid + '/attempts', [orderBy('timestamp', 'desc')]) || [];
-        const newCount = newAttempts.length;
-        let newAvg = 0;
-        if (newCount > 0) {
-            newAvg = Math.round(newAttempts.reduce((s, a) => s + (a.score || 0), 0) / newCount);
-        }
-
-        // Update summary stats
-        const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
-        const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
-        if (countEl) countEl.textContent = newCount;
-        if (avgEl) avgEl.textContent = newAvg + '%';
-
-        // Build table
-        const tbody = document.getElementById('ef-dq-det-body')?.querySelector('table tbody');
-        if (tbody) {
-            if (newCount === 0) {
-                tbody.innerHTML = '';
-                const container = tbody.closest('[data-at]');
-                if (container) {
-                    container.innerHTML = `<div style="text-align:center;padding:48px 24px;border:2px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:0.8rem;">
-                        <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:8px;">people_outline</span>
-                        <strong style="color:var(--text);">No attempts recorded yet</strong>
-                        <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz.</div>
-                    </div>`;
-                }
-            } else {
-                tbody.innerHTML = newAttempts.map(a => {
-                    const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
-                    const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
-                    const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
-                    return `
-                    <tr style="border-bottom:1.5px solid var(--border);">
-                        <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
-                            ${a.displayName}
-                            <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
-                        </td>
-                        <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
-                            <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
-                        </td>
-                        <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
-                        <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
-                    </tr>`;
-                }).join('');
-            }
-        }
-
-        if (attemptCount > 0) {
-            document.getElementById('btn-export-csv')?.addEventListener('click', () => {
-                const headers = ['Student Name', 'Email', 'Score (%)', 'Correct Answers', 'Total Questions', 'Duration', 'Submitted At'];
-                const rows = attempts.map(a => {
-                    const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
-                    const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
-                    return [
-                        `"${(a.displayName || 'Anonymous').replace(/"/g, '""')}"`,
-                        `"${(a.email || 'N/A').replace(/"/g, '""')}"`,
-                        a.score,
-                        a.correct || 0,
-                        a.totalQuestions || 0,
-                        `"${timeStr}"`,
-                        `"${date}"`
-                    ];
-                });
-                
-                const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.setAttribute('href', url);
-                link.setAttribute('download', `Daily_Quiz_${dqid}_Attempts.csv`);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
-
-            document.getElementById('btn-export-pdf')?.addEventListener('click', async () => {
-                const btn = document.getElementById('btn-export-pdf');
-                const origHTML = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<span class="material-icons-round" style="animation:spin 1s linear infinite;font-size:0.95rem;vertical-align:middle;">autorenew</span> Exporting…';
-                
-                try {
-                    await new Promise((resolve, reject) => {
-                        if (window.jspdf) return resolve();
-                        const s = document.createElement('script');
-                        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                        s.onload = resolve;
-                        s.onerror = reject;
-                        document.head.appendChild(s);
-                    });
-                    await new Promise((resolve, reject) => {
-                        if (window.jspdf_plugin_autotable || (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable)) return resolve();
-                        const s = document.createElement('script');
-                        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js';
-                        s.onload = resolve;
-                        s.onerror = reject;
-                        document.head.appendChild(s);
-                    });
-
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-
-                    // Beautiful Modern Scoreboard Styling
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(18);
-                    doc.setTextColor(33, 33, 33);
-                    doc.text("ExamForge Daily Quiz Scoreboard", 14, 20);
-                    
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(10);
-                    doc.setTextColor(100, 100, 100);
-                    doc.text(`Daily Quiz: ${q.title || 'Details'}`, 14, 27);
-                    doc.text(`Quiz ID: ${dqid}  |  Exported: ${new Date().toLocaleString()}`, 14, 32);
-                    
-                    doc.setDrawColor(220, 220, 220);
-                    doc.line(14, 36, 196, 36);
-                    
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(11);
-                    doc.setTextColor(33, 33, 33);
-                    doc.text("Performance Summary:", 14, 44);
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(10);
-                    doc.text(`Total Student Attempts: ${attemptCount}`, 14, 50);
-                    doc.text(`Average Accuracy Rate: ${avgScore}%`, 14, 56);
-                    
-                    doc.line(14, 62, 196, 62);
-
-                    const tableBody = attempts.map(a => {
-                        const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
-                        const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
-                        return [
-                            a.displayName || 'Anonymous',
-                            a.email || 'N/A',
-                            `${a.score}%`,
-                            `${a.correct || 0} / ${a.totalQuestions || 0}`,
-                            timeStr,
-                            date
-                        ];
-                    });
-
-                    doc.autoTable({
-                        head: [['Student Name', 'Email Address', 'Score', 'Accuracy', 'Duration', 'Submission Date']],
-                        body: tableBody,
-                        startY: 68,
-                        styles: { fontSize: 8, font: 'helvetica', cellPadding: 4 },
-                        headStyles: { fillColor: [124, 58, 237], textColor: [255, 255, 255], fontStyle: 'bold' },
-                        alternateRowStyles: { fillColor: [249, 250, 251] },
-                        margin: { left: 14, right: 14 }
-                    });
-
-                    doc.save(`Daily_Quiz_${dqid}_Attempts.pdf`);
-                } catch (err) {
-                    console.error(err);
-                    alert("Failed to export PDF: " + err.message);
-                } finally {
-                    btn.disabled = false;
-                    btn.innerHTML = origHTML;
-                }
-            });
-        }
+        
 
         
     } catch (e) {
@@ -7607,6 +7496,10 @@ window.mcViewSubEventDetails = async function(eventId) {
         </div>`;
     document.body.appendChild(overlay);
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    // Add cleanup for onSnapshot listener
+    overlay.addEventListener('remove', () => {
+        if (window._regListener) { try { window._regListener(); } catch(e) {} window._regListener = null; }
+    });
     
     try {
         const ev = await sync.doc('subscription_events/' + eventId);
@@ -7614,20 +7507,53 @@ window.mcViewSubEventDetails = async function(eventId) {
         
         document.getElementById('ef-se-det-title').textContent = ev.title;
         
-        // Fetch Registrations
-        const regData = await sync.collection('subscription_events/' + eventId + '/registrations');
-        const totalRegistrations = regData.length;
-        
-        // Subject breakdown
-        const normalizedSubjects = (ev.availableSubjects || []).map(s => mcNormalizeSubject(s));
+        // ── Real-time registrations listener (1 standard read initial sync, real-time units for updates) ──
+        let totalRegistrations = 0;
         const subjectCounts = {};
+        const normalizedSubjects = (ev.availableSubjects || []).map(s => mcNormalizeSubject(s));
         normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
-        regData.forEach(r => {
-            if (r.subjects) r.subjects.forEach(s => {
-                const sn = typeof s === 'string' ? s : (s.name || s);
-                if (subjectCounts[sn] !== undefined) subjectCounts[sn]++;
-            });
-        });
+
+        // Clean up previous listener if any
+        if (window._regListener) { try { window._regListener(); } catch(e) {} }
+
+        window._regListener = onSnapshot(
+            query(collection(db, 'subscription_events/' + eventId + '/registrations'), orderBy('registeredAt', 'desc')),
+            (snap) => {
+                // Reset counts
+                normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
+                totalRegistrations = snap.size;
+                
+                snap.docs.forEach(d => {
+                    const r = d.data();
+                    if (r.subjects) r.subjects.forEach(s => {
+                        const sn = typeof s === 'string' ? s : (s.name || s);
+                        if (subjectCounts[sn] !== undefined) subjectCounts[sn]++;
+                    });
+                });
+                
+                // Update stats display
+                const countEl = document.getElementById('ef-se-det-total-reg');
+                if (countEl) countEl.textContent = totalRegistrations;
+                
+                // Update subject student counts
+                normalizedSubjects.forEach(s => {
+                    const el = document.getElementById('ef-se-det-subj-' + s.name.replace(/\s+/g, '-'));
+                    if (el) el.textContent = subjectCounts[s.name];
+                });
+                
+                // Update registered students table heading
+                const regHeading = document.getElementById('ef-se-det-reg-heading');
+                if (regHeading) regHeading.textContent = `(${totalRegistrations} total)`;
+                
+                // Re-render student table on changes
+                if (window.mcRenderRegStudentsTable) {
+                    window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
+                }
+            },
+            (error) => {
+                console.error('Registration listener error:', error);
+            }
+        );
         
         // Render UI
         let subjectHTML = normalizedSubjects.map(s => {
@@ -7648,7 +7574,7 @@ window.mcViewSubEventDetails = async function(eventId) {
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;">
-                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong>${subjectCounts[s.name]}</strong> students</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong id="ef-se-det-subj-${s.name.replace(/\s+/g,'-')}">0</strong> students</div>
                     <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);white-space:nowrap;">CREATE/EDIT MOCK</button>
                 </div>
             </div>`;
@@ -7668,7 +7594,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         document.getElementById('ef-se-det-body').innerHTML = `
             <div style="display:grid;grid-template-columns:1fr;gap:16px;">
                 <div style="background:var(--bg-card);border:3px solid var(--text);border-radius:12px;padding:16px;text-align:center;">
-                    <div style="font-size:2rem;font-weight:900;color:var(--text);">${totalRegistrations}</div>
+                    <div id="ef-se-det-total-reg" style="font-size:2rem;font-weight:900;color:var(--text);">0</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Total Registered Students</div>
                 </div>
             </div>
@@ -7727,7 +7653,7 @@ window.mcViewSubEventDetails = async function(eventId) {
             <div>
                 <h3 style="font-weight:900;font-size:1.05rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;margin-top:24px;border-top:3px solid var(--text);padding-top:20px;">
                     Registered Students
-                    <span style="font-size:0.7rem;color:var(--text-muted);font-weight:700;">(${totalRegistrations} total)</span>
+                    <span id="ef-se-det-reg-heading" style="font-size:0.7rem;color:var(--text-muted);font-weight:700;">(0 total)</span>
                 </h3>
                 <div id="mc-reg-students-table" style="overflow-x:auto;border:2px solid var(--text);border-radius:10px;">
                     <div style="text-align:center;padding:32px;color:var(--text-muted);font-size:0.8rem;">
