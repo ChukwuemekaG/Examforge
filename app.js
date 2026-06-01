@@ -293,7 +293,7 @@ window.updateDashboardUI = function() {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        const courses = (await sync.collection('unicourses')) || [];
+        const courses = (await window._getMetaApp()).courses || [];
         coursesListDiv.innerHTML = ""; // Clear loading text
 
         // Loop through each course
@@ -690,7 +690,7 @@ function setupAdminListeners() {
                 const initialNotifFloat = document.getElementById('ef-notif-floating');
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
                 // ─── Warm caches in background for instant view loads ───
-                sync.collection('users/' + user.uid + '/schedule').catch(() => {});
+                sync.doc('users/' + user.uid).catch(() => {});  // Just read the user doc to warm cache
                 // Admin collections are loaded on demand when the admin tab is opened
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
@@ -1227,7 +1227,8 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        const courses = await sync.collection('unicourses');
+        const meta = await window._getMetaApp();
+        const courses = meta.courses || [];
         const el = id => document.getElementById(id);
         // User count removed to eliminate getCountFromServer reads
         if (el('mc-s-users')) el('mc-s-users').textContent = '-';
@@ -1424,7 +1425,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const courses = (await sync.collection('unicourses')) || [];
+            const courses = (await window._getMetaApp()).courses || [];
             courses.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
@@ -1675,7 +1676,7 @@ async function mcLoadDailyQuizzes() {
     if (!grid) return;
 
         try {
-            const quizzes = (await sync.collection('daily_quizzes')) || [];
+            const quizzes = (await window._getMetaApp()).dailyQuizzes || [];
             quizzes.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
         if (quizzes.length === 0) {
@@ -1780,7 +1781,9 @@ async function mcLoadDailyAdvices() {
     if (!grid) return;
 
         try {
-            const advices = (await sync.query('daily_advices', [orderBy('createdAt', 'desc')])) || [];
+            const advices = (await window._getMetaApp()).dailyAdvices || [];
+            // Sort by createdAt descending for display
+            advices.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
             if (!advices.length) {
             grid.innerHTML = `
                 <div style="grid-column:1/-1;text-align:center;padding:48px;border:3px dashed var(--border);border-radius:16px;color:var(--text-muted);">
@@ -4123,19 +4126,15 @@ window.openAdminUserModal = async function(uid) {
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
 
     try {
-        const [userData, resultsData, schedData, notifData] = await Promise.all([
-            sync.doc('users/' + uid),
-            sync.collection('users/' + uid + '/results'),
-            sync.collection('users/' + uid + '/schedule'),
-            sync.collection('users/' + uid + '/notifications')
-        ]);
+        const userData_full = await window._getUserData(uid);
+        const userData = userData_full.profile;
 
         if (!userData) { overlay.remove(); alert('User not found.'); return; }
 
         // Sort schedule and notifications by timestamp descending
-        const results  = resultsData || [];
-        const schedItems = (schedData || []).sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-        const notifItems = (notifData || []).sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+        const results  = userData_full.recentResults || [];
+        const schedItems = (userData_full.schedule || []).sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+        const notifItems = (userData_full.inbox || []).sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
         const u       = userData;
         const name    = u.displayName || u.username || u.email?.split('@')[0] || 'Unknown';
@@ -4907,7 +4906,8 @@ window.adminPromptNotification = function(userId) {
                 }
             } catch(e) {}
             // Fetch schedule items
-            const schedItems = await sync.collection('users/' + auth.currentUser.uid + '/schedule');
+            const userData_full = await window._getUserData(auth.currentUser.uid);
+            const schedItems = userData_full.schedule;
             if (schedItems && schedItems.length) {
                 const now = Date.now();
                 const getDueMs = s => {
@@ -5180,7 +5180,8 @@ window.adminPromptNotification = function(userId) {
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
             // Fetch dynamic events
-            const events = await sync.collection('subscription_events');
+            const allEvents = (await window._getMetaApp()).subscriptionEvents || [];
+            const events = [...allEvents];
             events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
             // Check registrations for the current user
@@ -5567,7 +5568,8 @@ window.adminPromptNotification = function(userId) {
         // Use cache if already loaded, otherwise fetch from Firestore
         if (!libCourseCache.length) {
             try {
-                const allCourses = await sync.collection('unicourses');
+                const meta = await window._getMetaApp();
+                const allCourses = meta.courses || [];
                 // Fetch topic counts in parallel — check topicCount field on doc first (0 extra reads)
                 const courses = await Promise.all(allCourses.map(async c => {
                     let topicCount = c.topicCount || 0;
@@ -5858,7 +5860,8 @@ window.adminPromptNotification = function(userId) {
             </div>`;
 
         try {
-            const schedItems = await sync.collection('users/' + auth.currentUser.uid + '/schedule');
+            const userData_full = await window._getUserData(auth.currentUser.uid);
+            const schedItems = userData_full.schedule;
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
         } catch(e) { console.error(e); }
 
@@ -6335,7 +6338,8 @@ window.adminPromptNotification = function(userId) {
 
         // Cache-first one-time fetch (no real-time listener = zero continuous reads)
         const path = 'users/' + auth.currentUser.uid + '/notifications';
-        let notifications = await sync.collection(path) || [];
+        const userData_full = await window._getUserData(auth.currentUser.uid);
+        let notifications = userData_full.inbox || [];
 
         const now = Date.now();
 
@@ -7256,7 +7260,7 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        const events = (await sync.collection('subscription_events')) || [];
+        const events = (await window._getMetaApp()).subscriptionEvents || [];
         events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
         if (events.length === 0) {
