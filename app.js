@@ -2674,6 +2674,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         // Add cleanup for onSnapshot listener
     overlay.addEventListener('remove', () => {
         if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} window._attemptsListener = null; }
+        if (window._regDataListener) { try { window._regDataListener(); } catch(e) {} window._regDataListener = null; }
     });
     
     try {
@@ -2696,7 +2697,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} }
 
         window._attemptsListener = onSnapshot(
-            query(collection(db, 'daily_quizzes/' + dqid + '/attempts'), orderBy('timestamp', 'desc')),
+            query(collection(db, 'daily_quizzes/' + dqid + '/attempts'), orderBy('timestamp', 'desc'), limit(5)),
             (snap) => {
                 attempts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 attemptCount = attempts.length;
@@ -7585,7 +7586,10 @@ window.mcViewSubEventDetails = async function(eventId) {
         </div>`;
     document.body.appendChild(overlay);
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
-    // Note: No cleanup needed for getCountFromServer (one-time read, no listener)
+    overlay.addEventListener('remove', () => {
+        if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} window._attemptsListener = null; }
+        if (window._regDataListener) { try { window._regDataListener(); } catch(e) {} window._regDataListener = null; }
+    });
     
     try {
         const ev = await sync.doc('subscription_events/' + eventId);
@@ -7729,6 +7733,24 @@ window.mcViewSubEventDetails = async function(eventId) {
         
         const regHeading = document.getElementById('ef-se-det-reg-heading');
         if (regHeading) regHeading.textContent = `(${totalRegistrations} total)`;
+        
+        // ── Real-time updates via _data doc onSnapshot (1 read initial sync, real-time units for updates) ──
+        if (window._regDataListener) { try { window._regDataListener(); } catch(e) {} }
+        
+        window._regDataListener = onSnapshot(
+            doc(db, 'subscription_events/' + eventId + '/_data/registrations'),
+            (snap) => {
+                if (snap.exists()) {
+                    const students = snap.data().students || [];
+                    const count = students.length;
+                    const countEl = document.getElementById('ef-se-det-total-reg');
+                    if (countEl) countEl.textContent = count;
+                    const regHeading = document.getElementById('ef-se-det-reg-heading');
+                    if (regHeading) regHeading.textContent = `(${count} total)`;
+                }
+            },
+            (error) => console.error('Reg data listener error:', error)
+        );
         
         // Auto-load student table replaced with manual button
         const regTableContainer = document.getElementById('mc-reg-students-table');
