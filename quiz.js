@@ -1,7 +1,7 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { SyncManager } from './sync.js';
-import { collection, addDoc, doc, getDoc, setDoc, updateDoc, serverTimestamp, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, addDoc, arrayUnion, doc, getDoc, setDoc, updateDoc, serverTimestamp, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // ── Safe DOM helpers - prevent null reference errors on mobile ──
 const $id = (id) => document.getElementById(id);
@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         mode: 'exam',
         startTime: null,       
         timeTaken: 0,          
-        quizId: null           
+        quizId: null,          
+        isRetake: false        
     };
 
     let timerInterval = null;
@@ -103,21 +104,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!d) throw new Error(`Daily Quiz not found.`);
                 const maxAttempts = d.maxAttempts || 1;
                 
-                // Check for existing attempt (browser tracking + account tracking)
+                // Check for existing attempt (embedded completedBy array — 0 extra reads)
                 const allQuestions = d.questions || [];
                 let existingAttempt = null;
                 const storageKey = 'examforge_dq_' + dqid;
                 const cachedAttempt = localStorage.getItem(storageKey);
                 
-                // Always check Firestore first (more reliable)
-                try {
-                    const attemptData = await sync.query('daily_quizzes/' + dqid + '/attempts', [where('uid', '==', currentUser.uid)]);
-                    if (attemptData && attemptData.length > 0) {
-                        existingAttempt = attemptData[0];
+                // Check completedBy array in quiz doc (already loaded, 0 reads)
+                const completedBy = d.completedBy || [];
+                if (completedBy.includes(currentUser.uid)) {
+                    // Load from lastAttempts map embedded in quiz doc
+                    const lastData = (d.lastAttempts && d.lastAttempts[currentUser.uid]) || null;
+                    if (lastData) {
+                        existingAttempt = lastData;
                     }
-                } catch(e) {}
+                }
                 
-                // Fall back to localStorage if no Firestore attempt found
+                // Fall back to localStorage if no embedded data found
                 if (!existingAttempt && cachedAttempt) {
                     try {
                         existingAttempt = JSON.parse(cachedAttempt);
@@ -125,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 if (existingAttempt) {
+                    examState.isRetake = true;
                     // Show existing results - allow review
                     const scoreColor = existingAttempt.score >= 80 ? '#16a34a' : existingAttempt.score >= 50 ? '#2563eb' : 'var(--brand)';
                     const timeStr = existingAttempt.timeTaken ? `${Math.floor(existingAttempt.timeTaken/60)}m ${existingAttempt.timeTaken%60}s` : '—';
@@ -1099,11 +1103,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const userData = await sync.doc('users/' + currentUser.uid);
             const existingData = userData || {};
 
-            const retakeResults = await sync.query('users/' + currentUser.uid + '/results', [
-                where("quizId", "==", examState.quizId),
-                limit(1)
-            ]);
-            const isRetake = retakeResults && retakeResults.length > 0;
+            // Retake detection from completedBy array (already checked during load)
+            const isRetake = examState.isRetake === true;
 
             let exaChange = computeExaChange(finalScore, examState.timeTaken, examState.timeLimit);
             if (isRetake && exaChange > 5) exaChange = 5;
@@ -1220,6 +1221,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
 
                     } catch(e) { console.error('DQ attempt save FAILED:', e); }
+                    
+                    // Update completedBy + lastAttempts in quiz doc (0 reads, write-only)
+                    try {
+                        await updateDoc(doc(db, 'daily_quizzes', examState.quizId), {
+                            completedBy: arrayUnion(currentUser.uid),
+                            [`lastAttempts.${currentUser.uid}`]: {
+                                score: finalScore,
+                                correct: correct,
+                                totalQuestions: total,
+                                timeTaken: examState.timeTaken,
+                                displayName: currentUser.displayName || existingData.displayName || '',
+                                timestamp: new Date().toISOString()
+                            }
+                        });
+                    } catch(e) { console.error('DQ completedBy update FAILED:', e); }
                     
                     // Save to localStorage for browser-based retake detection
                     try {
