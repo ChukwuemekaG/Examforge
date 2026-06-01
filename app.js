@@ -894,11 +894,6 @@ function setupAdminListeners() {
 
     // ─── Router ────────────────────────────────────────────────────
     function navigate(view, params = {}, { replace = false } = {}) {
-        // Clean up inbox listener when leaving inbox view
-        if (currentView === 'inbox' && window._inboxListener) {
-            try { window._inboxListener(); } catch(e) {}
-            window._inboxListener = null;
-        }
         currentView = view;
         updateActiveNav(view);
         workspace.scrollTop = 0;
@@ -6384,109 +6379,84 @@ window.adminPromptNotification = function(userId) {
             advice:        { icon:'tips_and_updates',bg:'rgba(124,58,237,0.08)',border:'#7c3aed', color:'#7c3aed'  },
         };
 
-        window._inboxListener = onSnapshot(
-            query(collection(db, `users/${auth.currentUser.uid}/notifications`), orderBy('timestamp','desc'), limit(30)),
-            snapshot => {
-                const now = Date.now();
+        // Cache-first one-time fetch (no real-time listener = zero continuous reads)
+        const path = 'users/' + auth.currentUser.uid + '/notifications';
+        let notifications = await sync.collection(path) || [];
 
-                // Trigger Web Notification for newly added docs in real-time
-                snapshot.docChanges().forEach(change => {
-                    if (change.type === 'added') {
-                        const n = change.doc.data();
-                        const ts = n.timestamp?.toMillis ? n.timestamp.toMillis() : Date.now();
-                        // Only trigger push notification if the document is less than 30s old to avoid spamming historical alerts
-                        if (Date.now() - ts < 30000 && 'Notification' in window && Notification.permission === 'granted') {
-                            try {
-                                const notifUrl = n.actionPath || (n.resultData ? '/app.html#inbox' : '/app.html');
-                                const notif = new Notification(n.title || "ExamForge", {
-                                    body: n.message || "",
-                                    icon: "/examforge.jpeg",
-                                    badge: "/512.png",
-                                    image: "/examforge.jpeg",
-                                    data: { url: notifUrl },
-                                    requireInteraction: true,
-                                    vibrate: [200, 100, 200]
-                                });
-                                notif.onclick = function(e) {
-                                    e.preventDefault();
-                                    window.focus();
-                                    if (notifUrl.includes('#')) window.location.href = '/app.html' + notifUrl;
-                                    else if (notifUrl) window.location.href = notifUrl;
-                                };
-                            } catch (e) { console.error("Notification failed:", e); }
-                        }
-                    }
-                });
+        const now = Date.now();
 
-                // Auto-delete expired notifications (all types)
-                const expired = snapshot.docs.filter(d => {
-                    const n = d.data();
-                    const ms = n.dueTimestamp?.toMillis ? n.dueTimestamp.toMillis()
-                             : n.dueDate ? new Date(n.dueDate + 'T' + (n.dueTime||'23:59')).getTime() : null;
-                    return ms !== null && ms < now;
-                });
-                if (expired.length) {
-                    const b = writeBatch(db);
-                    expired.forEach(d => b.delete(d.ref));
-                    b.commit().catch(console.error);
-                }
+        // Auto-delete expired notifications via direct Firestore batch
+        const expired = notifications.filter(n => {
+            const ms = n.dueTimestamp?.toMillis ? n.dueTimestamp.toMillis()
+                     : n.dueDate ? new Date(n.dueDate + 'T' + (n.dueTime||'23:59')).getTime() : null;
+            return ms !== null && ms < now;
+        });
+        if (expired.length) {
+            const b = writeBatch(db);
+            expired.forEach(n => {
+                const ref = doc(db, path, n.id);
+                b.delete(ref);
+            });
+            b.commit().catch(console.error);
+            // Remove expired from local array for display
+            notifications = notifications.filter(n => {
+                const ms = n.dueTimestamp?.toMillis ? n.dueTimestamp.toMillis()
+                         : n.dueDate ? new Date(n.dueDate + 'T' + (n.dueTime||'23:59')).getTime() : null;
+                return ms === null || ms >= now;
+            });
+        }
 
-                const active = snapshot.docs.filter(d => {
-                    const n = d.data();
-                    const ms = n.dueTimestamp?.toMillis ? n.dueTimestamp.toMillis()
-                             : n.dueDate ? new Date(n.dueDate + 'T' + (n.dueTime||'23:59')).getTime() : null;
-                    return ms === null || ms >= now;
-                });
+        const active = notifications;
 
-                clearBtn.style.display = active.length ? 'inline-flex' : 'none';
-                clearBtn.onclick = () => {
-                    if (!confirm('Clear all notifications?')) return;
-                    const b = writeBatch(db);
-                    active.forEach(d => b.delete(d.ref));
-                    b.commit().catch(console.error);
-                };
+        clearBtn.style.display = active.length ? 'inline-flex' : 'none';
+        clearBtn.onclick = () => {
+            if (!confirm('Clear all notifications?')) return;
+            const b = writeBatch(db);
+            active.forEach(n => {
+                const ref = doc(db, path, n.id);
+                b.delete(ref);
+            });
+            b.commit().catch(console.error);
+        };
 
-                if (!active.length) {
-                    feed.innerHTML = `
-                        <div style="text-align:center;padding:72px 24px;color:var(--text-muted);">
-                            <span class="material-icons-round" style="font-size:3rem;display:block;margin-bottom:12px;opacity:0.25;">notifications_off</span>
-                            <div style="font-weight:800;font-size:0.9rem;margin-bottom:4px;">Inbox is empty</div>
-                            <div style="font-size:0.75rem;">Broadcasts and quiz alerts will appear here.</div>
-                        </div>`;
-                    return;
-                }
+        if (!active.length) {
+            feed.innerHTML = `
+                <div style="text-align:center;padding:72px 24px;color:var(--text-muted);">
+                    <span class="material-icons-round" style="font-size:3rem;display:block;margin-bottom:12px;opacity:0.25;">notifications_off</span>
+                    <div style="font-weight:800;font-size:0.9rem;margin-bottom:4px;">Inbox is empty</div>
+                    <div style="font-size:0.75rem;">Broadcasts and quiz alerts will appear here.</div>
+                </div>`;
+            return;
+        }
 
-                feed.innerHTML = active.map(docSnap => {
-                    const n  = docSnap.data();
-                    const id = docSnap.id;
-                    const tc = typeMap[n.type] || { icon:'notifications', bg:'var(--bg-inset)', border:'var(--border)', color:'var(--text-muted)' };
-                    const time = n.timestamp?.toDate ? n.timestamp.toDate().toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' }) : 'Just now';
+        feed.innerHTML = active.map(n => {
+            const id = n.id;
+            const tc = typeMap[n.type] || { icon:'notifications', bg:'var(--bg-inset)', border:'var(--border)', color:'var(--text-muted)' };
+            const time = n.timestamp?.toDate ? n.timestamp.toDate().toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' }) : 'Just now';
 
-                    const actionRow = n.type === 'daily_quiz' && n.quizUrl ? `
-                        <div class="notif-footer">
-                            <a href="${n.quizUrl}" class="btn btn-primary btn-sm" style="text-decoration:none;" onclick="event.stopPropagation();">
-                                <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">play_arrow</span> Start Quiz
-                            </a>
-                            ${n.dueDate ? `<span class="notif-time">Due ${n.dueDate}${n.dueTime ? ' at ' + n.dueTime : ''}</span>` : ''}
-                        </div>` : `<div class="notif-footer"><span class="notif-time">${time}</span></div>`;
+            const actionRow = n.type === 'daily_quiz' && n.quizUrl ? `
+                <div class="notif-footer">
+                    <a href="${n.quizUrl}" class="btn btn-primary btn-sm" style="text-decoration:none;" onclick="event.stopPropagation();">
+                        <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">play_arrow</span> Start Quiz
+                    </a>
+                    ${n.dueDate ? `<span class="notif-time">Due ${n.dueDate}${n.dueTime ? ' at ' + n.dueTime : ''}</span>` : ''}
+                </div>` : `<div class="notif-footer"><span class="notif-time">${time}</span></div>`;
 
-                    return `
-                    <div class="notif-card" id="notif-${id}" style="cursor:pointer;" onclick="window.viewNotificationDetails('${id}')" title="Click to view details">
-                        <div class="notif-icon-wrap" style="background:${tc.bg};border-color:${tc.border};">
-                            <span class="material-icons-round" style="color:${tc.color};font-size:1.2rem;">${tc.icon}</span>
-                        </div>
-                        <div style="min-width:0;flex:1;">
-                            <div class="notif-title">${n.title || n.type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</div>
-                            <div class="notif-body" style="white-space: pre-wrap; word-break: break-word;">${n.message || ''}</div>
-                            ${actionRow}
-                        </div>
-                        <button class="notif-dismiss" onclick="event.stopPropagation();window.deleteNotification('${id}')" title="Dismiss">
-                            <span class="material-icons-round" style="font-size:1rem;">close</span>
-                        </button>
-                    </div>`;
-                }).join('');
-            }
-        );
+            return `
+            <div class="notif-card" id="notif-${id}" style="cursor:pointer;" onclick="window.viewNotificationDetails('${id}')" title="Click to view details">
+                <div class="notif-icon-wrap" style="background:${tc.bg};border-color:${tc.border};">
+                    <span class="material-icons-round" style="color:${tc.color};font-size:1.2rem;">${tc.icon}</span>
+                </div>
+                <div style="min-width:0;flex:1;">
+                    <div class="notif-title">${n.title || n.type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</div>
+                    <div class="notif-body" style="white-space: pre-wrap; word-break: break-word;">${n.message || ''}</div>
+                    ${actionRow}
+                </div>
+                <button class="notif-dismiss" onclick="event.stopPropagation();window.deleteNotification('${id}')" title="Dismiss">
+                    <span class="material-icons-round" style="font-size:1rem;">close</span>
+                </button>
+            </div>`;
+        }).join('');
     }
 
     window.deleteNotification = async function(notifId) {
