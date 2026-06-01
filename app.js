@@ -270,7 +270,7 @@ window.updateDashboardUI = function() {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        const courses = await sync.query('unicourses', [limit(3)]) || [];
+        const courses = await sync.query('unicourses', [limit(2)]) || [];
         coursesListDiv.innerHTML = ""; // Clear loading text
 
         // Loop through each course
@@ -666,10 +666,7 @@ function setupAdminListeners() {
                 if (initialBottomNav) initialBottomNav.style.display = 'none';
                 const initialNotifFloat = document.getElementById('ef-notif-floating');
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
-                // ─── Warm caches in background for instant view loads ───
-                sync.doc('users/' + user.uid).catch(() => {});  // Just read the user doc to warm cache
-                // ── Single onSnapshot on user doc (utilizes real-time read units) ──
-                // This keeps the user doc fresh and bills updates to real-time read quota
+                // ── onSnapshot on user doc for real-time updates (uses real-time read units) ──
                 if (window._userDocListener) window._userDocListener();
                 window._userDocListener = onSnapshot(doc(db, 'users', user.uid), (snap) => {
                     if (snap.exists()) {
@@ -1669,7 +1666,7 @@ async function mcLoadDailyQuizzes() {
     if (!grid) return;
 
         try {
-            const quizzes = await sync.query('daily_quizzes', [orderBy('createdAt', 'desc'), limit(3)]) || [];
+            const quizzes = await sync.query('daily_quizzes', [orderBy('createdAt', 'desc'), limit(2)]) || [];
 
         if (quizzes.length === 0) {
             grid.innerHTML = `
@@ -1773,7 +1770,7 @@ async function mcLoadDailyAdvices() {
     if (!grid) return;
 
         try {
-            const advices = await sync.query('daily_advices', [orderBy('createdAt', 'desc'), limit(3)]) || [];
+            const advices = await sync.query('daily_advices', [orderBy('createdAt', 'desc'), limit(2)]) || [];
             if (!advices.length) {
             grid.innerHTML = `
                 <div style="grid-column:1/-1;text-align:center;padding:48px;border:3px dashed var(--border);border-radius:16px;color:var(--text-muted);">
@@ -5040,7 +5037,7 @@ window.adminPromptNotification = function(userId) {
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
             // Fetch dynamic events
-            const allEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(3)]) || [];
+            const allEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(2)]) || [];
             const events = [...allEvents];
 
             // Check registrations for the current user
@@ -5427,7 +5424,7 @@ window.adminPromptNotification = function(userId) {
         // Load latest 3 courses from Firestore (cached by SyncManager)
         if (!libCourseCache.length) {
             try {
-                const lc = await sync.query('unicourses', [limit(3)]) || [];
+                const lc = await sync.query('unicourses', [limit(2)]) || [];
                 libCourseCache = lc.sort((a, b) => {
                     const lvA = parseInt(a.level) || 0;
                     const lvB = parseInt(b.level) || 0;
@@ -7095,7 +7092,7 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        const events = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(3)]) || [];
+        const events = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(2)]) || [];
 
         if (events.length === 0) {
             grid.innerHTML = `
