@@ -223,6 +223,38 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
+     * One-time rebuild of _meta/app from Firestore collections.
+     * Admin clicks "Rebuild Cache" button to trigger this.
+     * After this, all reads come from the cached meta doc.
+     */
+    window._rebuildMetaApp = async function() {
+        try {
+            const [quizzes, advices, events] = await Promise.all([
+                sync.collection('daily_quizzes').catch(() => []),
+                sync.collection('daily_advices').catch(() => []),
+                sync.collection('subscription_events').catch(() => [])
+            ]);
+
+            await window._updateMetaField('dailyQuizzes', quizzes.map(q => ({
+                id: q.id, title: q.title || '', createdAt: q.createdAt || null,
+                date: q.date || '', duration: q.duration || 30, active: q.active !== false
+            })));
+            await window._updateMetaField('dailyAdvices', advices.map(a => ({
+                id: a.id, title: a.title || '', content: a.content || '',
+                createdAt: a.createdAt || null, category: a.category || ''
+            })));
+            await window._updateMetaField('subscriptionEvents', events.map(e => ({
+                id: e.id, title: e.title || '', createdAt: e.createdAt || null, active: e.active !== false
+            })));
+
+            return true;
+        } catch(e) {
+            console.error('Failed to rebuild meta app:', e);
+            return false;
+        }
+    };
+
+    /**
      * Loads course data from local JSON files — ZERO Firestore reads.
      * Courses are static and don't change frequently.
      */
@@ -1254,6 +1286,12 @@ async function renderMaster() {
         <div class="mc-stat-bar" id="mc-stats">
             <div class="mc-stat"><div class="mc-stat-val" id="mc-s-users">—</div><div class="mc-stat-lbl">Students</div></div>
             <div class="mc-stat"><div class="mc-stat-val" id="mc-s-courses">—</div><div class="mc-stat-lbl">Courses</div></div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <button id="btn-rebuild-meta" class="btn btn-outline btn-sm" onclick="window._rebuildMetaApp().then(r => { if(r) window.showEFModal('Cache Rebuilt', 'Meta data cache rebuilt successfully. Refresh to see your data.', 'OK', null, true); else window.showEFModal('Error', 'Failed to rebuild cache. Check console.', 'OK', null, true); }).catch(() => {})" style="font-size:0.7rem;padding:4px 10px;">
+                <span class="material-icons-round" style="font-size:0.85rem;vertical-align:middle;">refresh</span> Rebuild Cache
+            </button>
         </div>
 
         <div class="mc-tab-bar">
