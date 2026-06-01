@@ -1235,11 +1235,7 @@
             e.stopPropagation();
             const lastUserMsg = chat.querySelector('.message.user:last-child');
             if (lastUserMsg) {
-              // Clone to avoid modifying the DOM, remove meta spans, get clean text
-              const clone = lastUserMsg.cloneNode(true);
-              const metaElements = clone.querySelectorAll('.message-meta');
-              metaElements.forEach(el => el.remove());
-              const text = clone.textContent || '';
+              const text = lastUserMsg.textContent || '';
               if (text.trim()) {
                 div.remove();
                 streamResponse(text.trim());
@@ -1258,19 +1254,8 @@
           errorRetry.addEventListener('click', function() {
             const lastUserMsg = chat.querySelector('.message.user:last-child');
             if (lastUserMsg) {
-              // Clone to avoid modifying the DOM, remove meta spans, get clean text
-              const clone = lastUserMsg.cloneNode(true);
-              const metaElements = clone.querySelectorAll('.message-meta');
-              metaElements.forEach(el => el.remove());
-              const text = clone.textContent || '';
+              const text = lastUserMsg.textContent || '';
               if (text.trim()) {
-                // Force reset streaming state
-                isStreaming = false;
-                if (abortController) {
-                  abortController = null;
-                }
-                // Re-enable input
-                setSendingState(false);
                 div.remove();
                 errorRetry.remove();
                 streamResponse(text.trim());
@@ -1725,15 +1710,15 @@
         const div = document.createElement('div');
         div.className = 'message thinking';
         div.id = 'thinkingIndicator';
+        clearThinkingTimer();
+        thinkingStartTime = Date.now();    // Set BEFORE innerHTML so timer shows correctly
         div.innerHTML = '<div class="spinner"></div> Agent is thinking…' +
-          '<span class="thinking-time" id="thinkingTime">⏱️ 0s</span>' +
+          '<span class="thinking-time" id="thinkingTime">' + getElapsedTimeDisplay() + '</span>' +
           '<span class="thinking-bounce"><span></span><span></span><span></span></span>';
         chat.appendChild(div);
         scrollToBottom(true);
 
         // Start the thinking timer
-        clearThinkingTimer();
-        thinkingStartTime = Date.now();
         thinkingTimer = setInterval(updateThinkingTime, 1000);
       }
 

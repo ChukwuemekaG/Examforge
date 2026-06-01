@@ -95,7 +95,6 @@ The default model identifier used when no explicit model is specified.
 client = openai.OpenAI(
     api_key=DEEPSEEK_API_KEY,
     base_url="https://api.deepseek.com",
-    timeout=None,  # No timeout - let it think as long as needed
 )
 """
 Shared ``openai.OpenAI`` client instance configured to talk to the
