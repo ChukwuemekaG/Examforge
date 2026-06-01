@@ -197,6 +197,50 @@ document.addEventListener('DOMContentLoaded', () => {
         await updateDoc(doc(db, 'users', uid), { inbox: updated });
     };
 
+    /**
+     * Syncs allQuestions + metadata from topics subcollection into the course doc.
+     * This ensures students can read 1 doc (the course doc) for all questions.
+     * Called after every topic/question CRUD operation.
+     */
+    window._syncCourseQuestions = async function(courseId) {
+        try {
+            const topics = await sync.collection('unicourses/' + courseId + '/topics');
+            if (!topics || !topics.length) {
+                // No topics — clear course-level fields
+                await updateDoc(doc(db, 'unicourses', courseId), {
+                    allQuestions: [],
+                    totalTimeLimit: 0,
+                    isStrict: false,
+                    isMock: false,
+                    isCorrection: true
+                });
+                return;
+            }
+            
+            let allQuestions = [];
+            let totalTimeLimit = 0;
+            let anyStrict = false, anyMock = false, anyNoCorrection = false;
+            
+            topics.forEach(t => {
+                if (t.questions) allQuestions.push(...t.questions);
+                totalTimeLimit += (t.timeLimit || 0);
+                if (t.isStrict) anyStrict = true;
+                if (t.isMock) anyMock = true;
+                if (t.isCorrection === false) anyNoCorrection = true;
+            });
+            
+            await updateDoc(doc(db, 'unicourses', courseId), {
+                allQuestions,
+                totalTimeLimit,
+                isStrict: anyStrict,
+                isMock: anyMock,
+                isCorrection: !anyNoCorrection
+            });
+        } catch(e) {
+            console.error('Failed to sync course questions:', e);
+        }
+    };
+
     // ─── Local JSON course loading removed — using Firestore limit queries via SyncManager ───
 
     // Firebase User Data State
@@ -3277,6 +3321,8 @@ window.mcOpenCreateTopicModal = function(courseId) {
                 isPrivate:    document.getElementById('mc-tog-private').checked,
                 questions: []
             });
+                // Sync course doc with all questions
+                window._syncCourseQuestions(courseId).catch(() => {});
             overlay.remove();
             mcRenderCoursesTab(courseId);
             mcLoadStats();
@@ -3348,6 +3394,8 @@ window.mcOpenCreateQuestionModal = function(courseId, topicId) {
             await setDoc(doc(db, 'unicourses', courseId, 'topics', topicId),
                 { questions: updatedQuestions },
                 { merge: true });
+                // Sync course doc with all questions
+                window._syncCourseQuestions(courseId).catch(() => {});
             overlay.remove();
             mcRenderCoursesTab(courseId, topicId);
             mcLoadStats();
@@ -3435,6 +3483,8 @@ window.mcOpenEditTopicModal = async function(courseId, topicId) {
                 isCorrection: !document.getElementById('mc-tog-nocorrection').checked,
                 isPrivate:    document.getElementById('mc-tog-private').checked,
             });
+                // Sync course doc with all questions
+                window._syncCourseQuestions(courseId).catch(() => {});
             overlay.remove();
             // Refresh whichever level is currently visible
             mcRenderCoursesTab(courseId, topicId || null);
@@ -3511,6 +3561,8 @@ window.mcOpenEditQuestionModal = async function(courseId, topicId, questionIndex
             const qs = [...((latest && latest.questions) || [])];
             qs[questionIndex] = { ...qs[questionIndex], question, options, correctIndex, explanation };
             await updateDoc(tRef, { questions: qs });
+                // Sync course doc with all questions
+                window._syncCourseQuestions(courseId).catch(() => {});
             await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
             overlay.remove();
             mcRenderCoursesTab(courseId, topicId);
@@ -3859,6 +3911,8 @@ window.mcOpenBulkImportModal = function(courseId, topicId) {
 
             const tRef = doc(db, 'unicourses', courseId, 'topics', topicId);
             await updateDoc(tRef, { questions: [...existing, ...stamped] });
+                // Sync course doc with all questions
+                window._syncCourseQuestions(courseId).catch(() => {});
             await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
             overlay.remove();
             mcRenderCoursesTab(courseId, topicId);
@@ -4485,6 +4539,8 @@ window.mcDeleteQuestion = async function(courseId, topicId, questionIndex) {
         const questions = [...(tData.questions || [])];
         questions.splice(questionIndex, 1);
         await updateDoc(doc(db,'unicourses',courseId,'topics',topicId), { questions });
+        // Sync course doc with all questions
+        window._syncCourseQuestions(courseId).catch(() => {});
         mcRenderCoursesTab(courseId, topicId);
         mcLoadStats();
     } catch (e) { alert('Error: ' + e.message); }
@@ -4514,6 +4570,8 @@ window.mcDeleteAllQuestions = async function(courseId, topicId) {
                         try {
                             const tRef = doc(db, 'unicourses', courseId, 'topics', topicId);
                             await updateDoc(tRef, { questions: [] });
+                            // Sync course doc with all questions
+                            window._syncCourseQuestions(courseId).catch(() => {});
                             await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
                             window.mcRenderCoursesTab(courseId, topicId);
                             await mcLoadStats();
@@ -4546,6 +4604,7 @@ window.mcDeleteCourse = function(courseId, courseTitle) {
                 // Delete the main course doc
                 batch.delete(doc(db, 'unicourses', courseId));
                 await batch.commit();
+                // No need to sync — course is being deleted
                 
                 // Meta app updates removed — course tracking via local JSON only
 
@@ -4570,6 +4629,8 @@ window.mcDeleteTopic = function(courseId, topicId, topicTitle) {
         async () => {
             try {
                 await deleteDoc(doc(db, 'unicourses', courseId, 'topics', topicId));
+                // Sync course doc with all questions
+                window._syncCourseQuestions(courseId).catch(() => {});
                 window.showEFModal("Topic Deleted", `The topic "${topicTitle}" has been deleted successfully.`, "OKAY", null, true);
                 mcRenderCoursesTab(courseId);
                 mcLoadStats();
