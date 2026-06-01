@@ -7674,7 +7674,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         if (regTableContainer) {
             regTableContainer.innerHTML = `
                 <div style="text-align:center;padding:24px;">
-                    <button class="btn btn-outline" onclick="window.mcRenderRegStudentsTable('${eventId}', ${JSON.stringify(ev.availableSubjects || [])}, ${JSON.stringify(normalizedSubjects)})" style="font-size:0.75rem;padding:8px 16px;">
+                    <button class="btn btn-outline" onclick="window.mcRenderRegStudentsTable('${eventId}')" style="font-size:0.75rem;padding:8px 16px;">
                         <span class="material-icons-round" style="font-size:0.85rem;vertical-align:middle;">visibility</span> View Registered Students (${totalRegistrations})
                     </button>
                 </div>`;
@@ -7770,8 +7770,11 @@ window.mcRenderEventKeysTable = async function(eventId) {
     }
 };
 
-window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSubjects) {
-    if (!normalizedSubjects) normalizedSubjects = (subjects || []).map(s => mcNormalizeSubject(s));
+window.mcRenderRegStudentsTable = async function(eventId) {
+    // Load event data to get subjects
+    const ev = await sync.doc('subscription_events/' + eventId);
+    const subjects = (ev.availableSubjects || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
+    const normalizedSubjects = subjects.map(s => mcNormalizeSubject(s));
     const container = document.getElementById('mc-reg-students-table');
     if (!container) return;
     
