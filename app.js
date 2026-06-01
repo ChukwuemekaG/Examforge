@@ -7494,10 +7494,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         </div>`;
     document.body.appendChild(overlay);
     overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
-    // Add cleanup for onSnapshot listener
-    overlay.addEventListener('remove', () => {
-        if (window._regListener) { try { window._regListener(); } catch(e) {} window._regListener = null; }
-    });
+    // Note: No cleanup needed for getCountFromServer (one-time read, no listener)
     
     try {
         const ev = await sync.doc('subscription_events/' + eventId);
@@ -7526,7 +7523,7 @@ window.mcViewSubEventDetails = async function(eventId) {
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;">
-                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong id="ef-se-det-subj-${s.name.replace(/\s+/g,'-')}">0</strong> students</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong>-</strong> students</div>
                     <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);white-space:nowrap;">CREATE/EDIT MOCK</button>
                 </div>
             </div>`;
@@ -7620,55 +7617,32 @@ window.mcViewSubEventDetails = async function(eventId) {
             </div>
         `;
         
-        // ── Real-time registrations listener (set up AFTER HTML elements exist) ──
+        // ── Registration count via getCountFromServer (1 read, regardless of count) ──
         let totalRegistrations = 0;
-        const subjectCounts = {};
-        normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
+        try {
+            const countSnap = await getCountFromServer(collection(db, 'subscription_events/' + eventId + '/registrations'));
+            totalRegistrations = countSnap.data().count;
+        } catch(e) {
+            console.error('Count error:', e);
+        }
 
-        // Clean up previous listener if any
-        if (window._regListener) { try { window._regListener(); } catch(e) {} }
-
-        window._regListener = onSnapshot(
-            collection(db, 'subscription_events/' + eventId + '/registrations'),
-            (snap) => {
-                // Reset counts
-                normalizedSubjects.forEach(s => subjectCounts[s.name] = 0);
-                totalRegistrations = snap.size;
-                
-                snap.docs.forEach(d => {
-                    const r = d.data();
-                    if (r.subjects) r.subjects.forEach(s => {
-                        const sn = typeof s === 'string' ? s : (s.name || s);
-                        if (subjectCounts[sn] !== undefined) subjectCounts[sn]++;
-                    });
-                });
-                
-                // Update stats display
-                const countEl = document.getElementById('ef-se-det-total-reg');
-                if (countEl) countEl.textContent = totalRegistrations;
-                
-                // Update subject student counts
-                normalizedSubjects.forEach(s => {
-                    const el = document.getElementById('ef-se-det-subj-' + s.name.replace(/\s+/g, '-'));
-                    if (el) el.textContent = subjectCounts[s.name];
-                });
-                
-                // Update registered students table heading
-                const regHeading = document.getElementById('ef-se-det-reg-heading');
-                if (regHeading) regHeading.textContent = `(${totalRegistrations} total)`;
-                
-                // Re-render student table on changes
-                if (window.mcRenderRegStudentsTable) {
-                    window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
-                }
-            },
-            (error) => {
-                console.error('Registration listener error:', error);
-            }
-        );
+        // Update stats display
+        const countEl = document.getElementById('ef-se-det-total-reg');
+        if (countEl) countEl.textContent = totalRegistrations;
         
-        // Fetch and render student details table
-        window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
+        const regHeading = document.getElementById('ef-se-det-reg-heading');
+        if (regHeading) regHeading.textContent = `(${totalRegistrations} total)`;
+        
+        // Auto-load student table replaced with manual button
+        const regTableContainer = document.getElementById('mc-reg-students-table');
+        if (regTableContainer) {
+            regTableContainer.innerHTML = `
+                <div style="text-align:center;padding:24px;">
+                    <button class="btn btn-outline" onclick="window.mcRenderRegStudentsTable('${eventId}', ${JSON.stringify(ev.availableSubjects || [])}, ${JSON.stringify(normalizedSubjects)})" style="font-size:0.75rem;padding:8px 16px;">
+                        <span class="material-icons-round" style="font-size:0.85rem;vertical-align:middle;">visibility</span> View Registered Students (${totalRegistrations})
+                    </button>
+                </div>`;
+        }
         window.mcRenderEventKeysTable(eventId);
         
         // Pre-select event duration
