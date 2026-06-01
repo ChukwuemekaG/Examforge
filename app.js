@@ -4795,13 +4795,9 @@ function renderUserList(users) {
 
 async function fetchAdminStats() {
     try {
-        const { collection, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const [userCountSnap, examCountSnap] = await Promise.all([
-            getCountFromServer(collection(db, 'users')),
-            getCountFromServer(collection(db, 'exams'))
-        ]);
-        document.getElementById('admin-total-students').innerText = userCountSnap.data().count;
-        document.getElementById('admin-total-exams').innerText = examCountSnap.data().count;
+        // Stats removed to eliminate getCountFromServer reads
+        document.getElementById('admin-total-students').innerText = '-';
+        document.getElementById('admin-total-exams').innerText = '-';
     } catch (err) { console.error(err); }
 }
 
