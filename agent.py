@@ -340,8 +340,7 @@ def _build_available_tools() -> List[Dict[str, Any]]:
             "function": {
                 "name": "review_files",
                 "description": "Review one or more files for bugs, security issues, "
-                               "performance problems, and code quality. "
-                               "Provide the file paths as a JSON array.",
+                               "performance problems, and code quality.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -350,8 +349,61 @@ def _build_available_tools() -> List[Dict[str, Any]]:
                             "description": "A JSON array of relative file paths "
                                            "to review (e.g. '[\"src/main.py\", \"src/utils.py\"]').",
                         },
+                        "task": {
+                            "type": "string",
+                            "description": "What to focus the review on",
+                        },
                     },
                     "required": ["files_json"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "edit_file",
+                "description": "Edit specific parts of a file by finding text and replacing it. "
+                               "Use this when you want to make targeted changes without rewriting "
+                               "the entire file.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Relative path to the file",
+                        },
+                        "old_text": {
+                            "type": "string",
+                            "description": "The exact text to find and replace",
+                        },
+                        "new_text": {
+                            "type": "string",
+                            "description": "The replacement text",
+                        },
+                    },
+                    "required": ["path", "old_text", "new_text"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_files",
+                "description": "Search for text patterns across all files in the project.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "description": "The text pattern to search for",
+                        },
+                        "file_pattern": {
+                            "type": "string",
+                            "description": "Optional: only search files matching this pattern "
+                                           "(e.g. *.js, *.py)",
+                        },
+                    },
+                    "required": ["pattern"],
                 },
             },
         },
@@ -425,9 +477,7 @@ def _collect_generator_events(
         if etype == "file":
             path = event.get("path", "?")
             content = event.get("content", "")
-            result_lines.append(f"### {path}\n\n```\n{content[:5000]}\n```")
-            if len(content) > 5000:
-                result_lines[-1] += "\n*(content truncated to 5000 chars)*"
+            result_lines.append(f"### {path}\n\n```\n{content}\n```")
         elif etype == "file_listing":
             files = event.get("files", [])
             result_lines.append(f"Project contains {event.get('total', len(files))} files.")
@@ -676,20 +726,91 @@ def _execute_review_files(
     events: List[Dict[str, Any]],
 ) -> str:
     """Execute the ``review_files`` tool."""
-    files_json = args["files_json"]
-    try:
-        files = json.loads(files_json)
-        if isinstance(files, str):
-            files = [files]
-    except (json.JSONDecodeError, TypeError):
-        files = [files_json]
+    files_json = args.get("files_json", "[]")
+    task = args.get("task", "Review code changes")
+
+    # Handle both JSON string and already-parsed list
+    if isinstance(files_json, list):
+        files = files_json
+    elif isinstance(files_json, str):
+        try:
+            files = json.loads(files_json)
+            if isinstance(files, str):
+                files = [files]
+        except (json.JSONDecodeError, TypeError):
+            files = [files_json]
+    else:
+        files = [str(files_json)]
 
     files_str = ", ".join(files[:5])
     events.append({"type": "thinking", "content": f"🔍 Reviewing {len(files)} file(s): {files_str}..."})
 
-    task_summary = "Review code changes"
-    gen = review_changes(files, task_summary)
+    gen = review_changes(files, task)
     return _collect_generator_events(gen, events)
+
+
+def _execute_edit_file(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``edit_file`` tool."""
+    path = args["path"]
+    old_text = args["old_text"]
+    new_text = args["new_text"]
+
+    abs_path = PROJECT_ROOT / path
+    if not abs_path.exists():
+        events.append({"type": "error", "content": f"File not found: {path}"})
+        return f"Error: File not found: {path}"
+
+    content = abs_path.read_text(encoding="utf-8", errors="replace")
+    if old_text not in content:
+        events.append({"type": "error", "content": f"Could not find specified text in {path}"})
+        return f"Error: Could not find specified text in {path}"
+
+    new_content = content.replace(old_text, new_text, 1)
+    abs_path.write_text(new_content, encoding="utf-8")
+
+    events.append({"type": "thinking", "content": f"✍️ Edited {path}"})
+    return f"Successfully edited {path}"
+
+
+def _execute_search_files(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``search_files`` tool."""
+    pattern = args["pattern"]
+    file_pattern = args.get("file_pattern", "*")
+
+    events.append({"type": "thinking", "content": f"🔍 Searching for '{pattern}'..."})
+
+    results = []
+    for f in PROJECT_ROOT.rglob(file_pattern):
+        if any(part.startswith('.') or part == '__pycache__' or part == 'venv' or part == 'node_modules' for part in f.parts):
+            continue
+        if f.is_file():
+            try:
+                content = f.read_text(encoding="utf-8", errors="replace")
+                if pattern in content:
+                    # Find line numbers
+                    lines = content.split('\n')
+                    for i, line in enumerate(lines, 1):
+                        if pattern in line:
+                            rel = f.relative_to(PROJECT_ROOT)
+                            results.append(f"{rel}:{i}: {line.strip()[:200]}")
+            except:
+                pass
+
+    if results:
+        result_text = f"Found {len(results)} match(es):\n" + "\n".join(results[:50])
+        if len(results) > 50:
+            result_text += f"\n... and {len(results)-50} more matches"
+    else:
+        result_text = f"No matches found for '{pattern}'"
+
+    events.append({"type": "thinking", "content": f"🔍 Search complete: {len(results)} match(es)"})
+    return result_text
 
 
 def _execute_generate_docs(
@@ -734,6 +855,8 @@ _TOOL_HANDLERS: Dict[str, Any] = {
     "create_pull_request": _execute_create_pull_request,
     "rollback_commit": _execute_rollback_commit,
     "review_files": _execute_review_files,
+    "edit_file": _execute_edit_file,
+    "search_files": _execute_search_files,
     "generate_docs": _execute_generate_docs,
     "generate_tests": _execute_generate_tests,
 }
@@ -1300,6 +1423,8 @@ def run_agent(
                         "git_push": "🚀",
                         "create_pull_request": "📦",
                         "rollback_commit": "⏪",
+                        "edit_file": "✍️",
+                        "search_files": "🔍",
                         "review_files": "🔍",
                         "generate_docs": "📝",
                         "generate_tests": "🧪",
