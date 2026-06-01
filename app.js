@@ -7399,8 +7399,13 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                 }
                 
                 // 2. Find all registrations for this event
-                const regDataDoc = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
-                const regDocs = regDataDoc?.students || [];
+                let regDataDoc = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+                let regDocs = regDataDoc?.students || [];
+                // Fallback for old events (data in subcollection, not yet migrated)
+                if (!regDocs.length) {
+                    const legacy = await sync.collection('subscription_events/' + eventId + '/registrations');
+                    regDocs = legacy.map(r => ({ ...r, uid: r.id }));
+                }
                 const regData = {};
                 regDocs.forEach(r => {
                     regData[r.uid] = r.subjects || [];
@@ -7645,8 +7650,13 @@ window.mcViewSubEventDetails = async function(eventId) {
         // ── Registration count via sync.doc read from _data/registrations (1 read, all students) ──
         let totalRegistrations = 0;
         try {
-            const regDataDoc = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
-            const allStudents = regDataDoc?.students || [];
+            let regDataDoc = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+            let allStudents = regDataDoc?.students || [];
+            // Fallback for old events (data in subcollection, not yet migrated)
+            if (!allStudents.length) {
+                const legacy = await sync.collection('subscription_events/' + eventId + '/registrations');
+                allStudents = legacy.map(r => ({ ...r, uid: r.id }));
+            }
             totalRegistrations = allStudents.length;
         } catch(e) {
             console.error('Count error:', e);
@@ -7767,8 +7777,13 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
     
     try {
         // 1. Fetch all registrations
-        const regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
-        const registrationDocs = regData?.students || [];
+        let regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+        let registrationDocs = regData?.students || [];
+        // Fallback for old events (data in subcollection, not yet migrated)
+        if (!registrationDocs.length) {
+            const legacy = await sync.collection('subscription_events/' + eventId + '/registrations');
+            registrationDocs = legacy.map(r => ({ ...r, uid: r.id }));
+        }
         const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
         
         if (registrations.length === 0) {
@@ -7921,8 +7936,13 @@ window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSu
 
 window.mcExportRegTableCSV = async function(eventId) {
     try {
-        const regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
-        const registrationDocs = regData?.students || [];
+        let regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+        let registrationDocs = regData?.students || [];
+        // Fallback for old events (data in subcollection, not yet migrated)
+        if (!registrationDocs.length) {
+            const legacy = await sync.collection('subscription_events/' + eventId + '/registrations');
+            registrationDocs = legacy.map(r => ({ ...r, uid: r.id }));
+        }
         const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
         if (registrations.length === 0) return window.showEFModal("No Data", "No registered students.", "OK", null, true);
         
@@ -8003,8 +8023,13 @@ window.mcExportRegTableCSV = async function(eventId) {
 
 window.mcExportRegTablePDF = async function(eventId) {
     try {
-        const regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
-        const registrationDocs = regData?.students || [];
+        let regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+        let registrationDocs = regData?.students || [];
+        // Fallback for old events (data in subcollection, not yet migrated)
+        if (!registrationDocs.length) {
+            const legacy = await sync.collection('subscription_events/' + eventId + '/registrations');
+            registrationDocs = legacy.map(r => ({ ...r, uid: r.id }));
+        }
         const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
         if (registrations.length === 0) return window.showEFModal("No Data", "No registered students.", "OK", null, true);
         
@@ -8529,8 +8554,13 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
     window.showEFModal("Release Mock", `Are you sure you want to release the ${subject} mock to all registered students?`, "RELEASE", async () => {
         try {
             // 1. Find all students who registered for this subject
-            const regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
-            const regDocs = regData?.students || [];
+            let regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
+            let regDocs = regData?.students || [];
+            // Fallback for old events (data in subcollection, not yet migrated)
+            if (!regDocs.length) {
+                const legacy = await sync.collection('subscription_events/' + eventId + '/registrations');
+                regDocs = legacy.map(r => ({ ...r, uid: r.id }));
+            }
             const uids = [];
             regDocs.forEach(r => {
                 if (r.subjects && r.subjects.includes(subject)) uids.push(r.uid);
