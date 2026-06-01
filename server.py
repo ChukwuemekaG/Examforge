@@ -14,6 +14,14 @@ import memory as memory_module
 app = Flask(__name__)
 
 
+# ── Health Check ─────────────────────────────────────────────────────────────
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return {"status": "ok"}
+
+
 # ── Static Routes ─────────────────────────────────────────────────────────────
 
 
@@ -37,23 +45,30 @@ def stream():
         reset_session()
 
         def clear_gen():
-            yield f"data: {json.dumps({'type': 'done', 'message': 'History cleared.'})}\n\n"
-            yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
+            try:
+                yield f"data: {json.dumps({'type': 'done', 'message': 'History cleared.'})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'content': f'Clear history error: {str(e)}'})}\n\n"
+            finally:
+                yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
 
         return Response(stream_with_context(clear_gen()), mimetype="text/event-stream")
 
     # ── Agent streaming ───────────────────────────────────────────────────
     def generate():
-        for event in run_agent(message, model, deploy_enabled=auto_deploy):
-            event["total_cost"] = get_session_cost()
-            yield f"data: {json.dumps(event)}\n\n"
-
-            # If the agent asks a question, stop here — the client will
-            # re-send the same request with the answer included.
-            if event.get("type") == "question":
-                break
-
-        yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
+        try:
+            for event in run_agent(message, model, deploy_enabled=auto_deploy):
+                try:
+                    event["total_cost"] = get_session_cost()
+                    yield f"data: {json.dumps(event)}\n\n"
+                    if event.get("type") == "question":
+                        break
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'content': f'Stream error: {str(e)}'})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': f'Server error: {str(e)}'})}\n\n"
+        finally:
+            yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
 
     return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
