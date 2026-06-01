@@ -197,81 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await updateDoc(doc(db, 'users', uid), { inbox: updated });
     };
 
-    // ─── Meta helpers removed — using direct limit(3) queries via SyncManager ───
-
-    /**
-     * Loads course data from local JSON files — ZERO Firestore reads.
-     * Courses are static and don't change frequently.
-     */
-    window._localCourses = null;
-    window._loadLocalCourses = async function(forceRefresh = false) {
-        if (window._localCourses && !forceRefresh) return window._localCourses;
-        
-        try {
-            // Load course metadata
-            const resp = await fetch('/json/uni-courses.json');
-            if (!resp.ok) throw new Error('Failed to load courses');
-            const courses = await resp.json();
-            
-            // Load topic counts from topic-list files in parallel
-            const withCounts = await Promise.all(courses.map(async (c) => {
-                let topicCount = 0;
-                let topics = [];
-                if (c.link) {
-                    try {
-                        const tResp = await fetch('/' + c.link);
-                        if (tResp.ok) {
-                            topics = await tResp.json();
-                            topicCount = topics.length;
-                        }
-                    } catch(e) {}
-                }
-                return {
-                    id: c.id,
-                    title: c.title || c.id.toUpperCase(),
-                    level: c.level || '',
-                    description: c.description || '',
-                    topicCount,
-                    _topics: topics  // Keep topics for quick access
-                };
-            }));
-            
-            window._localCourses = withCounts;
-            return withCounts;
-        } catch(e) {
-            console.error('Failed to load local courses:', e);
-            window._localCourses = [];
-            return [];
-        }
-    };
-
-    /**
-     * Loads topics for a specific course from local JSON — ZERO Firestore reads.
-     */
-    window._loadLocalTopics = async function(courseId) {
-        // First check if we already loaded them
-        const courses = await window._loadLocalCourses();
-        const course = courses.find(c => c.id === courseId);
-        if (course && course._topics && course._topics.length > 0) {
-            return course._topics;
-        }
-        
-        // Try to load from topic-list file
-        try {
-            // Find the course link from uni-courses.json
-            const resp = await fetch('/json/uni-courses.json');
-            if (!resp.ok) return [];
-            const allCourses = await resp.json();
-            const meta = allCourses.find(c => c.id === courseId);
-            if (!meta || !meta.link) return [];
-            
-            const tResp = await fetch('/' + meta.link);
-            if (!tResp.ok) return [];
-            return await tResp.json();
-        } catch(e) {
-            return [];
-        }
-    };
+    // ─── Local JSON course loading removed — using Firestore limit queries via SyncManager ───
 
     // Firebase User Data State
     let currentUser = null;
@@ -344,7 +270,7 @@ window.updateDashboardUI = function() {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        const courses = await window._loadLocalCourses() || [];
+        const courses = await sync.query('unicourses', [orderBy('id', 'asc'), limit(3)]) || [];
         coursesListDiv.innerHTML = ""; // Clear loading text
 
         // Loop through each course
@@ -742,8 +668,27 @@ function setupAdminListeners() {
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
                 // ─── Warm caches in background for instant view loads ───
                 sync.doc('users/' + user.uid).catch(() => {});  // Just read the user doc to warm cache
-                // Pre-warm local course cache in background
-                window._loadLocalCourses().catch(() => {});
+                // ── Single onSnapshot on user doc (utilizes real-time read units) ──
+                // This keeps the user doc fresh and bills updates to real-time read quota
+                if (window._userDocListener) window._userDocListener();
+                window._userDocListener = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        // Update in-memory user data
+                        userData.stats = {
+                            exaRating: data.exaRating ?? userData.stats.exaRating,
+                            streak: data.streak ?? userData.stats.streak,
+                            highestStreak: data.highestStreak ?? userData.stats.highestStreak,
+                            role: data.role || userData.stats.role
+                        };
+                        userData.recentResults = data.recentResults || userData.recentResults;
+                        userData.schedule = data.schedule || userData.schedule;
+                        userData.inbox = data.inbox || userData.inbox;
+                        
+                        // Update UI if dashboard is visible
+                        if (currentView === 'dashboard') window.updateDashboardUI();
+                    }
+                });
                 // Admin collections are loaded on demand when the admin tab is opened
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
@@ -792,21 +737,8 @@ function setupAdminListeners() {
         const saved = localStorage.getItem('examforge-theme');
         if (saved === 'dark') html.setAttribute('data-theme', 'dark');
 
-        // Pre-warm local course cache
-        try {
-            const lc = await window._loadLocalCourses();
-            if (lc && lc.length) uniCourses = lc;
-        } catch {}
-        // Fallback to direct fetch if _loadLocalCourses didn't populate
-        if (!uniCourses || !uniCourses.length) {
-            try {
-                const r = await fetch('/json/uni-courses.json');
-                if (r.ok) uniCourses = await r.json();
-                else uniCourses = MOCK_COURSES;
-            } catch {
-                uniCourses = MOCK_COURSES;
-            }
-        }
+        // Courses are loaded from Firestore on demand — no local JSON
+        uniCourses = [];
 
         const hash = location.hash.slice(1);
         const [view, courseSlug] = hash.split('/');
@@ -1290,7 +1222,7 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        const courses = await window._loadLocalCourses() || [];
+        const courses = await sync.query('unicourses', [orderBy('id', 'asc'), limit(2)]) || [];
         const el = id => document.getElementById(id);
         // User count removed to eliminate getCountFromServer reads
         if (el('mc-s-users')) el('mc-s-users').textContent = '-';
@@ -1487,7 +1419,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const courses = await window._loadLocalCourses() || [];
+            const courses = await sync.query('unicourses', [orderBy('id', 'asc'), limit(2)]) || [];
             courses.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
@@ -1495,8 +1427,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                 grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">No courses yet. Create one!</div>';
                 return;
             }
-            // fetch topic counts from local data (already loaded by _loadLocalCourses)
-            const topicsLists = await Promise.all(courses.map(c => window._loadLocalTopics(c.id).catch(() => [])));
+            // Topic counts come from course docs
             grid.innerHTML = courses.map((c,i) => `
                 <div class="mc-card" style="position:relative;" onclick="window.mcDrillCourse('${c.id}')">
                     <button onclick="event.stopPropagation();window.mcDeleteCourse('${c.id}', '${(c.title || c.id).replace(/'/g, "\\'")}')"
@@ -1509,7 +1440,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                     <div class="mc-card-title" style="padding-right:24px;">${c.title || c.id.toUpperCase()}</div>
                     <div class="mc-card-meta">
                         <span class="material-icons-round" style="font-size:0.75rem;">layers</span>
-                        ${topicsLists[i].length} topic${topicsLists[i].length!==1?'s':''}
+                        ${(c.topicCount ?? 0)} topic${(c.topicCount ?? 0) !== 1 ? 's' : ''}
                         <span style="margin-left:auto;font-family:var(--font-mono);font-size:0.6rem;background:var(--bg-inset);padding:2px 6px;border-radius:4px;">${c.id.toUpperCase()}</span>
                     </div>
                 </div>
@@ -4721,7 +4652,7 @@ window.mcDeleteCourse = function(courseId, courseTitle) {
         async () => {
             try {
                 // Delete all topics under this course first
-                const topics = await window._loadLocalTopics(courseId);
+                const topics = await sync.collection('unicourses/' + courseId + '/topics') || [];
                 const batch = writeBatch(db);
                 topics.forEach(t => {
                     batch.delete(doc(db, 'unicourses', courseId, 'topics', t.id));
@@ -5604,11 +5535,10 @@ window.adminPromptNotification = function(userId) {
             return;
         }
 
-        // Use local course cache — ZERO Firestore reads
+        // Load latest 3 courses from Firestore (cached by SyncManager)
         if (!libCourseCache.length) {
             try {
-                const lc = await window._loadLocalCourses() || [];
-                // _loadLocalCourses already fetches topic counts from local JSON
+                const lc = await sync.query('unicourses', [orderBy('id', 'asc'), limit(3)]) || [];
                 libCourseCache = lc.sort((a, b) => {
                     const lvA = parseInt(a.level) || 0;
                     const lvB = parseInt(b.level) || 0;
@@ -5783,7 +5713,7 @@ window.adminPromptNotification = function(userId) {
         if (!grid) return;
 
         try {
-            const topics = await window._loadLocalTopics(courseId);
+            const topics = await sync.collection('unicourses/' + courseId + '/topics') || [];
             
             if (!topics.length) {
                 grid.innerHTML = `
