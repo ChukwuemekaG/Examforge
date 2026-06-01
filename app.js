@@ -197,67 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await updateDoc(doc(db, 'users', uid), { inbox: updated });
     };
 
-    // ─── Meta App Doc — Admin panel data helpers ───
-
-    /**
-     * Reads the _meta/app document which contains all admin panel data.
-     * One doc read replaces 4+ collection reads.
-     * Cached by SyncManager — subsequent calls cost 0 reads.
-     */
-    window._metaApp = null;
-    window._getMetaApp = async function() {
-        if (window._metaApp) return window._metaApp;
-        const data = await sync.doc('_meta/app');
-        window._metaApp = {
-            dailyQuizzes: (data && data.dailyQuizzes) || [],
-            dailyAdvices: (data && data.dailyAdvices) || [],
-            subscriptionEvents: (data && data.subscriptionEvents) || [],
-            totalStudentCount: (data && data.totalStudentCount) || 0
-        };
-        return window._metaApp;
-    };
-
-    /**
-     * Syncs a specific array field to the _meta/app document.
-     * Only the field that changed is updated (Firestore field-level merge).
-     */
-    window._updateMetaField = async function(field, data) {
-        await setDoc(doc(db, '_meta', 'app'), { [field]: data }, { merge: true });
-        // Refresh in-memory cache
-        if (window._metaApp) window._metaApp[field] = data;
-    };
-
-    /**
-     * One-time rebuild of _meta/app from Firestore collections.
-     * Admin clicks "Rebuild Cache" button to trigger this.
-     * After this, all reads come from the cached meta doc.
-     */
-    window._rebuildMetaApp = async function() {
-        try {
-            const [quizzes, advices, events] = await Promise.all([
-                sync.collection('daily_quizzes').catch(() => []),
-                sync.collection('daily_advices').catch(() => []),
-                sync.collection('subscription_events').catch(() => [])
-            ]);
-
-            await window._updateMetaField('dailyQuizzes', quizzes.map(q => ({
-                id: q.id, title: q.title || '', createdAt: q.createdAt || null,
-                date: q.date || '', duration: q.duration || 30, active: q.active !== false
-            })));
-            await window._updateMetaField('dailyAdvices', advices.map(a => ({
-                id: a.id, title: a.title || '', content: a.content || '',
-                createdAt: a.createdAt || null, category: a.category || ''
-            })));
-            await window._updateMetaField('subscriptionEvents', events.map(e => ({
-                id: e.id, title: e.title || '', createdAt: e.createdAt || null, active: e.active !== false
-            })));
-
-            return true;
-        } catch(e) {
-            console.error('Failed to rebuild meta app:', e);
-            return false;
-        }
-    };
+    // ─── Meta helpers removed — using direct limit(3) queries via SyncManager ───
 
     /**
      * Loads course data from local JSON files — ZERO Firestore reads.
@@ -418,7 +358,7 @@ window.updateDashboardUI = function() {
             coursesListDiv.appendChild(courseDiv);
 
             // Fetch Topics for this specific course
-            const topics = await window._loadLocalTopics(courseId) || [];
+            const topics = await sync.collection('unicourses/' + courseId + '/topics') || [];
             const topicsList = document.getElementById(`topics-${courseId}`);
             topicsList.innerHTML = ""; // Clear loading text
 
@@ -1293,11 +1233,7 @@ async function renderMaster() {
             <div class="mc-stat"><div class="mc-stat-val" id="mc-s-courses">—</div><div class="mc-stat-lbl">Courses</div></div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-            <button id="btn-rebuild-meta" class="btn btn-outline btn-sm" onclick="window._rebuildMetaApp().then(r => { if(r) window.showEFModal('Cache Rebuilt', 'Meta data cache rebuilt successfully. Refresh to see your data.', 'OK', null, true); else window.showEFModal('Error', 'Failed to rebuild cache. Check console.', 'OK', null, true); }).catch(() => {})" style="font-size:0.7rem;padding:4px 10px;">
-                <span class="material-icons-round" style="font-size:0.85rem;vertical-align:middle;">refresh</span> Rebuild Cache
-            </button>
-        </div>
+
 
         <div class="mc-tab-bar">
             <button class="mc-tab ${masterTab==='users'?'active':''}" onclick="window.mcSwitchTab('users')">
@@ -1605,7 +1541,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const topics = await window._loadLocalTopics(courseId) || [];
+            const topics = await sync.collection('unicourses/' + courseId + '/topics') || [];
             topics.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-topic-grid');
             if (!grid) return;
@@ -1802,8 +1738,7 @@ async function mcLoadDailyQuizzes() {
     if (!grid) return;
 
         try {
-            const quizzes = (await window._getMetaApp()).dailyQuizzes || [];
-            quizzes.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            const quizzes = await sync.query('daily_quizzes', [orderBy('createdAt', 'desc'), limit(3)]) || [];
 
         if (quizzes.length === 0) {
             grid.innerHTML = `
@@ -1907,9 +1842,7 @@ async function mcLoadDailyAdvices() {
     if (!grid) return;
 
         try {
-            const advices = (await window._getMetaApp()).dailyAdvices || [];
-            // Sort by createdAt descending for display
-            advices.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            const advices = await sync.query('daily_advices', [orderBy('createdAt', 'desc'), limit(3)]) || [];
             if (!advices.length) {
             grid.innerHTML = `
                 <div style="grid-column:1/-1;text-align:center;padding:48px;border:3px dashed var(--border);border-radius:16px;color:var(--text-muted);">
@@ -2188,9 +2121,8 @@ window.mcPublishDailyAdvice = async function() {
     btn.textContent = 'PUBLISHING…';
 
     try {
-        // Read subscriber count from meta — never read all users
-        const meta = await window._getMetaApp();
-        const totalUsers = meta.totalStudentCount || 0;
+        const totalUsers = 0;
+        // User count not fetched to avoid reads
         let targetUsers = [];
         if (audience === 'all') {
             // All registered students — use meta count
@@ -2221,10 +2153,7 @@ window.mcPublishDailyAdvice = async function() {
             createdAt: serverTimestamp()
         });
 
-        // Update meta app
-        const meta = await window._getMetaApp();
-        meta.dailyAdvices.push({ id: advId, title, content, createdAt: serverTimestamp(), category });
-        await window._updateMetaField('dailyAdvices', meta.dailyAdvices);
+        // Meta app updates removed — direct Firestore writes only
 
         // Note: Individual notification writes removed — broadcasting via meta count
         // Previously: chunk loop wrote to each user's notifications subcollection
@@ -2719,10 +2648,7 @@ window.mcSaveCreatedDailyQuiz = async function() {
             createdAt: serverTimestamp()
         });
         
-        // Update meta app
-        const meta = await window._getMetaApp();
-        meta.dailyQuizzes.push({ id: dqid, title, createdAt: serverTimestamp(), date: '', duration: time, active: true });
-        await window._updateMetaField('dailyQuizzes', meta.dailyQuizzes);
+        // Meta app updates removed — direct Firestore writes only
         
         const modal = document.getElementById('ef-dq-builder-modal');
         if (modal) modal.remove();
@@ -3118,9 +3044,8 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
         
         const quizUrl = `quiz.html?dqid=${dqid}`;
         
-        // Subscriber count from meta — never read all users
-        const meta = await window._getMetaApp();
-        const totalUsers = meta.totalStudentCount || 0;
+        const totalUsers = 0;
+        // User count not fetched to avoid reads
         const subscribers = [{ _count: totalUsers }];
         
         if (!totalUsers) {
@@ -3484,17 +3409,7 @@ window.mcOpenCreateCourseModal = function() {
         if (!id || !title) return alert('Please fill all fields.');
         try {
             await setDoc(doc(db,'unicourses',id), { title, level, createdAt: new Date() });
-            // Update meta app (only for admin tracking)
-            const localCourses = await window._loadLocalCourses();
-            const courseSummary = { id, title: title || id, level: level || '', description: '', topicCount: 0 };
-            const existingIdx = localCourses.findIndex(c => c.id === id);
-            // Just push to the meta doc for admin tracking — courses are loaded locally
-            const meta = await window._getMetaApp();
-            const mcCourses = meta.dailyQuizzes ? (meta.courses || []) : [];
-            const existingMcIdx = mcCourses.findIndex(c => c.id === id);
-            if (existingMcIdx >= 0) mcCourses[existingMcIdx] = courseSummary;
-            else mcCourses.push(courseSummary);
-            await window._updateMetaField('courses', mcCourses);
+            // Meta app updates removed — course tracking via local JSON only
             overlay.remove();
             mcRenderCoursesTab();
             mcLoadStats();
@@ -4815,12 +4730,7 @@ window.mcDeleteCourse = function(courseId, courseTitle) {
                 batch.delete(doc(db, 'unicourses', courseId));
                 await batch.commit();
                 
-                // Update meta app (for admin tracking)
-                const localCourses = await window._loadLocalCourses();
-                const meta = await window._getMetaApp();
-                const mcCourses = meta.dailyQuizzes ? (meta.courses || []) : [];
-                const updatedCourses = mcCourses.filter(c => c.id !== courseId);
-                await window._updateMetaField('courses', updatedCourses);
+                // Meta app updates removed — course tracking via local JSON only
 
                 window.showEFModal("Course Deleted", `The course "${courseTitle}" has been deleted successfully.`, "OKAY", null, true);
                 mcRenderCoursesTab();
@@ -5310,9 +5220,8 @@ window.adminPromptNotification = function(userId) {
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
             // Fetch dynamic events
-            const allEvents = (await window._getMetaApp()).subscriptionEvents || [];
+            const allEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(3)]) || [];
             const events = [...allEvents];
-            events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
             // Check registrations for the current user
             const uid = auth.currentUser?.uid;
@@ -7367,8 +7276,7 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        const events = (await window._getMetaApp()).subscriptionEvents || [];
-        events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        const events = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(3)]) || [];
 
         if (events.length === 0) {
             grid.innerHTML = `
@@ -7501,10 +7409,7 @@ window.mcSaveSubEvent = async function() {
             createdAt: serverTimestamp()
         });
         
-        // Update meta app
-        const meta = await window._getMetaApp();
-        meta.subscriptionEvents.push({ id: eventRef.id, title, createdAt: serverTimestamp(), active: true });
-        await window._updateMetaField('subscriptionEvents', meta.subscriptionEvents);
+        // Meta app updates removed — direct Firestore writes only
         
         await sync.refresh('subscription_events');
         document.getElementById('ef-subevent-modal')?.remove();
@@ -7526,10 +7431,7 @@ window.mcDeleteSubEvent = function(eventId, title) {
                 const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                 await deleteDoc(doc(db, 'subscription_events', eventId));
                 
-                // Update meta app
-                const meta = await window._getMetaApp();
-                meta.subscriptionEvents = meta.subscriptionEvents.filter(e => e.id !== eventId);
-                await window._updateMetaField('subscriptionEvents', meta.subscriptionEvents);
+                // Meta app updates removed — direct Firestore writes only
                 
                 await sync.refresh('subscription_events');
                 window.mcLoadSubEvents();
