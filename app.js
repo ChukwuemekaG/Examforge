@@ -7179,7 +7179,10 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        const events = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(2)]) || [];
+        const events = (await sync.liveCollection('subscription_events', () => {
+            if (document.getElementById('mc-subevents-list')) window.mcLoadSubEvents();
+        })) || [];
+        events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
         if (events.length === 0) {
             grid.innerHTML = `
@@ -7618,7 +7621,7 @@ window.mcViewSubEventDetails = async function(eventId) {
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;">
-                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong>-</strong> students</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong id="mc-sub-count-${safeName.replace(/\s+/g,'-')}">${subjectCounts[s.name]}</strong> students</div>
                     <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);white-space:nowrap;">CREATE/EDIT MOCK</button>
                 </div>
             </div>`;
@@ -7638,7 +7641,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         document.getElementById('ef-se-det-body').innerHTML = `
             <div style="display:grid;grid-template-columns:1fr;gap:16px;">
                 <div style="background:var(--bg-card);border:3px solid var(--text);border-radius:12px;padding:16px;text-align:center;">
-                    <div id="ef-se-det-total-reg" style="font-size:2rem;font-weight:900;color:var(--text);">0</div>
+                    <div style="font-size:2rem;font-weight:900;color:var(--text);" id="mc-total-registrations">${totalRegistrations}</div>
                     <div style="font-size:0.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-top:4px;">Total Registered Students</div>
                 </div>
             </div>
@@ -7697,7 +7700,7 @@ window.mcViewSubEventDetails = async function(eventId) {
             <div>
                 <h3 style="font-weight:900;font-size:1.05rem;text-transform:uppercase;color:var(--text);margin-bottom:12px;margin-top:24px;border-top:3px solid var(--text);padding-top:20px;">
                     Registered Students
-                    <span id="ef-se-det-reg-heading" style="font-size:0.7rem;color:var(--text-muted);font-weight:700;">(0 total)</span>
+                    <span id="mc-total-registrations-summary" style="font-size:0.7rem;color:var(--text-muted);font-weight:700;">(${totalRegistrations} total)</span>
                 </h3>
                 <div id="mc-reg-students-table" style="overflow-x:auto;border:2px solid var(--text);border-radius:10px;">
                     <div style="text-align:center;padding:32px;color:var(--text-muted);font-size:0.8rem;">
@@ -7763,6 +7766,33 @@ window.mcViewSubEventDetails = async function(eventId) {
                 </div>`;
         }
         window.mcRenderEventKeysTable(eventId);
+
+        const refreshEventDetails = async () => {
+            const regDataLive = await sync.collection('subscription_events/' + eventId + '/registrations');
+            const totalLive = regDataLive.length;
+            document.getElementById('mc-total-registrations')?.textContent = totalLive;
+            document.getElementById('mc-total-registrations-summary')?.textContent = `(${totalLive} total)`;
+
+            const subjectCountsLive = {};
+            normalizedSubjects.forEach(s => subjectCountsLive[s.name] = 0);
+            regDataLive.forEach(r => {
+                if (r.subjects) r.subjects.forEach(s => {
+                    const sn = typeof s === 'string' ? s : (s.name || s);
+                    if (subjectCountsLive[sn] !== undefined) subjectCountsLive[sn]++;
+                });
+            });
+            normalizedSubjects.forEach(s => {
+                document.getElementById(`mc-sub-count-${s.name.replace(/\s+/g,'-')}`)?.textContent = subjectCountsLive[s.name] ?? 0;
+            });
+
+            window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
+        };
+
+        sync.liveCollection('subscription_events/' + eventId + '/registrations', refreshEventDetails).catch(() => {});
+        sync.liveCollection('subscription_events/' + eventId + '/keys', () => {
+            window.mcRenderEventKeysTable(eventId);
+            refreshEventDetails();
+        }).catch(() => {});
         
         // Pre-select event duration
         const durationSelect = document.getElementById('ev-duration-select');
@@ -7794,7 +7824,7 @@ window.mcRenderEventKeysTable = async function(eventId) {
     if (!container) return;
     
     try {
-        const keys = await sync.collection('subscription_events/' + eventId + '/keys');
+        const keys = await sync.liveCollection('subscription_events/' + eventId + '/keys');
         const total = keys.length;
         const used = keys.filter(k => k.used).length;
         const available = total - used;
@@ -7853,82 +7883,88 @@ window.mcRenderEventKeysTable = async function(eventId) {
     }
 };
 
-window.mcRenderRegStudentsTable = async function(eventId) {
-    // Load event data to get subjects
-    const ev = await sync.doc('subscription_events/' + eventId);
-    const subjects = (ev.availableSubjects || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
-    const normalizedSubjects = subjects.map(s => mcNormalizeSubject(s));
+window.mcFetchEventMockAttemptMaps = async function(eventId) {
+    const allMocks = (await sync.query('mock_exams', [where('eventId', '==', eventId)])) || [];
+    const mockBySubject = new Map();
+    const attemptsByMock = new Map();
+
+    await Promise.all(allMocks.map(async (mock) => {
+        const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
+        const attemptMap = new Map();
+        attempts.forEach(attempt => {
+            if (attempt.uid) attemptMap.set(attempt.uid, attempt);
+        });
+        attemptsByMock.set(mock.id, attemptMap);
+        const subjectName = mcGetSubjectName(mock.subject);
+        if (!mockBySubject.has(subjectName)) mockBySubject.set(subjectName, mock.id);
+    }));
+
+    return { mockBySubject, attemptsByMock };
+};
+
+window.mcBuildEventRegistrationData = async function(eventId, registrations) {
+    const { mockBySubject, attemptsByMock } = await window.mcFetchEventMockAttemptMaps(eventId);
+    return Promise.all(registrations.map(async (reg) => {
+        let user = { displayName: 'Unknown', email: '', username: '' };
+        try {
+            const uData = await sync.doc('users/' + reg.uid);
+            if (uData) user = uData;
+        } catch (e) {
+            console.warn('User profile missing for', reg.uid, e);
+        }
+
+        const subjectScores = {};
+        for (const sub of (reg.subjects || [])) {
+            const subjectName = typeof sub === 'string' ? sub : mcGetSubjectName(sub);
+            const mockId = mockBySubject.get(subjectName);
+            if (!mockId) {
+                subjectScores[subjectName] = null;
+                continue;
+            }
+            const attempt = attemptsByMock.get(mockId)?.get(reg.uid) || null;
+            subjectScores[subjectName] = attempt ? {
+                correct: attempt.correct || 0,
+                total: attempt.totalQuestions || 0,
+                percentage: attempt.score || 0
+            } : null;
+        }
+
+        return { uid: reg.uid, user, subjects: reg.subjects || [], scores: subjectScores };
+    }));
+};
+
+window.mcRenderRegStudentsTable = async function(eventId, subjects, normalizedSubjects) {
+    if (!normalizedSubjects) normalizedSubjects = (subjects || []).map(s => mcNormalizeSubject(s));
     const container = document.getElementById('mc-reg-students-table');
     if (!container) return;
-    
+
     try {
-        // 1. Fetch all registrations
-        let regData = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
-        let registrationDocs = regData?.students || [];
-        // Fallback for old events (data in subcollection, not yet migrated)
-        if (!registrationDocs.length) {
-            const legacy = await sync.collection('subscription_events/' + eventId + '/registrations');
-            registrationDocs = legacy.map(r => ({ ...r, uid: r.id }));
-        }
-        const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
-        
+        const registrationDocs = await sync.collection('subscription_events/' + eventId + '/registrations');
+        const registrations = registrationDocs.map(r => ({ uid: r.id, ...r }));
         if (registrations.length === 0) {
             container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:0.8rem;">No students registered yet.</div>';
             return;
         }
-        
-        // 2. Fetch user profiles and mock attempts in parallel
-        const studentData = await Promise.all(registrations.map(async (reg) => {
-            let user = { displayName: 'Unknown', email: '', username: '' };
-            try {
-                const uData = await sync.doc('users/' + reg.uid);
-                if (uData) user = uData;
-            } catch(e) {}
-            
-            // Check mock attempts for each subject
-            const subjectScores = {};
-            for (const sub of (reg.subjects || [])) {
-                const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)])) || [];
-                
-                if (mockResults.length > 0) {
-                    const mockId = mockResults[0].id;
-                    const attempt = await sync.doc('mock_exams/' + mockId + '/attempts/' + reg.uid);
-                    if (attempt) {
-                        subjectScores[sub] = {
-                            correct: attempt.correct || 0,
-                            total: attempt.totalQuestions || 0,
-                            percentage: attempt.score || 0
-                        };
-                    } else {
-                        subjectScores[sub] = null;
-                    }
-                } else {
-                    subjectScores[sub] = null;
-                }
-            }
-            
-            return { uid: reg.uid, user, subjects: reg.subjects || [], scores: subjectScores };
-        }));
-        
-        // Sort by average score (highest first)
+
+        const studentData = await window.mcBuildEventRegistrationData(eventId, registrations);
+
         studentData.sort((a, b) => {
             const aScores = Object.values(a.scores).filter(s => s !== null);
             const bScores = Object.values(b.scores).filter(s => s !== null);
             const aAvg = aScores.length > 0 ? aScores.reduce((sum, s) => sum + s.percentage, 0) / aScores.length : -1;
             const bAvg = bScores.length > 0 ? bScores.reduce((sum, s) => sum + s.percentage, 0) / bScores.length : -1;
-            return bAvg - aAvg; // descending
+            return bAvg - aAvg;
         });
-        
-        // 3. Render table
+
         const name = u => u.displayName || u.email?.split('@')[0] || 'Unknown';
         const initials = u => {
             const n = name(u);
             const p = n.trim().split(' ');
-            return p.length > 1 ? (p[0][0]+p[p.length-1][0]).toUpperCase() : n.substring(0,2).toUpperCase();
+            return p.length > 1 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : n.substring(0, 2).toUpperCase();
         };
-        
+
         const subjectCols = (subjects || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
-        
+
         container.innerHTML = `
             <style>
                 .reg-table { width:100%; border-collapse:collapse; min-width:700px; font-size:0.75rem; }
@@ -8013,7 +8049,7 @@ window.mcRenderRegStudentsTable = async function(eventId) {
                 </span>
             </div>
         `;
-        
+
     } catch (e) {
         console.error(e);
         container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--brand);font-size:0.8rem;">Error loading students: ${e.message}</div>`;
@@ -8031,38 +8067,29 @@ window.mcExportRegTableCSV = async function(eventId) {
         }
         const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
         if (registrations.length === 0) return window.showEFModal("No Data", "No registered students.", "OK", null, true);
-        
+
         const ev = await sync.doc('subscription_events/' + eventId);
         const subjects = (ev.availableSubjects || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
-        
-        // Build header row
+
+        const studentData = await window.mcBuildEventRegistrationData(eventId, registrations);
+        studentData.sort((a, b) => {
+            const aScores = Object.values(a.scores).filter(s => s !== null);
+            const bScores = Object.values(b.scores).filter(s => s !== null);
+            const aAvg = aScores.length > 0 ? aScores.reduce((sum, s) => sum + s.percentage, 0) / aScores.length : -1;
+            const bAvg = bScores.length > 0 ? bScores.reduce((sum, s) => sum + s.percentage, 0) / bScores.length : -1;
+            return bAvg - aAvg;
+        });
+
         const header = ['#', 'Student', 'Username', 'Email', 'Subjects'];
         subjects.forEach(s => {
             header.push(s + ' Score', s + ' %', s + ' Grade');
         });
-        
-        // Build data rows - reuse the same logic as the table
-        let rows = [];
-        for (const reg of registrations) {
-            let user = { displayName: 'Unknown', email: '', username: '' };
-            try { const u = await sync.doc('users/' + reg.uid); if (u) user = u; } catch(e) {}
-            
-            const subjectScores = {};
-            for (const sub of (reg.subjects || [])) {
-                const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)])) || [];
-                if (mockResults.length > 0) {
-                    const attempt = await sync.doc('mock_exams/' + mockResults[0].id + '/attempts/' + reg.uid);
-                    if (attempt) {
-                        subjectScores[sub] = { correct: attempt.correct || 0, total: attempt.totalQuestions || 0, percentage: attempt.score || 0 };
-                    }
-                }
-            }
-            
-            const name = user.displayName || user.email?.split('@')[0] || 'Unknown';
-            const row = ['', name, user.username || '', user.email || '', (reg.subjects || []).join('; ')];
-            
+
+        const rows = studentData.map((sd, index) => {
+            const name = sd.user.displayName || sd.user.email?.split('@')[0] || 'Unknown';
+            const row = ['' + (index + 1), name, sd.user.username || '', sd.user.email || '', (sd.subjects || []).join('; ')];
             subjects.forEach(s => {
-                const sc = subjectScores[s];
+                const sc = sd.scores[s];
                 if (sc) {
                     const g = mcGradeFromScore(sc.percentage);
                     row.push(sc.correct + '/' + sc.total, '' + sc.percentage, g.grade);
@@ -8070,24 +8097,22 @@ window.mcExportRegTableCSV = async function(eventId) {
                     row.push('\u2014', '\u2014', '\u2014');
                 }
             });
-            
-            rows.push(row);
-        }
-        
-        // Sort by average score descending
-        rows.sort((a, b) => {
-            const subjectCount = subjects.length;
-            let aSum = 0, aCount = 0, bSum = 0, bCount = 0;
-            subjects.forEach((_, idx) => {
-                const aVal = parseFloat(a[5 + idx * 3 + 1]);
-                const bVal = parseFloat(b[5 + idx * 3 + 1]);
-                if (!isNaN(aVal)) { aSum += aVal; aCount++; }
-                if (!isNaN(bVal)) { bSum += bVal; bCount++; }
-            });
-            const aAvg = aCount > 0 ? aSum / aCount : -1;
-            const bAvg = bCount > 0 ? bSum / bCount : -1;
-            return bAvg - aAvg;
+            return row;
         });
+
+        const csvContent = [header, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'registration-results-' + eventId + '.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error(e);
+        window.showEFModal("Error", e.message, "OK", null, true);
+    }
+};
         
         // Add row numbers after sorting
         rows.forEach((r, idx) => r[0] = String(idx + 1));
@@ -8118,32 +8143,16 @@ window.mcExportRegTablePDF = async function(eventId) {
         }
         const registrations = registrationDocs.map(r => ({ uid: r.uid, ...r }));
         if (registrations.length === 0) return window.showEFModal("No Data", "No registered students.", "OK", null, true);
-        
+
         const ev = await sync.doc('subscription_events/' + eventId);
         const subjects = (ev.availableSubjects || []).map(s => typeof s === 'string' ? s : (s.name || String(s)));
         const normalizedSubjects = (ev.availableSubjects || []).map(s => {
             if (typeof s === 'string') return { name: s, creditUnit: 1 };
             return { name: s.name || s, creditUnit: s.creditUnit || 1 };
         });
-        
-        // Build data (same logic as mcRenderRegStudentsTable)
-        let allData = [];
-        for (const reg of registrations) {
-            let user = { displayName: 'Unknown', email: '', username: '' };
-            try { const u = await sync.doc('users/' + reg.uid); if (u) user = u; } catch(e) {}
-            
-            const subjectScores = {};
-            for (const sub of (reg.subjects || [])) {
-                const mockResults = (await sync.query('mock_exams', [where('eventId', '==', eventId), where('subject', '==', sub)])) || [];
-                if (mockResults.length > 0) {
-                    const attempt = await sync.doc('mock_exams/' + mockResults[0].id + '/attempts/' + reg.uid);
-                    if (attempt) {
-                        subjectScores[sub] = { correct: attempt.correct || 0, total: attempt.totalQuestions || 0, percentage: attempt.score || 0 };
-                    }
-                }
-            }
-            allData.push({ uid: reg.uid, user, subjects: reg.subjects || [], scores: subjectScores });
-        }
+
+        const studentData = await window.mcBuildEventRegistrationData(eventId, registrations);
+        let allData = studentData.map(sd => ({ uid: sd.uid, user: sd.user, subjects: sd.subjects, scores: sd.scores }));
         
         // Sort by average score
         allData.sort((a, b) => {

@@ -728,6 +728,20 @@ export class SyncManager {
     } catch (error) {
       // Non-critical
     }
+
+    // Set up real-time tracking for documents and collections.
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length % 2 === 0) {
+      this._setupDocListener(path);
+    } else {
+      this._setupCollectionListener(path, callback);
+    }
+
+    // Register the callback for future updates.
+    if (!this._subscribers.has(cacheKey)) {
+      this._subscribers.set(cacheKey, new Set());
+    }
+    this._subscribers.get(cacheKey).add(callback);
   }
 
   /**
