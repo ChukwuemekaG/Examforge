@@ -96,7 +96,7 @@ from config import (                                        # noqa: F401 – re-
 from explore_agent import explore_file, web_search, explore_project
 from plan_agent import generate_plan
 from coding_agent import implement_changes, read_file_content
-from review_agent import review_changes
+from review_agent import review_changes, review_project
 from document_agent import generate_docs
 from test_agent import generate_tests
 import memory as memory_module
@@ -445,6 +445,25 @@ def _build_available_tools() -> List[Dict[str, Any]]:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "review_project",
+                "description": "Review ALL files in the entire project for bugs, security issues, "
+                               "performance problems, and code quality. Use this instead of "
+                               "review_files when you want to review the whole codebase.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task": {
+                            "type": "string",
+                            "description": "What to focus the review on (e.g. 'Check for security vulnerabilities')",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+        },
     ]
 
 
@@ -520,6 +539,12 @@ def _collect_generator_events(
             result_lines.append(f"✅ {event.get('content', '')}")
         elif etype == "pr":
             result_lines.append(f"Pull Request: {event.get('url', '')}")
+        elif etype == "branch":
+            result_lines.append(f"🌿 Branch: {event.get('name', '')}")
+        elif etype == "deploy":
+            result_lines.append(f"🚀 Deploy: {event.get('content', '')}")
+        elif etype == "question":
+            result_lines.append(f"❓ Question: {event.get('content', '')}")
         elif etype == "done":
             msg = event.get("message") or event.get("content", "")
             if msg:
@@ -728,24 +753,33 @@ def _execute_review_files(
     """Execute the ``review_files`` tool."""
     files_json = args.get("files_json", "[]")
     task = args.get("task", "Review code changes")
+    model = args.get("model", DEFAULT_MODEL)
 
     # Handle both JSON string and already-parsed list
     if isinstance(files_json, list):
-        files = files_json
+        files = [str(f) for f in files_json]
     elif isinstance(files_json, str):
-        try:
-            files = json.loads(files_json)
-            if isinstance(files, str):
-                files = [files]
-        except (json.JSONDecodeError, TypeError):
-            files = [files_json]
+        files_json_clean = files_json.strip()
+        if files_json_clean.startswith("["):
+            try:
+                parsed = json.loads(files_json_clean)
+                if isinstance(parsed, list):
+                    files = [str(f) for f in parsed]
+                else:
+                    files = [files_json_clean]
+            except (json.JSONDecodeError, TypeError):
+                files = [files_json_clean]
+        else:
+            files = [files_json_clean]
     else:
         files = [str(files_json)]
 
+    # Ensure all elements are strings for safe join
+    files = [str(f) for f in files]
     files_str = ", ".join(files[:5])
     events.append({"type": "thinking", "content": f"🔍 Reviewing {len(files)} file(s): {files_str}..."})
 
-    gen = review_changes(files, task)
+    gen = review_changes(files, task, model=model)
     return _collect_generator_events(gen, events)
 
 
@@ -841,6 +875,20 @@ def _execute_generate_tests(
     return _collect_generator_events(gen, events)
 
 
+def _execute_review_project(
+    args: Dict[str, Any],
+    events: List[Dict[str, Any]],
+) -> str:
+    """Execute the ``review_project`` tool."""
+    task = args.get("task", "Review the entire project")
+    model = args.get("model", DEFAULT_MODEL)
+
+    events.append({"type": "thinking", "content": "🔍 Reviewing entire project..."})
+
+    gen = review_project(task, model=model)
+    return _collect_generator_events(gen, events)
+
+
 # ── Tool Handler Registry ────────────────────────────────────────────────────
 
 _TOOL_HANDLERS: Dict[str, Any] = {
@@ -859,6 +907,7 @@ _TOOL_HANDLERS: Dict[str, Any] = {
     "search_files": _execute_search_files,
     "generate_docs": _execute_generate_docs,
     "generate_tests": _execute_generate_tests,
+    "review_project": _execute_review_project,
 }
 
 
@@ -1403,6 +1452,11 @@ def run_agent(
                     ],
                 })
 
+                # Include reasoning if present - yield ONCE before processing tool calls
+                reasoning = assistant_message.content or ""
+                if reasoning:
+                    yield {"type": "thinking", "content": reasoning}
+
                 # Process each tool call
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
@@ -1426,14 +1480,10 @@ def run_agent(
                         "edit_file": "✍️",
                         "search_files": "🔍",
                         "review_files": "🔍",
+                        "review_project": "🔍",
                         "generate_docs": "📝",
                         "generate_tests": "🧪",
                     }.get(tool_name, "🔧")
-
-                    # Include reasoning if present
-                    reasoning = assistant_message.content or ""
-                    if reasoning:
-                        yield {"type": "thinking", "content": reasoning}
 
                     yield {
                         "type": "thinking",
