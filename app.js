@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window._getMetaApp = async function() {
         if (window._metaApp) return window._metaApp;
         const data = await sync.doc('_meta/app');
-        window._metaApp = data || { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+        window._metaApp = data || { dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], totalStudentCount: 0 };
         return window._metaApp;
     };
 
@@ -223,69 +223,76 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
-     * Ensures _meta/app is populated by doing a one-time read from collections.
-     * This runs ONCE — after this, all reads come from the cached meta doc.
+     * Loads course data from local JSON files — ZERO Firestore reads.
+     * Courses are static and don't change frequently.
      */
-    window._ensureMetaApp = async function() {
-        const meta = await window._getMetaApp();
-        // If meta is already populated, skip
-        if (meta.courses.length > 0 || meta.dailyQuizzes.length > 0 || 
-            meta.dailyAdvices.length > 0 || meta.subscriptionEvents.length > 0) {
-            return;
-        }
+    window._localCourses = null;
+    window._loadLocalCourses = async function(forceRefresh = false) {
+        if (window._localCourses && !forceRefresh) return window._localCourses;
         
-        // One-time population from collections (this is the ONLY time we read collections)
         try {
-            const [courses, quizzes, advices, events] = await Promise.all([
-                sync.collection('unicourses').catch(() => []),
-                sync.collection('daily_quizzes').catch(() => []),
-                sync.collection('daily_advices').catch(() => []),
-                sync.collection('subscription_events').catch(() => [])
-            ]);
+            // Load course metadata
+            const resp = await fetch('/json/uni-courses.json');
+            if (!resp.ok) throw new Error('Failed to load courses');
+            const courses = await resp.json();
             
-            // Also get user count
-            let userCount = 0;
-            try {
-                const users = await sync.collection('users');
-                userCount = users.length;
-            } catch(e) {}
-            
-            const appData = {
-                courses: courses.map(c => ({
+            // Load topic counts from topic-list files in parallel
+            const withCounts = await Promise.all(courses.map(async (c) => {
+                let topicCount = 0;
+                let topics = [];
+                if (c.link) {
+                    try {
+                        const tResp = await fetch('/' + c.link);
+                        if (tResp.ok) {
+                            topics = await tResp.json();
+                            topicCount = topics.length;
+                        }
+                    } catch(e) {}
+                }
+                return {
                     id: c.id,
-                    title: c.title || c.id,
+                    title: c.title || c.id.toUpperCase(),
                     level: c.level || '',
                     description: c.description || '',
-                    topicCount: c.topicCount || 0
-                })),
-                dailyQuizzes: quizzes.map(q => ({
-                    id: q.id,
-                    title: q.title || '',
-                    createdAt: q.createdAt || null,
-                    date: q.date || '',
-                    duration: q.duration || 30,
-                    active: q.active !== false
-                })),
-                dailyAdvices: advices.map(a => ({
-                    id: a.id,
-                    title: a.title || '',
-                    content: a.content || '',
-                    createdAt: a.createdAt || null,
-                    category: a.category || ''
-                })),
-                subscriptionEvents: events.map(e => ({
-                    id: e.id,
-                    title: e.title || '',
-                    createdAt: e.createdAt || null,
-                    active: e.active !== false
-                })),
-                totalStudentCount: userCount
-            };
+                    topicCount,
+                    _topics: topics  // Keep topics for quick access
+                };
+            }));
             
-            await setDoc(doc(db, '_meta', 'app'), appData);
-            window._metaApp = appData;
+            window._localCourses = withCounts;
+            return withCounts;
         } catch(e) {
-            console.error('Failed to populate _meta/app:', e);
+            console.error('Failed to load local courses:', e);
+            window._localCourses = [];
+            return [];
+        }
+    };
+
+    /**
+     * Loads topics for a specific course from local JSON — ZERO Firestore reads.
+     */
+    window._loadLocalTopics = async function(courseId) {
+        // First check if we already loaded them
+        const courses = await window._loadLocalCourses();
+        const course = courses.find(c => c.id === courseId);
+        if (course && course._topics && course._topics.length > 0) {
+            return course._topics;
+        }
+        
+        // Try to load from topic-list file
+        try {
+            // Find the course link from uni-courses.json
+            const resp = await fetch('/json/uni-courses.json');
+            if (!resp.ok) return [];
+            const allCourses = await resp.json();
+            const meta = allCourses.find(c => c.id === courseId);
+            if (!meta || !meta.link) return [];
+            
+            const tResp = await fetch('/' + meta.link);
+            if (!tResp.ok) return [];
+            return await tResp.json();
+        } catch(e) {
+            return [];
         }
     };
 
@@ -360,7 +367,7 @@ window.updateDashboardUI = function() {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        const courses = (await window._getMetaApp()).courses || [];
+        const courses = await window._loadLocalCourses() || [];
         coursesListDiv.innerHTML = ""; // Clear loading text
 
         // Loop through each course
@@ -374,7 +381,7 @@ window.updateDashboardUI = function() {
             coursesListDiv.appendChild(courseDiv);
 
             // Fetch Topics for this specific course
-            const topics = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
+            const topics = await window._loadLocalTopics(courseId) || [];
             const topicsList = document.getElementById(`topics-${courseId}`);
             topicsList.innerHTML = ""; // Clear loading text
 
@@ -758,8 +765,8 @@ function setupAdminListeners() {
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
                 // ─── Warm caches in background for instant view loads ───
                 sync.doc('users/' + user.uid).catch(() => {});  // Just read the user doc to warm cache
-                // Populate meta app silently in background
-                window._ensureMetaApp().catch(() => {});
+                // Pre-warm local course cache in background
+                window._loadLocalCourses().catch(() => {});
                 // Admin collections are loaded on demand when the admin tab is opened
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
@@ -808,12 +815,20 @@ function setupAdminListeners() {
         const saved = localStorage.getItem('examforge-theme');
         if (saved === 'dark') html.setAttribute('data-theme', 'dark');
 
+        // Pre-warm local course cache
         try {
-            const r = await fetch('/json/uni-courses.json');
-            if (r.ok) uniCourses = await r.json();
-            else uniCourses = MOCK_COURSES;
-        } catch {
-            uniCourses = MOCK_COURSES;
+            const lc = await window._loadLocalCourses();
+            if (lc && lc.length) uniCourses = lc;
+        } catch {}
+        // Fallback to direct fetch if _loadLocalCourses didn't populate
+        if (!uniCourses || !uniCourses.length) {
+            try {
+                const r = await fetch('/json/uni-courses.json');
+                if (r.ok) uniCourses = await r.json();
+                else uniCourses = MOCK_COURSES;
+            } catch {
+                uniCourses = MOCK_COURSES;
+            }
         }
 
         const hash = location.hash.slice(1);
@@ -1296,12 +1311,11 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        const meta = await window._getMetaApp();
-        const courses = meta.courses || [];
+        const courses = await window._loadLocalCourses() || [];
         const el = id => document.getElementById(id);
         // User count removed to eliminate getCountFromServer reads
         if (el('mc-s-users')) el('mc-s-users').textContent = '-';
-        if (el('mc-s-courses')) el('mc-s-courses').textContent = (courses || []).length;
+        if (el('mc-s-courses')) el('mc-s-courses').textContent = courses.length;
         
     } catch (e) { console.error(e); }
 }
@@ -1494,7 +1508,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const courses = (await window._getMetaApp()).courses || [];
+            const courses = await window._loadLocalCourses() || [];
             courses.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
@@ -1502,8 +1516,8 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                 grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">No courses yet. Create one!</div>';
                 return;
             }
-            // fetch topic counts
-            const topicsLists = await Promise.all(courses.map(c => sync.collection('unicourses/' + c.id + '/topics').catch(() => [])));
+            // fetch topic counts from local data (already loaded by _loadLocalCourses)
+            const topicsLists = await Promise.all(courses.map(c => window._loadLocalTopics(c.id).catch(() => [])));
             grid.innerHTML = courses.map((c,i) => `
                 <div class="mc-card" style="position:relative;" onclick="window.mcDrillCourse('${c.id}')">
                     <button onclick="event.stopPropagation();window.mcDeleteCourse('${c.id}', '${(c.title || c.id).replace(/'/g, "\\'")}')"
@@ -1548,7 +1562,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const topics = (await sync.collection('unicourses/' + courseId + '/topics')) || [];
+            const topics = await window._loadLocalTopics(courseId) || [];
             topics.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-topic-grid');
             if (!grid) return;
@@ -3427,13 +3441,17 @@ window.mcOpenCreateCourseModal = function() {
         if (!id || !title) return alert('Please fill all fields.');
         try {
             await setDoc(doc(db,'unicourses',id), { title, level, createdAt: new Date() });
-            // Update meta app
-            const meta = await window._getMetaApp();
+            // Update meta app (only for admin tracking)
+            const localCourses = await window._loadLocalCourses();
             const courseSummary = { id, title: title || id, level: level || '', description: '', topicCount: 0 };
-            const existingIdx = meta.courses.findIndex(c => c.id === id);
-            if (existingIdx >= 0) meta.courses[existingIdx] = courseSummary;
-            else meta.courses.push(courseSummary);
-            await window._updateMetaField('courses', meta.courses);
+            const existingIdx = localCourses.findIndex(c => c.id === id);
+            // Just push to the meta doc for admin tracking — courses are loaded locally
+            const meta = await window._getMetaApp();
+            const mcCourses = meta.dailyQuizzes ? (meta.courses || []) : [];
+            const existingMcIdx = mcCourses.findIndex(c => c.id === id);
+            if (existingMcIdx >= 0) mcCourses[existingMcIdx] = courseSummary;
+            else mcCourses.push(courseSummary);
+            await window._updateMetaField('courses', mcCourses);
             overlay.remove();
             mcRenderCoursesTab();
             mcLoadStats();
@@ -4745,7 +4763,7 @@ window.mcDeleteCourse = function(courseId, courseTitle) {
         async () => {
             try {
                 // Delete all topics under this course first
-                const topics = await sync.collection('unicourses/' + courseId + '/topics');
+                const topics = await window._loadLocalTopics(courseId);
                 const batch = writeBatch(db);
                 topics.forEach(t => {
                     batch.delete(doc(db, 'unicourses', courseId, 'topics', t.id));
@@ -4754,10 +4772,12 @@ window.mcDeleteCourse = function(courseId, courseTitle) {
                 batch.delete(doc(db, 'unicourses', courseId));
                 await batch.commit();
                 
-                // Update meta app
+                // Update meta app (for admin tracking)
+                const localCourses = await window._loadLocalCourses();
                 const meta = await window._getMetaApp();
-                meta.courses = meta.courses.filter(c => c.id !== courseId);
-                await window._updateMetaField('courses', meta.courses);
+                const mcCourses = meta.dailyQuizzes ? (meta.courses || []) : [];
+                const updatedCourses = mcCourses.filter(c => c.id !== courseId);
+                await window._updateMetaField('courses', updatedCourses);
 
                 window.showEFModal("Course Deleted", `The course "${courseTitle}" has been deleted successfully.`, "OKAY", null, true);
                 mcRenderCoursesTab();
@@ -5632,35 +5652,12 @@ window.adminPromptNotification = function(userId) {
             return;
         }
 
-        // Use cache if already loaded, otherwise fetch from Firestore
+        // Use local course cache — ZERO Firestore reads
         if (!libCourseCache.length) {
             try {
-                const meta = await window._getMetaApp();
-                const allCourses = meta.courses || [];
-                // Fetch topic counts in parallel — check topicCount field on doc first (0 extra reads)
-                const courses = await Promise.all(allCourses.map(async c => {
-                    let topicCount = c.topicCount || 0;
-                    // If topicCount is missing from the doc, fetch topics once
-                    if (!topicCount) {
-                        try {
-                            const topics = await sync.collection('unicourses/' + c.id + '/topics');
-                            topicCount = topics.length;
-                            // Silently persist topicCount to the course doc for future single-read loads
-                            if (topicCount > 0) {
-                                updateDoc(doc(db, 'unicourses', c.id), { topicCount }).catch(() => {});
-                            }
-                        } catch (_) {}
-                    }
-                    return {
-                        id: c.id,
-                        title: c.title || c.id.toUpperCase(),
-                        level: c.level || '',
-                        description: c.description || '',
-                        topicCount
-                    };
-                }));
-                // Sort: by level first, then alphabetically by id
-                libCourseCache = courses.sort((a, b) => {
+                const lc = await window._loadLocalCourses() || [];
+                // _loadLocalCourses already fetches topic counts from local JSON
+                libCourseCache = lc.sort((a, b) => {
                     const lvA = parseInt(a.level) || 0;
                     const lvB = parseInt(b.level) || 0;
                     return lvA !== lvB ? lvA - lvB : a.id.localeCompare(b.id);
@@ -5834,7 +5831,7 @@ window.adminPromptNotification = function(userId) {
         if (!grid) return;
 
         try {
-            const topics = await sync.collection('unicourses/' + courseId + '/topics');
+            const topics = await window._loadLocalTopics(courseId);
             
             if (!topics.length) {
                 grid.innerHTML = `
