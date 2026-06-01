@@ -1416,7 +1416,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const courses = await sync.query('unicourses', [limit(2)]) || [];
+            const courses = await sync.query('unicourses', [limit(1)]) || [];
             courses.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
