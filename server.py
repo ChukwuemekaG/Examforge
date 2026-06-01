@@ -44,16 +44,25 @@ def stream():
 
     # ── Agent streaming ───────────────────────────────────────────────────
     def generate():
-        for event in run_agent(message, model, deploy_enabled=auto_deploy):
-            event["total_cost"] = get_session_cost()
-            yield f"data: {json.dumps(event)}\n\n"
+        try:
+            for event in run_agent(message, model, deploy_enabled=auto_deploy):
+                try:
+                    event["total_cost"] = get_session_cost()
+                except (TypeError, AttributeError):
+                    event = {"type": "error", "content": "Invalid event from agent", "total_cost": get_session_cost()}
+                yield f"data: {json.dumps(event)}\n\n"
 
-            # If the agent asks a question, stop here — the client will
-            # re-send the same request with the answer included.
-            if event.get("type") == "question":
-                break
-
-        yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
+                # If the agent asks a question, stop here — the client will
+                # re-send the same request with the answer included.
+                if event.get("type") == "question":
+                    break
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            error_event = {"type": "error", "content": f"Agent stream error: {exc}"}
+            yield f"data: {json.dumps(error_event)}\n\n"
+        finally:
+            yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
 
     return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
