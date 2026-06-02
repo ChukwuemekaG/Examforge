@@ -2265,6 +2265,11 @@ window.mcPublishDailyAdvice = async function() {
             createdAt: serverTimestamp()
         });
 
+        // Update admin panel data
+        const advSection = (window._adminData && window._adminData.dailyAdvices) ? [...window._adminData.dailyAdvices] : [];
+        advSection.unshift({ id: advId, title: title, category: category || '', createdAt: new Date().toISOString() });
+        window._updateAdminSection('dailyAdvices', advSection).catch(() => {});
+
         // Meta app updates removed — direct Firestore writes only
 
         // Note: Individual notification writes removed — broadcasting via meta count
