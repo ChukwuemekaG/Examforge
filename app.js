@@ -7658,6 +7658,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         document.getElementById('ef-se-det-title').textContent = ev.title;
         
         const normalizedSubjects = (ev.availableSubjects || []).map(s => mcNormalizeSubject(s));
+        let totalRegistrations = 0;
         
         // Render UI
         let subjectHTML = normalizedSubjects.map(s => {
@@ -7773,7 +7774,6 @@ window.mcViewSubEventDetails = async function(eventId) {
         `;
         
         // ── Registration count via sync.doc read from _data/registrations (1 read, all students) ──
-        let totalRegistrations = 0;
         try {
             let regDataDoc = await sync.doc('subscription_events/' + eventId + '/_data/registrations');
             let allStudents = regDataDoc?.students || [];
