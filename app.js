@@ -2959,6 +2959,11 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                     // Persist to quiz doc for future 1-read access
                     await updateDoc(doc(db, 'daily_quizzes', dqid), { attempts: legacyAttempts });
                     q.attempts = legacyAttempts;
+                    // Update both caches so subsequent sync.doc calls return fresh data
+                    if (sync && sync._setMemCache) sync._setMemCache('daily_quizzes/' + dqid, q);
+                    if (sync && sync._cache) {
+                        try { await sync._cache.set('daily_quizzes/' + dqid, q, 'doc'); } catch(e) {}
+                    }
                 }
             } catch(e) {}
         }
