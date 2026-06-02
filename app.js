@@ -1561,15 +1561,21 @@ function mcRenderUsersTab() {
         </div>`;
 
         try {
-            const { collection, query, where, orderBy, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const { collection, query, where, getDocs, limit, or } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             const usersRef = collection(db, 'users');
 
-            // Use range query for prefix matching on displayName
+            // Use or query for prefix matching on displayName, username, and email
             const q = query(
                 usersRef,
-                where('displayName', '>=', searchTerm),
-                where('displayName', '<=', searchTerm + '\uf8ff'),
-                limit(50)
+                or(
+                    where('displayName', '>=', searchTerm),
+                    where('displayName', '<=', searchTerm + '\uf8ff'),
+                    where('username', '>=', searchTerm),
+                    where('username', '<=', searchTerm + '\uf8ff'),
+                    where('email', '>=', searchTerm),
+                    where('email', '<=', searchTerm + '\uf8ff')
+                ),
+                limit(10)
             );
             const snap = await getDocs(q);
             const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -5882,7 +5888,7 @@ window.adminPromptNotification = function(userId) {
                 </div>
                 <div class="card-title">${c.title || c.id.toUpperCase()}</div>
                 <div class="card-desc">
-                    ${c.description || `${c.topicCount > 0 ? c.topicCount + ' topic' + (c.topicCount !== 1 ? 's' : '') + ' available' : 'View topics'}`}
+                    ${c.description || 'Click to view topics'}
                 </div>
                 <button class="btn btn-primary btn-block"
                     onclick="window.openCourse('${encodeURIComponent(c.id)}', '${encodeURIComponent(c.title || c.id.toUpperCase())}')">
@@ -6884,6 +6890,7 @@ window.adminPromptNotification = function(userId) {
 
         // Reset workspace and force mobile-friendly constraints
         workspace.style.padding = 'clamp(10px, 3vw, 20px)';
+        workspace.style.paddingBottom = '80px';
         workspace.style.overflowX = 'hidden';
         workspace.style.fontSize = '16px';
 
