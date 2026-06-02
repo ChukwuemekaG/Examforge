@@ -5436,7 +5436,19 @@ window.adminPromptNotification = function(userId) {
         }
     }
 
-    window.openDynamicRegistrationModal = function(eventId, title, availableSubjects, maxSubjects) {
+    window.openDynamicRegistrationModal = async function(eventId, title, availableSubjects, maxSubjects) {
+        // Fallback: if subjects not provided, load from Firestore
+        if (!availableSubjects || !availableSubjects.length) {
+            try {
+                const ev = await sync.doc('subscription_events/' + eventId);
+                if (ev && ev.availableSubjects) {
+                    availableSubjects = ev.availableSubjects.map(s => typeof s === 'string' ? s : (s.name || String(s)));
+                    maxSubjects = ev.maxSubjects || maxSubjects || 10;
+                    title = ev.title || title;
+                }
+            } catch(e) { console.error('Failed to load event subjects:', e); }
+        }
+
         const modal = document.createElement('div');
         modal.id = 'ef-reg-modal';
         modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;animation:popIn 0.3s ease;';
