@@ -5308,9 +5308,14 @@ window.adminPromptNotification = function(userId) {
             const isDailyOn = userData.stats?.subscriptions?.dailyQuiz !== false;
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
-            // Live subscription events from _admin_panel/data onSnapshot (0 reads)
-            const allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
-            const events = [...allEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+            // Try live data first, fall back to direct read for students
+            let allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
+            let events = [...allEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+            // Student fallback: read directly if live data empty (rules might not allow _admin_panel access)
+            if (!events.length) {
+                const directEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(3)]) || [];
+                events = [...directEvents];
+            }
 
             // Check registrations for the current user
             const uid = auth.currentUser?.uid;
@@ -5721,6 +5726,15 @@ window.adminPromptNotification = function(userId) {
         // Student types a course code/title and hits Enter → 1 doc read.
         // Populate course suggestions from _liveData.courses (0 reads, onSnapshot)
         libCourseCache = (window._liveData && window._liveData.courses) || [];
+        // Student fallback: read directly if live data empty
+        if (!libCourseCache.length) {
+            const directCourses = await sync.query('unicourses', [limit(3)]) || [];
+            libCourseCache = directCourses.sort((a, b) => {
+                const lvA = parseInt(a.level) || 0;
+                const lvB = parseInt(b.level) || 0;
+                return lvA !== lvB ? lvA - lvB : (a.id || '').localeCompare(b.id || '');
+            });
+        }
         renderLibGrid();  // Shows the empty/search-prompt state
     }
 
@@ -7520,12 +7534,15 @@ window.mcSaveSubEvent = async function() {
             availableSubjects,
             maxSubjects: maxSubs,
             resultsReleased: false,
-            durationDays: 30, // default 30 days for mocks to be valid
+            durationDays: 30,
             createdAt: serverTimestamp()
         });
-        
-        // Meta app updates removed — direct Firestore writes only
-        
+
+        // Update _admin_panel/data for live card appearance
+        const section = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents] : [];
+        section.unshift({ id: eventRef.id, title, createdAt: new Date().toISOString() });
+        window._updateAdminSection('subscriptionEvents', section).catch(() => {});
+
         await sync.refresh('subscription_events');
         document.getElementById('ef-subevent-modal')?.remove();
         window.showEFModal("Event Created", "Subscription event created successfully.", "OK", null, true);
