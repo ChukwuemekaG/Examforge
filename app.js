@@ -277,13 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
                     }
                     resolve();
-                    // Re-render on next tick to avoid race with initial render
-                    setTimeout(() => {
-                        if (currentView === 'subscriptions') renderSubscriptions();
-                        else if (currentView === 'library') renderLibrary();
-                        else if (currentView === 'master') mcRenderTabContent();
-                        else if (currentView === 'dashboard') window.updateDashboardUI();
-                    }, 0);
                 },
                 (error) => {
                     console.error('Live data listener error:', error);
@@ -721,14 +714,6 @@ function setupAdminListeners() {
                     }
                     // Set up real-time data listener for ALL users
                     window._setupLiveDataListener().catch(() => {});
-                    // Silently populate _admin_panel/data for admin on first load
-                    if (userDataFromSync.role === 'admin') {
-                        setTimeout(async () => {
-                            if (window._liveData && !window._liveData.courses.length && !window._liveData.subscriptionEvents.length) {
-                                await window._syncExistingData();
-                            }
-                        }, 2000);
-                    }
 
                 }
 
@@ -5310,8 +5295,11 @@ window.adminPromptNotification = function(userId) {
             const isDailyOn = userData.stats?.subscriptions?.dailyQuiz !== false;
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
-            // Live subscription events from _admin_panel/data onSnapshot (0 reads)
-            const allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
+            // Try live data first, fall back to direct Firestore read
+            let allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
+            if (!allEvents.length) {
+                allEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(3)]) || [];
+            }
             const events = [...allEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
             // Check registrations for the current user
@@ -5722,7 +5710,16 @@ window.adminPromptNotification = function(userId) {
         // Search-only library — no course listing loaded.
         // Student types a course code/title and hits Enter → 1 doc read.
         // Populate course suggestions from _liveData.courses (0 reads, onSnapshot)
+        // Try live data first, fall back to direct Firestore read
         libCourseCache = (window._liveData && window._liveData.courses) || [];
+        if (!libCourseCache.length) {
+            const lc = await sync.query('unicourses', [limit(3)]) || [];
+            libCourseCache = lc.sort((a, b) => {
+                const lvA = parseInt(a.level) || 0;
+                const lvB = parseInt(b.level) || 0;
+                return lvA !== lvB ? lvA - lvB : (a.id || '').localeCompare(b.id || '');
+            });
+        }
         renderLibGrid();  // Shows the empty/search-prompt state
     }
 
