@@ -7827,8 +7827,10 @@ window.mcViewSubEventDetails = async function(eventId) {
         const refreshEventDetails = async () => {
             const regDataLive = await sync.collection('subscription_events/' + eventId + '/registrations');
             const totalLive = regDataLive.length;
-            document.getElementById('mc-total-registrations')?.textContent = totalLive;
-            document.getElementById('mc-total-registrations-summary')?.textContent = `(${totalLive} total)`;
+            const regCountEl = document.getElementById('mc-total-registrations');
+            if (regCountEl) regCountEl.textContent = totalLive;
+            const regSummaryEl = document.getElementById('mc-total-registrations-summary');
+            if (regSummaryEl) regSummaryEl.textContent = `(${totalLive} total)`;
 
             const subjectCountsLive = {};
             normalizedSubjects.forEach(s => subjectCountsLive[s.name] = 0);
@@ -7839,7 +7841,8 @@ window.mcViewSubEventDetails = async function(eventId) {
                 });
             });
             normalizedSubjects.forEach(s => {
-                document.getElementById(`mc-sub-count-${s.name.replace(/\s+/g,'-')}`)?.textContent = subjectCountsLive[s.name] ?? 0;
+                const subCountEl = document.getElementById(`mc-sub-count-${s.name.replace(/\s+/g,'-')}`);
+                if (subCountEl) subCountEl.textContent = subjectCountsLive[s.name] ?? 0;
             });
 
             window.mcRenderRegStudentsTable(eventId, ev.availableSubjects || [], normalizedSubjects);
