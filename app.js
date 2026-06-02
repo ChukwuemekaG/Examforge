@@ -1629,26 +1629,30 @@ function mcRenderUsersTab() {
         }
     }
 
-    // Search input handler with debounce
+    // Expose search function globally for Enter key handler
+    window.mcSearchUsers = searchUsers;
+
+    // Search input handler — search on Enter only
     const searchInput = document.getElementById('mc-user-search');
     if (searchInput) {
-        searchInput.oninput = () => {
-            clearTimeout(searchTimeout);
-            const term = searchInput.value.trim();
-            if (term.length >= 2) {
-                searchTimeout = setTimeout(() => searchUsers(term), 300);
-            } else {
-                lastSearchResults = [];
-                lastSearchTerm = '';
-                const grid = document.getElementById('mc-user-grid');
-                if (grid) {
-                    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
-                        Type at least 2 characters to search for students.
-                    </div>`;
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const term = e.target.value.trim();
+                if (term.length >= 2) {
+                    window.mcSearchUsers(term);
+                } else {
+                    lastSearchResults = [];
+                    lastSearchTerm = '';
+                    const grid = document.getElementById('mc-user-grid');
+                    if (grid) {
+                        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
+                            Type at least 2 characters to search for students.
+                        </div>`;
+                    }
+                    document.getElementById('mc-user-load-more-container').innerHTML = '';
                 }
-                document.getElementById('mc-user-load-more-container').innerHTML = '';
             }
-        };
+        });
     }
 }
 
@@ -1987,7 +1991,7 @@ async function mcLoadDailyQuizzes() {
                     <div style="display:flex;gap:12px;font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;">
                         <div style="display:flex;align-items:center;gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">help_outline</span>
-                            <span>${q.questions?.length || 0} questions</span>
+                            <span>${q.questionCount > 0 ? q.questionCount : '?'} questions</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">schedule</span>
@@ -2943,10 +2947,22 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         }
         document.getElementById('ef-dq-det-title').textContent = q.title;
         document.getElementById('ef-dq-det-title').style.fontSize = '0.75rem';
-        document.getElementById('ef-dq-det-meta').innerHTML = `${q.questions?.length || 0} questions · ${q.timeLimit || 10} min`;
+        document.getElementById('ef-dq-det-meta').innerHTML = `${q.questionCount > 0 ? q.questionCount : '?'} questions · ${q.timeLimit || 10} min`;
         
         const quizShareUrl = window.location.origin + '/quiz?dqid=' + dqid;
-        
+
+        // Migration: check if attempts are in subcollection (old quizzes)
+        if (!q.attempts || !q.attempts.length) {
+            try {
+                const legacyAttempts = await sync.query('daily_quizzes/' + dqid + '/attempts', [orderBy('timestamp', 'desc')]);
+                if (legacyAttempts && legacyAttempts.length > 0) {
+                    // Persist to quiz doc for future 1-read access
+                    await updateDoc(doc(db, 'daily_quizzes', dqid), { attempts: legacyAttempts });
+                    q.attempts = legacyAttempts;
+                }
+            } catch(e) {}
+        }
+
         // ── Real-time attempts listener (1 standard read initial sync, real-time units for updates) ──
         let attempts = [];
         let attemptCount = 0;
