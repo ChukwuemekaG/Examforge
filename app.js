@@ -8173,24 +8173,6 @@ window.mcExportRegTableCSV = async function(eventId) {
         window.showEFModal("Error", e.message, "OK", null, true);
     }
 };
-        
-        // Add row numbers after sorting
-        rows.forEach((r, idx) => r[0] = String(idx + 1));
-        
-        // Generate CSV
-        const csvContent = [header, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'registration-results-' + eventId + '.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-    } catch (e) {
-        console.error(e);
-        window.showEFModal("Error", e.message, "OK", null, true);
-    }
-};
 
 window.mcExportRegTablePDF = async function(eventId) {
     try {
