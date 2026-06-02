@@ -2879,7 +2879,7 @@ window.mcSaveCreatedDailyQuiz = async function() {
         
         // Update _admin_panel/data for live card appearance
         const section = (window._liveData && window._liveData.dailyQuizzes) ? [...window._liveData.dailyQuizzes] : [];
-        section.unshift({ id: dqid, title: title, createdAt: new Date().toISOString() });
+        section.unshift({ id: dqid, title: title, questionCount: window.currentBuilderQuestions.length, createdAt: new Date().toISOString() });
         window._updateAdminSection('dailyQuizzes', section).catch(() => {});
         
         const modal = document.getElementById('ef-dq-builder-modal');
@@ -2970,7 +2970,6 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                     if (avgEl) avgEl.textContent = avgScore + '%';
 
                     // Rebuild table
-                    const tbody = document.getElementById('ef-dq-det-body')?.querySelector('table tbody');
                     const container = document.querySelector('[data-at]');
                     if (container) {
                         if (attemptCount === 0) {
@@ -2979,23 +2978,35 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                                 <strong style="color:var(--text);">No attempts recorded yet</strong>
                                 <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz.</div>
                             </div>`;
-                        } else if (tbody) {
-                            tbody.innerHTML = attempts.map(a => {
-                                const date = a.timestamp || 'Recently';
-                                const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
-                                const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
-                                return `<tr style="border-bottom:1.5px solid var(--border);">
-                                    <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
-                                        ${a.displayName}
-                                        <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
-                                    </td>
-                                    <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
-                                        <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
-                                    </td>
-                                    <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
-                                    <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
-                                </tr>`;
-                            }).join('');
+                        } else {
+                            container.innerHTML = `<table style="width:100%;min-width:500px;border-collapse:collapse;text-align:left;">
+                                <thead>
+                                    <tr style="background:var(--bg-inset);border-bottom:3px solid var(--text);">
+                                        <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Student</th>
+                                        <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Score</th>
+                                        <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Duration</th>
+                                        <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Submitted</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${attempts.map(a => {
+                                        const date = a.timestamp || 'Recently';
+                                        const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
+                                        const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
+                                        return `<tr style="border-bottom:1.5px solid var(--border);">
+                                            <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
+                                                ${a.displayName}
+                                                <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
+                                            </td>
+                                            <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
+                                                <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
+                                            </td>
+                                            <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
+                                            <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>`;
                         }
                     }
                 }
@@ -3226,6 +3237,9 @@ window.mcDeleteDailyQuiz = function(dqid, title) {
         async () => {
             try {
                 await deleteDoc(doc(db, 'daily_quizzes', dqid));
+                // Update _admin_panel/data to remove deleted quiz
+                const section = (window._liveData && window._liveData.dailyQuizzes) ? window._liveData.dailyQuizzes.filter(q => q.id !== dqid) : [];
+                window._updateAdminSection('dailyQuizzes', section).catch(() => {});
                 mcLoadDailyQuizzes();
                 window.showEFModal("Quiz Purged", "The daily quiz was successfully deleted.", "OK", null, true);
             } catch (e) {
