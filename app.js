@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (snap.exists()) {
                         window._liveData = snap.data();
                     } else {
-                        window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+                        window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
                     }
                     resolve();
                     // Re-render current view if it depends on live data (safe: no re-entrancy)
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 (error) => {
                     console.error('Live data listener error:', error);
-                    window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+                    window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
                     resolve();
                 }
             );
@@ -310,9 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!window._liveData) { // Force initial load via sync fetch fallback
             try {
                 const snap = await getDoc(doc(db, '_admin_panel', 'data'));
-                window._liveData = snap.exists() ? snap.data() : { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+                window._liveData = snap.exists() ? snap.data() : { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
             } catch(e) {
-                window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+                window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
             }
         }
         if (window._liveData && window._liveData[section] && window._liveData[section].length > 0) return;
@@ -379,37 +379,34 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
-     * Broadcasts a notification to ALL students via a single _broadcast doc.
-     * Students read this doc to show notifications — no per-user writes needed.
+     * Broadcasts a notification to ALL students via _admin_panel/data (live via onSnapshot).
+     * No per-user writes — all students see it immediately via _liveData.
      */
     window._broadcastNotification = async function(notification) {
-        const broadcastRef = doc(db, '_broadcast', 'notifications');
-        const existing = await getDoc(broadcastRef);
-        const items = existing.exists() ? (existing.data().items || []) : [];
+        const meta = window._liveData || {};
+        const items = meta.broadcastNotifications || [];
         items.unshift({
             ...notification,
             id: 'notif_' + Date.now().toString(36),
             timestamp: new Date().toISOString()
         });
-        // Keep max 50 items
         if (items.length > 50) items.length = 50;
-        await setDoc(broadcastRef, { items });
+        await window._updateAdminSection('broadcastNotifications', items);
     };
 
     /**
-     * Broadcasts a schedule item to ALL students via a single _broadcast doc.
+     * Broadcasts a schedule item to ALL students via _admin_panel/data (live via onSnapshot).
      */
     window._broadcastSchedule = async function(scheduleItem) {
-        const scheduleRef = doc(db, '_broadcast', 'schedules');
-        const existing = await getDoc(scheduleRef);
-        const items = existing.exists() ? (existing.data().items || []) : [];
+        const meta = window._liveData || {};
+        const items = meta.broadcastSchedules || [];
         items.push({
             ...scheduleItem,
             id: 'sched_' + Date.now().toString(36),
             timestamp: new Date().toISOString()
         });
         if (items.length > 50) items.length = 50;
-        await setDoc(scheduleRef, { items });
+        await window._updateAdminSection('broadcastSchedules', items);
     };
 
     /**
@@ -417,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window._clearAllNotifications = async function() {
         if (!confirm('Clear all broadcast notifications for all students?')) return;
-        await setDoc(doc(db, '_broadcast', 'notifications'), { items: [] });
+        await window._updateAdminSection('broadcastNotifications', []);
         window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
     };
 
@@ -426,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window._clearAllSchedules = async function() {
         if (!confirm('Clear all broadcast schedule items for all students?')) return;
-        await setDoc(doc(db, '_broadcast', 'schedules'), { items: [] });
+        await window._updateAdminSection('broadcastSchedules', []);
         window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
     };
 
@@ -6110,14 +6107,9 @@ window.adminPromptNotification = function(userId) {
             const userData_full = await window._getUserData(auth.currentUser.uid);
             let schedItems = userData_full.schedule || [];
             
-            // Also load broadcast schedules
-            try {
-                const schedSnap = await getDoc(doc(db, '_broadcast', 'schedules'));
-                if (schedSnap.exists()) {
-                    const broadcastItems = schedSnap.data().items || [];
-                    schedItems = [...schedItems, ...broadcastItems];
-                }
-            } catch(e) {}
+            // Also load broadcast schedules from live data
+            const broadcastScheds = (window._liveData && window._liveData.broadcastSchedules) || [];
+            schedItems = [...schedItems, ...broadcastScheds];
             
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
         } catch(e) { console.error(e); }
@@ -6598,14 +6590,9 @@ window.adminPromptNotification = function(userId) {
         const userData_full = await window._getUserData(auth.currentUser.uid);
         let notifications = userData_full.inbox || [];
         
-        // Also load broadcast notifications
-        try {
-            const broadcastSnap = await getDoc(doc(db, '_broadcast', 'notifications'));
-            if (broadcastSnap.exists()) {
-                const broadcastItems = broadcastSnap.data().items || [];
-                notifications = [...broadcastItems, ...notifications].slice(0, 50);
-            }
-        } catch(e) {}
+        // Also load broadcast notifications from live data
+        const broadcastItems = (window._liveData && window._liveData.broadcastNotifications) || [];
+        notifications = [...broadcastItems, ...notifications].slice(0, 50);
 
         const now = Date.now();
 
