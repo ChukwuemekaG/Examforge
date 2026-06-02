@@ -3165,54 +3165,43 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
         
         const quizUrl = `/quiz?dqid=${dqid}`;
         
-        const totalUsers = 0;
-        // User count not fetched to avoid reads
-        const subscribers = [{ _count: totalUsers }];
-        
-        if (!totalUsers) {
-            window.showEFModal("No Subscribers", "There are no students subscribed to daily quizzes at this time.", "OKAY", null, true);
-            btn.disabled = false;
-            btn.innerHTML = originalHTML;
-            return;
-        }
-        
-        const CHUNK = 250;
+        // Broadcast via single _broadcast docs — no per-user writes
         const broadcastId = `dq_${Date.now()}`;
-        const notifPayload = {
-            type:      'daily_quiz',
-            title:     q.title,
-            message:   customMessage,
-            quizUrl:   quizUrl,
-            dueDate:   `${year}-${month}-${day}`,
-            dueTime:   '23:59',
-            timestamp: new Date()
-        };
-        const schedPayload = {
-            type:         'daily_quiz',
-            course:       q.title,
-            quizUrl:      quizUrl,
-            dueDate:      `${year}-${month}-${day}`,
-            dueTime:      '23:59',
-            dueTimestamp: dueTs,
-            timeLimit:    q.timeLimit || 10,
-            message:      customMessage,
-            broadcastId,
-            timestamp:    new Date()
-        };
         
-        // Note: Individual schedule/notification writes removed — broadcasting via meta count
-        // Previously: chunk loop wrote to each user's schedule and notifications subcollections
+        // Send notification
+        window._broadcastNotification({
+            type: 'daily_quiz',
+            title: q.title,
+            message: customMessage,
+            quizUrl: quizUrl,
+            dueDate: `${year}-${month}-${day}`,
+            dueTime: '23:59'
+        }).catch(() => {});
         
+        // Send schedule
+        window._broadcastSchedule({
+            type: 'daily_quiz',
+            title: q.title,
+            course: q.title,
+            quizUrl: quizUrl,
+            dueDate: `${year}-${month}-${day}`,
+            dueTime: '23:59',
+            timeLimit: q.timeLimit || 10,
+            message: customMessage,
+            broadcastId
+        }).catch(() => {});
+        
+        // Log broadcast
         await addDoc(collection(db, 'daily_quiz_broadcasts'), {
             broadcastId,
-            title:        q.title,
-            quizUrl:      quizUrl,
-            message:      customMessage,
-            dueDate:      `${year}-${month}-${day}`,
-            dueTime:      '23:59',
-            recipientCount: totalUsers,
-            sentBy:       auth.currentUser?.uid || 'admin',
-            timestamp:    new Date()
+            title: q.title,
+            quizUrl: quizUrl,
+            message: customMessage,
+            dueDate: `${year}-${month}-${day}`,
+            dueTime: '23:59',
+            recipientCount: 0,
+            sentBy: auth.currentUser?.uid || 'admin',
+            timestamp: new Date()
         });
         
         btn.innerHTML = `<span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">check_circle</span> BROADCAST SUCCESSFUL!`;
@@ -7806,7 +7795,7 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                 let totalNotifs = 0;
                 const subjectsBroadcasted = new Set();
                 
-                // 3. For each mock, notify + schedule the relevant students
+                // 3. Broadcast via single _broadcast docs — one notification + one schedule per mock
                 for (const mock of mocks) {
                     const subject = mock.subject;
                     subjectsBroadcasted.add(subject);
@@ -7817,52 +7806,40 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                     
                     if (uids.length === 0) continue;
                     
-                    for (const uid of uids) {
-                        // Notification
-                        const notifRef = doc(collection(db, 'users', uid, 'notifications'));
-                        await setDoc(notifRef, {
-                            id: notifRef.id,
-                            type: 'broadcast',
-                            title: 'Mock Exam Ready!',
-                            message: `Your ${subject} mock exam for "${evTitle}" is now available. Tap to take it.`,
-                            actionLabel: 'TAKE EXAM',
-                            actionPath: `/quiz?mockid=${mock.id}`,
-                            createdAt: serverTimestamp(),
-                            read: false,
-                            brandColor: '#10b981',
-                            brandIcon: 'library_books'
-                        });
-                        
-                        // Schedule item
-                        const schedRef = doc(collection(db, 'users', uid, 'schedule'));
-                        const now = new Date();
-                        const durDays = ev.durationDays || 30;
-                        const expDate = new Date(now);
-                        expDate.setDate(expDate.getDate() + durDays);
-                        const expYear = expDate.getFullYear();
-                        const expMonth = String(expDate.getMonth() + 1).padStart(2, '0');
-                        const expDay = String(expDate.getDate()).padStart(2, '0');
-                        await setDoc(schedRef, {
-                            id: schedRef.id,
-                            type: 'mock_exam',
-                            title: `${subject} Mock - ${evTitle}`,
-                            course: subject,
-                            mockId: mock.id,
-                            eventId: eventId,
-                            timeLimit: mock.timeLimit || 45,
-                            quizUrl: `/quiz?mockid=${mock.id}`,
-                            message: `Complete your ${subject} mock exam for "${evTitle}".`,
-                            date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-                            time: 'All day',
-                            dueDate: `${expYear}-${expMonth}-${expDay}`,
-                            dueTime: '23:59',
-                            dueTimestamp: new Date(`${expYear}-${expMonth}-${expDay}T23:59:00`),
-                            timestamp: serverTimestamp(),
-                            read: false
-                        });
-                        
-                        totalNotifs++;
-                    }
+                    const now = new Date();
+                    const durDays = ev.durationDays || 30;
+                    const expDate = new Date(now);
+                    expDate.setDate(expDate.getDate() + durDays);
+                    const expYear = expDate.getFullYear();
+                    const expMonth = String(expDate.getMonth() + 1).padStart(2, '0');
+                    const expDay = String(expDate.getDate()).padStart(2, '0');
+                    
+                    // Single notification for all students
+                    await window._broadcastNotification({
+                        type: 'broadcast',
+                        title: `Mock Exam Ready: ${subject}`,
+                        message: `Your ${subject} mock exam for "${evTitle}" is now available for ${uids.length} student(s). Tap to take it.`,
+                        quizUrl: `/quiz?mockid=${mock.id}`,
+                        brandColor: '#10b981',
+                        brandIcon: 'library_books'
+                    });
+                    
+                    // Single schedule item for all students
+                    await window._broadcastSchedule({
+                        type: 'mock_exam',
+                        title: `${subject} Mock - ${evTitle}`,
+                        course: subject,
+                        mockId: mock.id,
+                        eventId: eventId,
+                        timeLimit: mock.timeLimit || 45,
+                        quizUrl: `/quiz?mockid=${mock.id}`,
+                        message: `Complete your ${subject} mock exam for "${evTitle}".`,
+                        dueDate: `${expYear}-${expMonth}-${expDay}`,
+                        dueTime: '23:59',
+                        date: now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+                    });
+                    
+                    totalNotifs += uids.length;
                 }
                 
                 window.showEFModal(
