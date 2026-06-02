@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Also update _admin_panel/data courses section
-            const section = (window._adminData && window._adminData.courses) ? [...window._adminData.courses] : [];
+            const section = (window._liveData && window._liveData.courses) ? [...window._liveData.courses] : [];
             const idx = section.findIndex(c => c.id === courseId);
             if (idx >= 0) {
                 section[idx] = { ...section[idx], topicCount: topics?.length || 0 };
@@ -249,34 +249,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // ─── Aggregated admin panel helpers ──────────────────────────
+    // ─── Live data helpers (ALL users) ───────────────────────────
     /**
-     * Aggregated admin panel data — single doc, single onSnapshot.
-     * 1 standard read for initial sync, then real-time read units for all updates.
+     * Single onSnapshot on _admin_panel/data for ALL users.
+     * 1 standard read initial sync, real-time units for all updates.
      */
-    window._adminData = null;
-    window._adminListener = null;
+    window._liveData = null;
+    window._liveListener = null;
 
     /**
-     * Sets up the admin panel real-time listener.
-     * Call ONCE when admin logs in.
+     * Sets up real-time data for ALL users via 1 onSnapshot on _admin_panel/data.
+     * 1 standard read initial sync, real-time units for all updates.
+     * All pages (admin + student) read from _liveData to get live data.
      */
-    window._setupAdminListener = async function() {
-        if (window._adminListener) return;
+    window._setupLiveDataListener = async function() {
+        if (window._liveListener) return;
         
-        window._adminListener = onSnapshot(
+        window._liveListener = onSnapshot(
             doc(db, '_admin_panel', 'data'),
             (snap) => {
                 if (snap.exists()) {
-                    window._adminData = snap.data();
+                    window._liveData = snap.data();
                 } else {
-                    // Doc doesn't exist — create it with empty data
-                    window._adminData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
-                    setDoc(doc(db, '_admin_panel', 'data'), window._adminData).catch(() => {});
+                    window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
                 }
-                if (currentView === 'master') mcRenderTabContent();
+                // Re-render current view if it depends on live data
+                const liveViews = ['master', 'subscriptions', 'library', 'dashboard'];
+                if (liveViews.includes(currentView)) {
+                    if (currentView === 'master') mcRenderTabContent();
+                    else if (currentView === 'subscriptions') renderSubscriptions();
+                    else if (currentView === 'library') renderLibrary();
+                    else if (currentView === 'dashboard') window.updateDashboardUI();
+                }
             },
-            (error) => console.error('Admin data listener error:', error)
+            (error) => console.error('Live data listener error:', error)
         );
     };
 
@@ -285,8 +291,15 @@ document.addEventListener('DOMContentLoaded', () => {
      * Only called the first time an admin opens a tab after deploy.
      */
     window._ensureAdminSection = async function(section) {
-        if (!window._adminData) await sync.doc('_admin_panel/data'); // Force initial load
-        if (window._adminData && window._adminData[section] && window._adminData[section].length > 0) return;
+        if (!window._liveData) { // Force initial load via sync fetch fallback
+            try {
+                const snap = await getDoc(doc(db, '_admin_panel', 'data'));
+                window._liveData = snap.exists() ? snap.data() : { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+            } catch(e) {
+                window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+            }
+        }
+        if (window._liveData && window._liveData[section] && window._liveData[section].length > 0) return;
 
         let data = [];
         try {
@@ -307,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Write back to _admin_panel/data (field-level merge)
             await setDoc(doc(db, '_admin_panel', 'data'), { [section]: data }, { merge: true });
             // Update local cache
-            if (window._adminData) window._adminData[section] = data;
+            if (window._liveData) window._liveData[section] = data;
         } catch(e) {
             console.error('Failed to populate admin section:', e);
         }
@@ -318,7 +331,35 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window._updateAdminSection = async function(section, data) {
         await setDoc(doc(db, '_admin_panel', 'data'), { [section]: data }, { merge: true });
-        if (window._adminData) window._adminData[section] = data;
+        if (window._liveData) window._liveData[section] = data;
+    };
+
+    /**
+     * One-time sync of existing Firestore data into _admin_panel/data.
+     * Admin triggers this once after deploy. After this, all updates are real-time.
+     */
+    window._syncExistingData = async function() {
+        try {
+            const [courses, quizzes, advices, events, usersArr] = await Promise.all([
+                sync.collection('unicourses').catch(() => []),
+                sync.collection('daily_quizzes').catch(() => []),
+                sync.collection('daily_advices').catch(() => []),
+                sync.collection('subscription_events').catch(() => []),
+                sync.collection('users').catch(() => [])
+            ]);
+
+            await setDoc(doc(db, '_admin_panel', 'data'), {
+                courses: courses.map(c => ({ id: c.id, title: c.title || c.id, level: c.level || '', topicCount: c.topicCount || 0 })),
+                dailyQuizzes: quizzes.map(q => ({ id: q.id, title: q.title || '', createdAt: q.createdAt || null })),
+                dailyAdvices: advices.map(a => ({ id: a.id, title: a.title || '', category: a.category || '', createdAt: a.createdAt || null })),
+                subscriptionEvents: events.map(e => ({ id: e.id, title: e.title || '', createdAt: e.createdAt || null })),
+                totalStudentCount: usersArr.length
+            });
+            return true;
+        } catch(e) {
+            console.error('Sync failed:', e);
+            return false;
+        }
     };
 
     // ─── Local JSON course loading removed — using Firestore limit queries via SyncManager ───
@@ -394,8 +435,8 @@ window.updateDashboardUI = function() {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        if (!window._adminData || !window._adminData.courses) await window._ensureAdminSection('courses');
-        const courses = (window._adminData && window._adminData.courses) ? window._adminData.courses : [];
+        if (!window._liveData || !window._liveData.courses) await window._ensureAdminSection('courses');
+        const courses = (window._liveData && window._liveData.courses) ? window._liveData.courses : [];
         coursesListDiv.innerHTML = "";
 
         // Loop through each course
@@ -668,10 +709,20 @@ function setupAdminListeners() {
                     if (masterNavBottom) {
                         masterNavBottom.style.display = (userDataFromSync.role === 'admin') ? 'flex' : 'none';
                     }
-                    // Set up admin real-time data listener
-                    if (userDataFromSync.role === 'admin') {
-                        window._setupAdminListener().catch(() => {});
-                    }
+                    // Set up real-time data listener for ALL users
+                    window._setupLiveDataListener().catch(() => {});
+
+                    // Auto-trigger sync for admin if live data is empty
+                    setTimeout(async () => {
+                        if (!window._liveData || (!window._liveData.courses?.length && !window._liveData.dailyQuizzes?.length)) {
+                            if (userDataFromSync.role === 'admin') {
+                                const ok = confirm('Existing data needs to be synced once. This may take a moment. Continue?');
+                                if (ok) {
+                                    await window._syncExistingData();
+                                }
+                            }
+                        }
+                    }, 1000);
                 }
 
                 if (!userDataFromSync) {
@@ -1331,6 +1382,10 @@ async function renderMaster() {
                     <div class="page-title">Master Control</div>
                     <div class="page-sub">Platform administration — users, courses, topics &amp; questions</div>
                 </div>
+                <button class="btn btn-outline btn-sm" onclick="window._syncExistingData().then(r => { if(r) window.showEFModal('Sync Complete', 'Existing data has been synced to _admin_panel/data. All users now have live access.', 'OK'); else window.showEFModal('Sync Failed', 'Check console for details.', 'OK'); })" title="Sync existing data once">
+                    <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;margin-right:4px;">sync</span>
+                    Sync Data
+                </button>
             </div>
         </div>
 
@@ -1396,8 +1451,8 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        if (!window._adminData || !window._adminData.courses) await window._ensureAdminSection('courses');
-        const courses = (window._adminData && window._adminData.courses) ? window._adminData.courses : [];
+        if (!window._liveData || !window._liveData.courses) await window._ensureAdminSection('courses');
+        const courses = (window._liveData && window._liveData.courses) ? window._liveData.courses : [];
         const el = id => document.getElementById(id);
         // User count removed to eliminate getCountFromServer reads
         if (el('mc-s-users')) el('mc-s-users').textContent = '-';
@@ -1594,8 +1649,8 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            if (!window._adminData || !window._adminData.courses) await window._ensureAdminSection('courses');
-            const courses = (window._adminData && window._adminData.courses) ? window._adminData.courses : [];
+            if (!window._liveData || !window._liveData.courses) await window._ensureAdminSection('courses');
+            const courses = (window._liveData && window._liveData.courses) ? window._liveData.courses : [];
             courses.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
@@ -5249,9 +5304,9 @@ window.adminPromptNotification = function(userId) {
             const isDailyOn = userData.stats?.subscriptions?.dailyQuiz !== false;
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
-            // Fetch events directly (student-facing page, not admin)
-            const allEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(5)]) || [];
-            const events = [...allEvents];
+            // Live subscription events from _admin_panel/data onSnapshot (0 reads)
+            const allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
+            const events = [...allEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
             // Check registrations for the current user
             const uid = auth.currentUser?.uid;
@@ -5660,7 +5715,8 @@ window.adminPromptNotification = function(userId) {
 
         // Search-only library — no course listing loaded.
         // Student types a course code/title and hits Enter → 1 doc read.
-        libCourseCache = [];  // Clear any cached data
+        // Populate course suggestions from _liveData.courses (0 reads, onSnapshot)
+        libCourseCache = (window._liveData && window._liveData.courses) || [];
         renderLibGrid();  // Shows the empty/search-prompt state
     }
 
