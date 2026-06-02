@@ -297,6 +297,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Live data listener error:', error);
                     window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
                     resolve();
+                    // Retry connection after 3s (handles rules deployed mid-session)
+                    setTimeout(() => {
+                        window._liveListener = null;
+                        window._setupLiveDataListener().catch(() => {});
+                    }, 3000);
                 }
             );
         });
@@ -6110,7 +6115,14 @@ window.adminPromptNotification = function(userId) {
             let schedItems = userData_full.schedule || [];
             
             // Also load broadcast schedules from live data
-            const broadcastScheds = (window._liveData && window._liveData.broadcastSchedules) || [];
+            let broadcastScheds = (window._liveData && window._liveData.broadcastSchedules) || [];
+            // Fallback: try direct read if live data is empty
+            if (!broadcastScheds.length) {
+                try {
+                    const liveSnap = await sync.doc('_admin_panel/data');
+                    if (liveSnap && liveSnap.broadcastSchedules) broadcastScheds = liveSnap.broadcastSchedules;
+                } catch(e) {}
+            }
             schedItems = [...schedItems, ...broadcastScheds];
             
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
@@ -6593,7 +6605,14 @@ window.adminPromptNotification = function(userId) {
         let notifications = userData_full.inbox || [];
         
         // Also load broadcast notifications from live data
-        const broadcastItems = (window._liveData && window._liveData.broadcastNotifications) || [];
+        let broadcastItems = (window._liveData && window._liveData.broadcastNotifications) || [];
+        // Fallback: try direct read if live data is empty (onSnapshot might have errored before rules deployed)
+        if (!broadcastItems.length) {
+            try {
+                const liveSnap = await sync.doc('_admin_panel/data');
+                if (liveSnap && liveSnap.broadcastNotifications) broadcastItems = liveSnap.broadcastNotifications;
+            } catch(e) {}
+        }
         notifications = [...broadcastItems, ...notifications].slice(0, 50);
 
         const now = Date.now();
