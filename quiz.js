@@ -1181,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const { deleteDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                     
                     // Delete notifications for this mock
-                    const notifications = (await sync.query('users/' + currentUser.uid + '/notifications', [where('actionPath', '==', `/quiz.html?mockid=${examState.quizId}`)])) || [];
+                    const notifications = (await sync.query('users/' + currentUser.uid + '/notifications', [where('actionPath', '==', `/quiz?mockid=${examState.quizId}`)])) || [];
                     const delPromises = notifications.map(d => deleteDoc(fDoc(db, 'users', currentUser.uid, 'notifications', d.id)));
                     
                     // Delete schedule items for this mock

@@ -3104,7 +3104,7 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
         const day = String(expiryDate.getDate()).padStart(2, '0');
         const dueTs = new Date(`${year}-${month}-${day}T23:59:00`);
         
-        const quizUrl = `quiz.html?dqid=${dqid}`;
+        const quizUrl = `/quiz?dqid=${dqid}`;
         
         const totalUsers = 0;
         // User count not fetched to avoid reads
@@ -5947,7 +5947,7 @@ window.adminPromptNotification = function(userId) {
                 const qCount = (t.questions || []).length;
                 const label = t.title || t.id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                 const timeLabel = t.timeLimit ? `${t.timeLimit} min` : '';
-                const quizUrl = `quiz.html?course=${encodeURIComponent(courseId)}&topic=${encodeURIComponent(t.id)}&title=${encodeURIComponent(label)}`;
+                const quizUrl = `/quiz?course=${encodeURIComponent(courseId)}&topic=${encodeURIComponent(t.id)}&title=${encodeURIComponent(label)}`;
                 const shareUrl = window.buildShareUrl({
                     course: courseId, topic: t.id, title: label,
                     timeLimit: t.timeLimit || '',
@@ -5974,7 +5974,7 @@ window.adminPromptNotification = function(userId) {
             }).join('');
 
             // Full exam card — merges all topics
-            const fullUrl = `quiz.html?course=${encodeURIComponent(courseId)}&topic=__full__&title=${encodeURIComponent(courseTitle + ' — Full Exam')}`;
+            const fullUrl = `/quiz?course=${encodeURIComponent(courseId)}&topic=__full__&title=${encodeURIComponent(courseTitle + ' — Full Exam')}`;
             const fullShareUrl = window.buildShareUrl({ course: courseId, topic: '__full__', title: courseTitle + ' — Full Exam' });
             htmlStr += `
                 <div class="card course-card card-accent">
@@ -7744,7 +7744,7 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                             title: 'Mock Exam Ready!',
                             message: `Your ${subject} mock exam for "${evTitle}" is now available. Tap to take it.`,
                             actionLabel: 'TAKE EXAM',
-                            actionPath: `/quiz.html?mockid=${mock.id}`,
+                            actionPath: `/quiz?mockid=${mock.id}`,
                             createdAt: serverTimestamp(),
                             read: false,
                             brandColor: '#10b981',
@@ -7768,7 +7768,7 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                             mockId: mock.id,
                             eventId: eventId,
                             timeLimit: mock.timeLimit || 45,
-                            quizUrl: `/quiz.html?mockid=${mock.id}`,
+                            quizUrl: `/quiz?mockid=${mock.id}`,
                             message: `Complete your ${subject} mock exam for "${evTitle}".`,
                             date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
                             time: 'All day',
@@ -8909,7 +8909,7 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
                     title: 'Mock Exam Released!',
                     message: `Your ${subject} mock exam for "${evTitle}" is ready. Tap to start.`,
                     actionLabel: 'TAKE EXAM',
-                    actionPath: `/quiz.html?mockid=${mockId}`,
+                    actionPath: `/quiz?mockid=${mockId}`,
                     createdAt: serverTimestamp(),
                     read: false,
                     brandColor: '#10b981',
@@ -8933,7 +8933,7 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
                     mockId: mockId,
                     eventId: eventId,
                     timeLimit: timeLimit,
-                    quizUrl: `/quiz.html?mockid=${mockId}`,
+                    quizUrl: `/quiz?mockid=${mockId}`,
                     message: `Complete your ${subject} mock exam for "${evTitle}".`,
                     date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
                     time: 'All day',
@@ -9050,7 +9050,7 @@ window.mcBroadcastEventResults = async function(eventId) {
                     title: `📊 ${evTitle} - Results Released`,
                     message: `Your results for ${evTitle} are ready.\n\nTap to view your full result sheet.`,
                     actionLabel: 'VIEW RESULT',
-                    actionPath: `/quiz.html?resultId=${resultId}&eventId=${eventId}`,
+                    actionPath: `/quiz?resultId=${resultId}&eventId=${eventId}`,
                     timestamp: serverTimestamp(),
                     read: false,
                     brandColor: '#7c3aed',
