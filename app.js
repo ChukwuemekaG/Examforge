@@ -5755,53 +5755,53 @@ window.adminPromptNotification = function(userId) {
         if (!grid) return;
 
         const q = libQuery.toLowerCase().trim();
+        
+        // Get courses from live data or empty
+        const courses = libCourseCache;
 
-        if (!q) {
-            // Show search prompt
+        if (!courses || !courses.length) {
             grid.innerHTML = `
                 <div class="empty-state">
-                    <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;">search</span>
-                    <div class="empty-title">Search for a Course</div>
-                    <div class="empty-desc">Type a course code (e.g., GST 101) or title above, then press Enter.</div>
+                    <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;">menu_book</span>
+                    <div class="empty-title">No courses available</div>
+                    <div class="empty-desc">Courses will appear here once the admin adds them.</div>
                 </div>`;
             return;
         }
 
-        // Search by document ID — 1 doc read
-        (async () => {
-            try {
-                const courseDoc = await sync.doc('unicourses/' + q.replace(/\s+/g, ''));
-                if (courseDoc && courseDoc.title) {
-                    const c = { id: q.replace(/\s+/g, ''), ...courseDoc };
-                    grid.innerHTML = `
-                    <div class="card course-card" style="cursor:pointer;" onclick="window.loadTopics('${c.id}', '${(c.title||'').replace(/'/g, "\\'")}')">
-                        <div class="card-eyebrow">
-                            <span class="course-code">${c.id.toUpperCase()}</span>
-                            ${c.level ? `<span class="level-tag">${c.level}</span>` : ''}
-                        </div>
-                        <div class="card-title">${c.title}</div>
-                        <div class="card-desc">${c.description || ''}</div>
-                        <button class="btn btn-primary btn-block">
-                            <span class="material-icons-round">play_arrow</span> Enter Course
-                        </button>
-                    </div>`;
-                } else {
-                    grid.innerHTML = `
-                    <div class="empty-state">
-                        <span class="material-icons-round">search_off</span>
-                        <div class="empty-title">Course not found</div>
-                        <div class="empty-desc">No course matches "${q}". Try a different code (e.g., GST 101, MTH 101).</div>
-                    </div>`;
-                }
-            } catch(e) {
-                grid.innerHTML = `
+        // Filter if searching
+        const filtered = !q ? courses : courses.filter(c =>
+            c.id.toLowerCase().includes(q) ||
+            (c.title || '').toLowerCase().includes(q) ||
+            (c.level || '').toLowerCase().includes(q)
+        );
+
+        if (!filtered.length) {
+            grid.innerHTML = `
                 <div class="empty-state">
-                    <span class="material-icons-round">error_outline</span>
-                    <div class="empty-title">Search failed</div>
-                    <div class="empty-desc">${e.message}</div>
+                    <span class="material-icons-round">search_off</span>
+                    <div class="empty-title">No results for "${libQuery}"</div>
+                    <div class="empty-desc">Try a different course code or keyword.</div>
                 </div>`;
-            }
-        })();
+            return;
+        }
+
+        grid.innerHTML = filtered.map(c => `
+            <div class="card course-card">
+                <div class="card-eyebrow">
+                    <span class="course-code">${c.id.toUpperCase()}</span>
+                    ${c.level ? `<span class="level-tag">${c.level}</span>` : ''}
+                </div>
+                <div class="card-title">${c.title || c.id.toUpperCase()}</div>
+                <div class="card-desc">
+                    ${c.description || `${c.topicCount || 0} topic${(c.topicCount||0) !== 1 ? 's' : ''} available`}
+                </div>
+                <button class="btn btn-primary btn-block"
+                    onclick="window.loadTopics('${encodeURIComponent(c.id)}', '${encodeURIComponent(c.title || c.id.toUpperCase())}')">
+                    <span class="material-icons-round">play_arrow</span> Enter Course
+                </button>
+            </div>
+        `).join('');
     }
 
     function attachLibEvents() {
@@ -5824,7 +5824,8 @@ window.adminPromptNotification = function(userId) {
             if (libQuery.length > 1 && libCourseCache.length) {
                 const q = libQuery.toLowerCase();
                 const matches = libCourseCache.filter(c =>
-                    c.id.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)
+                    c.id.toLowerCase().includes(q) ||
+                    (c.title || '').toLowerCase().includes(q)
                 ).slice(0, 6);
 
                 if (matches.length) {
@@ -5850,7 +5851,7 @@ window.adminPromptNotification = function(userId) {
             if (e.key === 'Enter') {
                 libQuery = libSearch.value.trim();
                 suggPanel.style.display = 'none';
-                renderLibGrid();  // This now searches Firestore
+                renderLibGrid();  // Filters from local cache
             }
         });
 
