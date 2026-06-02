@@ -277,14 +277,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
                     }
                     resolve();
-                    // Re-render current view if it depends on live data
-                    const liveViews = ['master', 'subscriptions', 'library', 'dashboard'];
-                    if (liveViews.includes(currentView)) {
-                        if (currentView === 'master') mcRenderTabContent();
-                        else if (currentView === 'subscriptions') renderSubscriptions();
+                    // Re-render on next tick to avoid race with initial render
+                    setTimeout(() => {
+                        if (currentView === 'subscriptions') renderSubscriptions();
                         else if (currentView === 'library') renderLibrary();
+                        else if (currentView === 'master') mcRenderTabContent();
                         else if (currentView === 'dashboard') window.updateDashboardUI();
-                    }
+                    }, 0);
                 },
                 (error) => {
                     console.error('Live data listener error:', error);
@@ -2319,7 +2318,7 @@ window.mcPublishDailyAdvice = async function() {
 
         // Update admin panel data
         const advSection = (window._liveData && window._liveData.dailyAdvices) ? [...window._liveData.dailyAdvices] : [];
-        advSection.unshift({ id: advId, title: title, category: category || '', createdAt: new Date().toISOString() });
+        advSection.unshift({ id: advId, title: title, category: category || '', content: content || '', createdAt: new Date().toISOString() });
         window._updateAdminSection('dailyAdvices', advSection).catch(() => {});
 
         // Meta app updates removed — direct Firestore writes only
@@ -7537,14 +7536,16 @@ window.mcSaveSubEvent = async function() {
 window.mcDeleteSubEvent = function(eventId, title) {
     window.showEFModal(
         "Delete Event?",
-        `Are you sure you want to delete "${title}"? This will not delete sub-collections immediately but hides the event.`,
+        `Are you sure you want to permanently delete "${title}"? This cannot be undone.`,
         "DELETE",
         async () => {
             try {
-                const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                 await deleteDoc(doc(db, 'subscription_events', eventId));
                 
-                // Meta app updates removed — direct Firestore writes only
+                // Update admin panel data to remove the deleted event
+                const eventSection = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents] : [];
+                const filtered = eventSection.filter(e => e.id !== eventId);
+                window._updateAdminSection('subscriptionEvents', filtered).catch(() => {});
                 
                 await sync.refresh('subscription_events');
                 window.mcLoadSubEvents();
