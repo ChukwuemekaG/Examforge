@@ -378,6 +378,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    /**
+     * Broadcasts a notification to ALL students via a single _broadcast doc.
+     * Students read this doc to show notifications — no per-user writes needed.
+     */
+    window._broadcastNotification = async function(notification) {
+        const broadcastRef = doc(db, '_broadcast', 'notifications');
+        const existing = await getDoc(broadcastRef);
+        const items = existing.exists() ? (existing.data().items || []) : [];
+        items.unshift({
+            ...notification,
+            id: 'notif_' + Date.now().toString(36),
+            timestamp: new Date().toISOString()
+        });
+        // Keep max 50 items
+        if (items.length > 50) items.length = 50;
+        await setDoc(broadcastRef, { items });
+    };
+
+    /**
+     * Broadcasts a schedule item to ALL students via a single _broadcast doc.
+     */
+    window._broadcastSchedule = async function(scheduleItem) {
+        const scheduleRef = doc(db, '_broadcast', 'schedules');
+        const existing = await getDoc(scheduleRef);
+        const items = existing.exists() ? (existing.data().items || []) : [];
+        items.push({
+            ...scheduleItem,
+            id: 'sched_' + Date.now().toString(36),
+            timestamp: new Date().toISOString()
+        });
+        if (items.length > 50) items.length = 50;
+        await setDoc(scheduleRef, { items });
+    };
+
+    /**
+     * Clear all broadcast notifications.
+     */
+    window._clearAllNotifications = async function() {
+        if (!confirm('Clear all broadcast notifications for all students?')) return;
+        await setDoc(doc(db, '_broadcast', 'notifications'), { items: [] });
+        window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
+    };
+
+    /**
+     * Clear all broadcast schedule items.
+     */
+    window._clearAllSchedules = async function() {
+        if (!confirm('Clear all broadcast schedule items for all students?')) return;
+        await setDoc(doc(db, '_broadcast', 'schedules'), { items: [] });
+        window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
+    };
+
     // ─── Local JSON course loading removed — using Firestore limit queries via SyncManager ───
 
     // Firebase User Data State
@@ -1390,6 +1442,12 @@ async function renderMaster() {
                 <button class="btn btn-outline btn-sm" onclick="window._syncExistingData().then(r => { if(r) window.showEFModal('Sync Complete', 'Existing data has been synced to _admin_panel/data. All users now have live access.', 'OK'); else window.showEFModal('Sync Failed', 'Check console for details.', 'OK'); })" title="Sync existing data once">
                     <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;margin-right:4px;">sync</span>
                     Sync Data
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="window._clearAllNotifications()" style="font-size:0.65rem;padding:3px 8px;">
+                    <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">notifications_off</span> Clear Notifications
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="window._clearAllSchedules()" style="font-size:0.65rem;padding:3px 8px;">
+                    <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">event_busy</span> Clear Schedule
                 </button>
             </div>
         </div>
@@ -2819,14 +2877,15 @@ window.mcSaveCreatedDailyQuiz = async function() {
             createdAt: serverTimestamp()
         });
         
-        // Meta app updates removed — direct Firestore writes only
+        // Update _admin_panel/data for live card appearance
+        const section = (window._liveData && window._liveData.dailyQuizzes) ? [...window._liveData.dailyQuizzes] : [];
+        section.unshift({ id: dqid, title: title, createdAt: new Date().toISOString() });
+        window._updateAdminSection('dailyQuizzes', section).catch(() => {});
         
         const modal = document.getElementById('ef-dq-builder-modal');
         if (modal) modal.remove();
         
         window.showEFModal("Quiz Published", "Your new daily quiz has been saved and published successfully!", "AWESOME", null, true);
-        await sync.refresh('daily_quizzes');
-        mcLoadDailyQuizzes();
         mcLoadDailyQuizSubCount();
         
     } catch (e) {
@@ -5738,6 +5797,10 @@ window.adminPromptNotification = function(userId) {
         // Search-only library — no course listing loaded.
         // Student types a course code/title and hits Enter → 1 doc read.
         // Populate course suggestions from _liveData.courses (0 reads, onSnapshot)
+        // Wait for live data if not yet available
+        if (!window._liveData || !window._liveData.courses) {
+            if (window._liveDataReady) await window._liveDataReady;
+        }
         libCourseCache = (window._liveData && window._liveData.courses) || [];
         // Student fallback: read directly if live data empty
         if (!libCourseCache.length) {
@@ -6019,7 +6082,17 @@ window.adminPromptNotification = function(userId) {
 
         try {
             const userData_full = await window._getUserData(auth.currentUser.uid);
-            const schedItems = userData_full.schedule;
+            let schedItems = userData_full.schedule || [];
+            
+            // Also load broadcast schedules
+            try {
+                const schedSnap = await getDoc(doc(db, '_broadcast', 'schedules'));
+                if (schedSnap.exists()) {
+                    const broadcastItems = schedSnap.data().items || [];
+                    schedItems = [...schedItems, ...broadcastItems];
+                }
+            } catch(e) {}
+            
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
         } catch(e) { console.error(e); }
 
@@ -6498,6 +6571,15 @@ window.adminPromptNotification = function(userId) {
         const path = 'users/' + auth.currentUser.uid + '/notifications';
         const userData_full = await window._getUserData(auth.currentUser.uid);
         let notifications = userData_full.inbox || [];
+        
+        // Also load broadcast notifications
+        try {
+            const broadcastSnap = await getDoc(doc(db, '_broadcast', 'notifications'));
+            if (broadcastSnap.exists()) {
+                const broadcastItems = broadcastSnap.data().items || [];
+                notifications = [...broadcastItems, ...notifications].slice(0, 50);
+            }
+        } catch(e) {}
 
         const now = Date.now();
 
