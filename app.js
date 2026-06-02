@@ -257,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window._liveData = null;
     window._liveListener = null;
     window._liveDataReady = null;
+    window._liveRendering = false;
 
     /**
      * Sets up real-time data for ALL users via 1 onSnapshot on _admin_panel/data.
@@ -277,6 +278,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
                     }
                     resolve();
+                    // Re-render current view if it depends on live data (safe: no re-entrancy)
+                    if (!window._liveRendering) {
+                        window._liveRendering = true;
+                        try {
+                            if (currentView === 'subscriptions') renderSubscriptions();
+                            else if (currentView === 'library') renderLibrary();
+                            else if (currentView === 'master') mcRenderTabContent();
+                            else if (currentView === 'dashboard') window.updateDashboardUI();
+                        } finally {
+                            window._liveRendering = false;
+                        }
+                    }
                 },
                 (error) => {
                     console.error('Live data listener error:', error);
@@ -5295,11 +5308,8 @@ window.adminPromptNotification = function(userId) {
             const isDailyOn = userData.stats?.subscriptions?.dailyQuiz !== false;
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
-            // Try live data first, fall back to direct Firestore read
-            let allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
-            if (!allEvents.length) {
-                allEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(3)]) || [];
-            }
+            // Live subscription events from _admin_panel/data onSnapshot (0 reads)
+            const allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
             const events = [...allEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
             // Check registrations for the current user
@@ -5710,16 +5720,7 @@ window.adminPromptNotification = function(userId) {
         // Search-only library — no course listing loaded.
         // Student types a course code/title and hits Enter → 1 doc read.
         // Populate course suggestions from _liveData.courses (0 reads, onSnapshot)
-        // Try live data first, fall back to direct Firestore read
         libCourseCache = (window._liveData && window._liveData.courses) || [];
-        if (!libCourseCache.length) {
-            const lc = await sync.query('unicourses', [limit(3)]) || [];
-            libCourseCache = lc.sort((a, b) => {
-                const lvA = parseInt(a.level) || 0;
-                const lvB = parseInt(b.level) || 0;
-                return lvA !== lvB ? lvA - lvB : (a.id || '').localeCompare(b.id || '');
-            });
-        }
         renderLibGrid();  // Shows the empty/search-prompt state
     }
 
