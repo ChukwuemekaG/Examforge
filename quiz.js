@@ -90,6 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
      *   Legacy JSON:    quiz.html?files=path/to/file.json&title=Title  (still works)
      */
     async function init() {
+        // Wait for auth state to resolve before doing anything
+        try { await auth.authStateReady(); } catch(e) {}
+        if (!currentUser) { window.location.href = '/'; return; }
+        
         switchView('loading');
         // Initialize cache-first Firestore sync
         sync = new SyncManager(db);
@@ -112,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Check completedBy array in quiz doc (already loaded, 0 reads)
                 const completedBy = d.completedBy || [];
-                if (completedBy.includes(currentUser.uid)) {
+                if (currentUser && completedBy.includes(currentUser.uid)) {
                     // Load from lastAttempts map embedded in quiz doc
                     const lastData = (d.lastAttempts && d.lastAttempts[currentUser.uid]) || null;
                     if (lastData) {
