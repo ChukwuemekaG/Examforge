@@ -236,6 +236,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 isMock: anyMock,
                 isCorrection: !anyNoCorrection
             });
+
+            // Also update _admin_panel/data courses section
+            const section = (window._adminData && window._adminData.courses) ? [...window._adminData.courses] : [];
+            const idx = section.findIndex(c => c.id === courseId);
+            if (idx >= 0) {
+                section[idx] = { ...section[idx], topicCount: topics?.length || 0 };
+                await window._updateAdminSection('courses', section);
+            }
         } catch(e) {
             console.error('Failed to sync course questions:', e);
         }
@@ -254,30 +262,19 @@ document.addEventListener('DOMContentLoaded', () => {
      * Call ONCE when admin logs in.
      */
     window._setupAdminListener = async function() {
-        if (window._adminListener) return; // Already set up
-
-        // Lazy init: create doc if it doesn't exist
-        const exists = await sync.doc('_admin_panel/data');
-        if (!exists) {
-            await setDoc(doc(db, '_admin_panel', 'data'), {
-                courses: [],
-                dailyQuizzes: [],
-                dailyAdvices: [],
-                subscriptionEvents: []
-            });
-        }
-
-        // Single onSnapshot — 1 standard read initial, real-time units for updates
+        if (window._adminListener) return;
+        
         window._adminListener = onSnapshot(
             doc(db, '_admin_panel', 'data'),
             (snap) => {
                 if (snap.exists()) {
                     window._adminData = snap.data();
-                    // Re-render current admin tab if visible
-                    if (currentView === 'master') {
-                        mcRenderTabContent();
-                    }
+                } else {
+                    // Doc doesn't exist — create it with empty data
+                    window._adminData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+                    setDoc(doc(db, '_admin_panel', 'data'), window._adminData).catch(() => {});
                 }
+                if (currentView === 'master') mcRenderTabContent();
             },
             (error) => console.error('Admin data listener error:', error)
         );
