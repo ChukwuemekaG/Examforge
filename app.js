@@ -241,6 +241,89 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ─── Aggregated admin panel helpers ──────────────────────────
+    /**
+     * Aggregated admin panel data — single doc, single onSnapshot.
+     * 1 standard read for initial sync, then real-time read units for all updates.
+     */
+    window._adminData = null;
+    window._adminListener = null;
+
+    /**
+     * Sets up the admin panel real-time listener.
+     * Call ONCE when admin logs in.
+     */
+    window._setupAdminListener = async function() {
+        if (window._adminListener) return; // Already set up
+
+        // Lazy init: create doc if it doesn't exist
+        const exists = await sync.doc('_admin_panel/data');
+        if (!exists) {
+            await setDoc(doc(db, '_admin_panel', 'data'), {
+                courses: [],
+                dailyQuizzes: [],
+                dailyAdvices: [],
+                subscriptionEvents: []
+            });
+        }
+
+        // Single onSnapshot — 1 standard read initial, real-time units for updates
+        window._adminListener = onSnapshot(
+            doc(db, '_admin_panel', 'data'),
+            (snap) => {
+                if (snap.exists()) {
+                    window._adminData = snap.data();
+                    // Re-render current admin tab if visible
+                    if (currentView === 'master') {
+                        mcRenderTabContent();
+                    }
+                }
+            },
+            (error) => console.error('Admin data listener error:', error)
+        );
+    };
+
+    /**
+     * Lazily populates a section of _admin_panel/data by reading from collections ONCE.
+     * Only called the first time an admin opens a tab after deploy.
+     */
+    window._ensureAdminSection = async function(section) {
+        if (!window._adminData) await sync.doc('_admin_panel/data'); // Force initial load
+        if (window._adminData && window._adminData[section] && window._adminData[section].length > 0) return;
+
+        let data = [];
+        try {
+            if (section === 'courses') {
+                const docs = await sync.collection('unicourses');
+                data = docs.map(d => ({ id: d.id, title: d.title || d.id, level: d.level || '', topicCount: d.topicCount || 0 }));
+            } else if (section === 'dailyQuizzes') {
+                const docs = await sync.query('daily_quizzes', [orderBy('createdAt', 'desc')]);
+                data = docs.map(d => ({ id: d.id, title: d.title || '', createdAt: d.createdAt || null }));
+            } else if (section === 'dailyAdvices') {
+                const docs = await sync.query('daily_advices', [orderBy('createdAt', 'desc')]);
+                data = docs.map(d => ({ id: d.id, title: d.title || '', category: d.category || '', createdAt: d.createdAt || null }));
+            } else if (section === 'subscriptionEvents') {
+                const docs = await sync.query('subscription_events', [orderBy('createdAt', 'desc')]);
+                data = docs.map(d => ({ id: d.id, title: d.title || '', createdAt: d.createdAt || null }));
+            }
+
+            // Write back to _admin_panel/data (field-level merge)
+            await setDoc(doc(db, '_admin_panel', 'data'), { [section]: data }, { merge: true });
+            // Update local cache
+            if (window._adminData) window._adminData[section] = data;
+        } catch(e) {
+            console.error('Failed to populate admin section:', e);
+        }
+    };
+
+    /**
+     * Updates a section of _admin_panel/data after a write operation.
+     */
+    window._updateAdminSection = async function(section, data) {
+        await setDoc(doc(db, '_admin_panel', 'data'), { [section]: data }, { merge: true });
+        if (window._adminData) window._adminData[section] = data;
+    };
+
     // ─── Local JSON course loading removed — using Firestore limit queries via SyncManager ───
 
     // Firebase User Data State
@@ -314,8 +397,9 @@ window.updateDashboardUI = function() {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        const courses = await sync.query('unicourses', [limit(2)]) || [];
-        coursesListDiv.innerHTML = ""; // Clear loading text
+        if (!window._adminData || !window._adminData.courses) await window._ensureAdminSection('courses');
+        const courses = (window._adminData && window._adminData.courses) ? window._adminData.courses : [];
+        coursesListDiv.innerHTML = "";
 
         // Loop through each course
         for (const courseData of courses) {
@@ -586,6 +670,10 @@ function setupAdminListeners() {
                     const masterNavBottom = document.getElementById('nav-master-bottom');
                     if (masterNavBottom) {
                         masterNavBottom.style.display = (userDataFromSync.role === 'admin') ? 'flex' : 'none';
+                    }
+                    // Set up admin real-time data listener
+                    if (userDataFromSync.role === 'admin') {
+                        window._setupAdminListener().catch(() => {});
                     }
                 }
 
@@ -1311,7 +1399,8 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        const courses = await sync.query('unicourses', [limit(2)]) || [];
+        if (!window._adminData || !window._adminData.courses) await window._ensureAdminSection('courses');
+        const courses = (window._adminData && window._adminData.courses) ? window._adminData.courses : [];
         const el = id => document.getElementById(id);
         // User count removed to eliminate getCountFromServer reads
         if (el('mc-s-users')) el('mc-s-users').textContent = '-';
@@ -1508,7 +1597,8 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const courses = await sync.query('unicourses', [limit(1)]) || [];
+            if (!window._adminData || !window._adminData.courses) await window._ensureAdminSection('courses');
+            const courses = (window._adminData && window._adminData.courses) ? window._adminData.courses : [];
             courses.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
             const grid = document.getElementById('mc-course-grid');
             if (!grid) return;
@@ -1758,7 +1848,8 @@ async function mcLoadDailyQuizzes() {
     if (!grid) return;
 
         try {
-            const quizzes = await sync.query('daily_quizzes', [orderBy('createdAt', 'desc'), limit(2)]) || [];
+            if (!window._adminData || !window._adminData.dailyQuizzes) await window._ensureAdminSection('dailyQuizzes');
+            const quizzes = (window._adminData && window._adminData.dailyQuizzes) ? [...window._adminData.dailyQuizzes].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
 
         if (quizzes.length === 0) {
             grid.innerHTML = `
@@ -1862,7 +1953,8 @@ async function mcLoadDailyAdvices() {
     if (!grid) return;
 
         try {
-            const advices = await sync.query('daily_advices', [orderBy('createdAt', 'desc'), limit(2)]) || [];
+            if (!window._adminData || !window._adminData.dailyAdvices) await window._ensureAdminSection('dailyAdvices');
+            const advices = (window._adminData && window._adminData.dailyAdvices) ? [...window._adminData.dailyAdvices].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
             if (!advices.length) {
             grid.innerHTML = `
                 <div style="grid-column:1/-1;text-align:center;padding:48px;border:3px dashed var(--border);border-radius:16px;color:var(--text-muted);">
@@ -5156,8 +5248,9 @@ window.adminPromptNotification = function(userId) {
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
             // Fetch dynamic events
-            const allEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(2)]) || [];
-            const events = [...allEvents];
+            if (!window._adminData || !window._adminData.subscriptionEvents) await window._ensureAdminSection('subscriptionEvents');
+            const allEvents = (window._adminData && window._adminData.subscriptionEvents) ? window._adminData.subscriptionEvents : [];
+            const events = [...allEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
             // Check registrations for the current user
             const uid = auth.currentUser?.uid;
@@ -7236,10 +7329,8 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        const events = (await sync.liveCollection('subscription_events', () => {
-            if (document.getElementById('mc-subevents-list')) window.mcLoadSubEvents();
-        })) || [];
-        events.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        if (!window._adminData || !window._adminData.subscriptionEvents) await window._ensureAdminSection('subscriptionEvents');
+        const events = (window._adminData && window._adminData.subscriptionEvents) ? [...window._adminData.subscriptionEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
 
         if (events.length === 0) {
             grid.innerHTML = `
