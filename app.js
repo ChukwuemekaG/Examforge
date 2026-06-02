@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 courses: courses.map(c => ({ id: c.id, title: c.title || c.id, level: c.level || '', topicCount: c.topicCount || 0 })),
                 dailyQuizzes: quizzes.map(q => ({ id: q.id, title: q.title || '', createdAt: q.createdAt || null })),
                 dailyAdvices: advices.map(a => ({ id: a.id, title: a.title || '', category: a.category || '', createdAt: a.createdAt || null })),
-                subscriptionEvents: events.map(e => ({ id: e.id, title: e.title || '', createdAt: e.createdAt || null })),
+                subscriptionEvents: events.map(e => ({ id: e.id, title: e.title || '', description: e.description || '', availableSubjects: e.availableSubjects || [], maxSubjects: e.maxSubjects || 10, createdAt: e.createdAt || null })),
                 totalStudentCount: usersArr.length
             });
             return true;
@@ -7540,7 +7540,7 @@ window.mcSaveSubEvent = async function() {
 
         // Update _admin_panel/data for live card appearance
         const section = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents] : [];
-        section.unshift({ id: eventRef.id, title, createdAt: new Date().toISOString() });
+        section.unshift({ id: eventRef.id, title, description: desc, availableSubjects, maxSubjects: maxSubs, createdAt: new Date().toISOString() });
         window._updateAdminSection('subscriptionEvents', section).catch(() => {});
 
         await sync.refresh('subscription_events');
