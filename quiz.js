@@ -1236,35 +1236,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 if (examState.quizId && examState.quizId.startsWith('dq_')) {
-                    const attemptRef = collection(db, "daily_quizzes", examState.quizId, "attempts");
-                    try {
-                        await addDoc(attemptRef, {
-                            uid: currentUser.uid,
-                            displayName: currentUser.displayName || existingData.displayName || currentUser.email || 'Anonymous',
-                            email: currentUser.email || 'No email',
-                            score: finalScore,
-                            correct: correct,
-                            totalQuestions: total,
-                            timeTaken: examState.timeTaken,
-                            timestamp: serverTimestamp()
-                        });
-
-                    } catch(e) { console.error('DQ attempt save FAILED:', e); }
-                    
-                    // Update completedBy + lastAttempts in quiz doc (0 reads, write-only)
+                    // Embed attempt directly in quiz doc — no subcollection reads needed
                     try {
                         await updateDoc(doc(db, 'daily_quizzes', examState.quizId), {
                             completedBy: arrayUnion(currentUser.uid),
-                            [`lastAttempts.${currentUser.uid}`]: {
+                            attempts: arrayUnion({
+                                uid: currentUser.uid,
+                                displayName: currentUser.displayName || existingData.displayName || currentUser.email || 'Anonymous',
+                                email: currentUser.email || 'No email',
                                 score: finalScore,
                                 correct: correct,
                                 totalQuestions: total,
                                 timeTaken: examState.timeTaken,
-                                displayName: currentUser.displayName || existingData.displayName || '',
                                 timestamp: new Date().toISOString()
-                            }
+                            })
                         });
-                    } catch(e) { console.error('DQ completedBy update FAILED:', e); }
+                    } catch(e) { console.error('DQ attempt save FAILED:', e); }
                     
                     // Save to localStorage for browser-based retake detection
                     try {
@@ -1277,7 +1264,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             title: 'Daily Quiz'
                         }));
                     } catch(e) {}
-
                 }
 
                 // Get existing recent results, prepend new one, keep max 50

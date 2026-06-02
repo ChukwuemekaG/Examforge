@@ -2896,51 +2896,52 @@ window.mcViewDailyQuizDetails = async function(dqid) {
         if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} }
 
         window._attemptsListener = onSnapshot(
-            query(collection(db, 'daily_quizzes/' + dqid + '/attempts'), orderBy('timestamp', 'desc'), limit(5)),
+            doc(db, 'daily_quizzes/' + dqid),
             (snap) => {
-                attempts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                attemptCount = attempts.length;
-                avgScore = attemptCount > 0 ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attemptCount) : 0;
-                
-                // Update summary stats
-                const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
-                const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
-                if (countEl) countEl.textContent = attemptCount;
-                if (avgEl) avgEl.textContent = avgScore + '%';
+                if (snap.exists()) {
+                    const data = snap.data();
+                    attempts = data.attempts || [];
+                    attemptCount = attempts.length;
+                    avgScore = attemptCount > 0 ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attemptCount) : 0;
+                    
+                    // Update summary stats
+                    const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
+                    const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
+                    if (countEl) countEl.textContent = attemptCount;
+                    if (avgEl) avgEl.textContent = avgScore + '%';
 
-                // Rebuild table
-                const tbody = document.getElementById('ef-dq-det-body')?.querySelector('table tbody');
-                const container = document.querySelector('[data-at]');
-                if (container) {
-                    if (attemptCount === 0) {
-                        container.innerHTML = `<div style="text-align:center;padding:48px 24px;border:2px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:0.8rem;">
-                            <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:8px;">people_outline</span>
-                            <strong style="color:var(--text);">No attempts recorded yet</strong>
-                            <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz.</div>
-                        </div>`;
-                    } else if (tbody) {
-                        tbody.innerHTML = attempts.map(a => {
-                            const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
-                            const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
-                            const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
-                            return `<tr style="border-bottom:1.5px solid var(--border);">
-                                <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
-                                    ${a.displayName}
-                                    <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
-                                </td>
-                                <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
-                                    <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
-                                </td>
-                                <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
-                                <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
-                            </tr>`;
-                        }).join('');
+                    // Rebuild table
+                    const tbody = document.getElementById('ef-dq-det-body')?.querySelector('table tbody');
+                    const container = document.querySelector('[data-at]');
+                    if (container) {
+                        if (attemptCount === 0) {
+                            container.innerHTML = `<div style="text-align:center;padding:48px 24px;border:2px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:0.8rem;">
+                                <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:8px;">people_outline</span>
+                                <strong style="color:var(--text);">No attempts recorded yet</strong>
+                                <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz.</div>
+                            </div>`;
+                        } else if (tbody) {
+                            tbody.innerHTML = attempts.map(a => {
+                                const date = a.timestamp || 'Recently';
+                                const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
+                                const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
+                                return `<tr style="border-bottom:1.5px solid var(--border);">
+                                    <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
+                                        ${a.displayName}
+                                        <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
+                                    </td>
+                                    <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
+                                        <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
+                                    </td>
+                                    <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
+                                    <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
+                                </tr>`;
+                            }).join('');
+                        }
                     }
                 }
             },
-            (error) => {
-                console.error('Attempts listener error:', error);
-            }
+            (error) => console.error('Quiz doc listener error:', error)
         );
         
         let attemptsHTML = '';
