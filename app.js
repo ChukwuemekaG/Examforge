@@ -5249,10 +5249,9 @@ window.adminPromptNotification = function(userId) {
             const isDailyOn = userData.stats?.subscriptions?.dailyQuiz !== false;
             const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
-            // Fetch dynamic events
-            if (!window._adminData || !window._adminData.subscriptionEvents) await window._ensureAdminSection('subscriptionEvents');
-            const allEvents = (window._adminData && window._adminData.subscriptionEvents) ? window._adminData.subscriptionEvents : [];
-            const events = [...allEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+            // Fetch events directly (student-facing page, not admin)
+            const allEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(5)]) || [];
+            const events = [...allEvents];
 
             // Check registrations for the current user
             const uid = auth.currentUser?.uid;
