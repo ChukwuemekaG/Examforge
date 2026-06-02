@@ -721,6 +721,14 @@ function setupAdminListeners() {
                     }
                     // Set up real-time data listener for ALL users
                     window._setupLiveDataListener().catch(() => {});
+                    // Silently populate _admin_panel/data for admin on first load
+                    if (userDataFromSync.role === 'admin') {
+                        setTimeout(async () => {
+                            if (window._liveData && !window._liveData.courses.length && !window._liveData.subscriptionEvents.length) {
+                                await window._syncExistingData();
+                            }
+                        }, 2000);
+                    }
 
                 }
 
@@ -1390,7 +1398,6 @@ async function renderMaster() {
 
         <div class="mc-stat-bar" id="mc-stats">
             <div class="mc-stat"><div class="mc-stat-val" id="mc-s-users">—</div><div class="mc-stat-lbl">Students</div></div>
-            <div class="mc-stat"><div class="mc-stat-val" id="mc-s-courses">—</div><div class="mc-stat-lbl">Courses</div></div>
         </div>
 
 
@@ -1450,12 +1457,10 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        // Course count from _liveData (populated by admin write hooks)
-        const courses = (window._liveData && window._liveData.courses) ? window._liveData.courses : [];
         const el = id => document.getElementById(id);
         // User count removed to eliminate getCountFromServer reads
         if (el('mc-s-users')) el('mc-s-users').textContent = '-';
-        if (el('mc-s-courses')) el('mc-s-courses').textContent = courses.length;
+
         
     } catch (e) { console.error(e); }
 }
@@ -2028,7 +2033,7 @@ async function mcLoadDailyAdvices() {
             const id = adv.id;
             const dateStr = adv.createdAt?.toDate ? adv.createdAt.toDate().toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' }) : 'Recently';
             const cat = catMap[adv.category] || { label: 'General Advice', bg: '#f3f4f6', color: '#374151' };
-            const snippet = adv.content.length > 120 ? adv.content.substring(0, 120) + '…' : adv.content;
+            const snippet = adv.content && adv.content.length > 120 ? adv.content.substring(0, 120) + '…' : (adv.content || '');
 
             return `
             <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;border:3px solid var(--text);border-radius:12px;padding:16px;background:var(--bg-card);transition:transform 0.1s, border 0.1s;position:relative;">
