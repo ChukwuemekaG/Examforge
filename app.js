@@ -5795,10 +5795,10 @@ window.adminPromptNotification = function(userId) {
                 </div>
                 <div class="card-title">${c.title || c.id.toUpperCase()}</div>
                 <div class="card-desc">
-                    ${c.description || `${c.topicCount || 0} topic${(c.topicCount||0) !== 1 ? 's' : ''} available`}
+                    ${c.description || `${c.topicCount > 0 ? c.topicCount + ' topic' + (c.topicCount !== 1 ? 's' : '') + ' available' : 'View topics'}`}
                 </div>
                 <button class="btn btn-primary btn-block"
-                    onclick="window.loadTopics('${encodeURIComponent(c.id)}', '${encodeURIComponent(c.title || c.id.toUpperCase())}')">
+                    onclick="window.openCourse('${encodeURIComponent(c.id)}', '${encodeURIComponent(c.title || c.id.toUpperCase())}')">
                     <span class="material-icons-round">play_arrow</span> Enter Course
                 </button>
             </div>
