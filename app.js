@@ -256,34 +256,45 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window._liveData = null;
     window._liveListener = null;
+    window._liveDataReady = null;
 
     /**
      * Sets up real-time data for ALL users via 1 onSnapshot on _admin_panel/data.
+     * Returns a Promise that resolves when the initial data is loaded.
      * 1 standard read initial sync, real-time units for all updates.
      * All pages (admin + student) read from _liveData to get live data.
      */
     window._setupLiveDataListener = async function() {
         if (window._liveListener) return;
         
-        window._liveListener = onSnapshot(
-            doc(db, '_admin_panel', 'data'),
-            (snap) => {
-                if (snap.exists()) {
-                    window._liveData = snap.data();
-                } else {
+        window._liveDataReady = new Promise((resolve) => {
+            window._liveListener = onSnapshot(
+                doc(db, '_admin_panel', 'data'),
+                (snap) => {
+                    if (snap.exists()) {
+                        window._liveData = snap.data();
+                    } else {
+                        window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+                    }
+                    resolve();
+                    // Re-render current view if it depends on live data
+                    const liveViews = ['master', 'subscriptions', 'library', 'dashboard'];
+                    if (liveViews.includes(currentView)) {
+                        if (currentView === 'master') mcRenderTabContent();
+                        else if (currentView === 'subscriptions') renderSubscriptions();
+                        else if (currentView === 'library') renderLibrary();
+                        else if (currentView === 'dashboard') window.updateDashboardUI();
+                    }
+                },
+                (error) => {
+                    console.error('Live data listener error:', error);
                     window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [] };
+                    resolve();
                 }
-                // Re-render current view if it depends on live data
-                const liveViews = ['master', 'subscriptions', 'library', 'dashboard'];
-                if (liveViews.includes(currentView)) {
-                    if (currentView === 'master') mcRenderTabContent();
-                    else if (currentView === 'subscriptions') renderSubscriptions();
-                    else if (currentView === 'library') renderLibrary();
-                    else if (currentView === 'dashboard') window.updateDashboardUI();
-                }
-            },
-            (error) => console.error('Live data listener error:', error)
-        );
+            );
+        });
+        
+        await window._liveDataReady;
     };
 
     /**
@@ -435,7 +446,7 @@ window.updateDashboardUI = function() {
     coursesListDiv.innerHTML = "<p>Loading courses...</p>";
 
     try {
-        if (!window._liveData || !window._liveData.courses) await window._ensureAdminSection('courses');
+        // Courses from _liveData (populated by admin write hooks + sync button)
         const courses = (window._liveData && window._liveData.courses) ? window._liveData.courses : [];
         coursesListDiv.innerHTML = "";
 
@@ -712,17 +723,6 @@ function setupAdminListeners() {
                     // Set up real-time data listener for ALL users
                     window._setupLiveDataListener().catch(() => {});
 
-                    // Auto-trigger sync for admin if live data is empty
-                    setTimeout(async () => {
-                        if (!window._liveData || (!window._liveData.courses?.length && !window._liveData.dailyQuizzes?.length)) {
-                            if (userDataFromSync.role === 'admin') {
-                                const ok = confirm('Existing data needs to be synced once. This may take a moment. Continue?');
-                                if (ok) {
-                                    await window._syncExistingData();
-                                }
-                            }
-                        }
-                    }, 1000);
                 }
 
                 if (!userDataFromSync) {
@@ -1451,7 +1451,7 @@ function mcRenderTabContent() {
 
 async function mcLoadStats() {
     try {
-        if (!window._liveData || !window._liveData.courses) await window._ensureAdminSection('courses');
+        // Course count from _liveData (populated by admin write hooks)
         const courses = (window._liveData && window._liveData.courses) ? window._liveData.courses : [];
         const el = id => document.getElementById(id);
         // User count removed to eliminate getCountFromServer reads
@@ -1649,7 +1649,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            if (!window._liveData || !window._liveData.courses) await window._ensureAdminSection('courses');
+            // Courses from _liveData (populated by admin write hooks)
             const courses = (window._liveData && window._liveData.courses) ? window._liveData.courses : [];
             courses.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
             const grid = document.getElementById('mc-course-grid');
@@ -1900,8 +1900,8 @@ async function mcLoadDailyQuizzes() {
     if (!grid) return;
 
         try {
-            if (!window._adminData || !window._adminData.dailyQuizzes) await window._ensureAdminSection('dailyQuizzes');
-            const quizzes = (window._adminData && window._adminData.dailyQuizzes) ? [...window._adminData.dailyQuizzes].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
+            // Quizzes from _liveData
+            const quizzes = (window._liveData && window._liveData.dailyQuizzes) ? [...window._liveData.dailyQuizzes].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
 
         if (quizzes.length === 0) {
             grid.innerHTML = `
@@ -2005,8 +2005,8 @@ async function mcLoadDailyAdvices() {
     if (!grid) return;
 
         try {
-            if (!window._adminData || !window._adminData.dailyAdvices) await window._ensureAdminSection('dailyAdvices');
-            const advices = (window._adminData && window._adminData.dailyAdvices) ? [...window._adminData.dailyAdvices].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
+            // Advices from _liveData
+            const advices = (window._liveData && window._liveData.dailyAdvices) ? [...window._liveData.dailyAdvices].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
             if (!advices.length) {
             grid.innerHTML = `
                 <div style="grid-column:1/-1;text-align:center;padding:48px;border:3px dashed var(--border);border-radius:16px;color:var(--text-muted);">
@@ -2318,7 +2318,7 @@ window.mcPublishDailyAdvice = async function() {
         });
 
         // Update admin panel data
-        const advSection = (window._adminData && window._adminData.dailyAdvices) ? [...window._adminData.dailyAdvices] : [];
+        const advSection = (window._liveData && window._liveData.dailyAdvices) ? [...window._liveData.dailyAdvices] : [];
         advSection.unshift({ id: advId, title: title, category: category || '', createdAt: new Date().toISOString() });
         window._updateAdminSection('dailyAdvices', advSection).catch(() => {});
 
@@ -5287,6 +5287,8 @@ window.adminPromptNotification = function(userId) {
     }
 
     async function renderSubscriptions() {
+        // Wait for live data to be loaded
+        if (window._liveDataReady) await window._liveDataReady;
         workspace.innerHTML = `
         <div class="page-header">
             <div class="page-title">Subscriptions</div>
@@ -7386,8 +7388,8 @@ window.mcLoadSubEvents = async function() {
     if (!grid) return;
 
     try {
-        if (!window._adminData || !window._adminData.subscriptionEvents) await window._ensureAdminSection('subscriptionEvents');
-        const events = (window._adminData && window._adminData.subscriptionEvents) ? [...window._adminData.subscriptionEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
+        // Events from _liveData
+        const events = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
 
         if (events.length === 0) {
             grid.innerHTML = `
