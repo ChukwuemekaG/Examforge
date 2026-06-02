@@ -1996,10 +1996,6 @@ async function mcLoadDailyQuizzes() {
                     <h3 style="font-weight:800;font-size:0.95rem;color:var(--text);line-height:1.3;margin:0 0 10px 0;word-break:break-word;">${q.title}</h3>
                     <div style="display:flex;gap:12px;font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;">
                         <div style="display:flex;align-items:center;gap:4px;">
-                            <span class="material-icons-round" style="font-size:0.95rem;">help_outline</span>
-                            <span>${q.questionCount > 0 ? q.questionCount : '?'} questions</span>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">schedule</span>
                             <span>${q.timeLimit || 10} mins</span>
                         </div>
