@@ -286,6 +286,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             else if (currentView === 'library') renderLibrary();
                             else if (currentView === 'master') mcRenderTabContent();
                             else if (currentView === 'dashboard') window.updateDashboardUI();
+                            else if (currentView === 'inbox') renderInbox();
+                            else if (currentView === 'schedule') renderSchedule();
                         } finally {
                             window._liveRendering = false;
                         }
