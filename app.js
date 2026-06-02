@@ -7678,7 +7678,7 @@ window.mcViewSubEventDetails = async function(eventId) {
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap;">
-                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong id="mc-sub-count-${safeName.replace(/\s+/g,'-')}">${subjectCounts[s.name]}</strong> students</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;"><strong id="mc-sub-count-${safeName.replace(/\s+/g,'-')}">0</strong> students</div>
                     <button class="btn btn-outline btn-sm" onclick="window.mcOpenCreateEventMockModal('${eventId}', '${safeName}')" style="padding:6px 12px;font-size:0.7rem;font-weight:800;background:var(--bg-card);border:2px solid var(--text);white-space:nowrap;">CREATE/EDIT MOCK</button>
                 </div>
             </div>`;
