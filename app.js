@@ -535,6 +535,44 @@ window.updateDashboardUI = function() {
     if (highStreakEl && userData.stats) {
         highStreakEl.textContent = userData.stats.highestStreak ?? 0;
     }
+
+    // Update EXA title card (icon, name, rank)
+    const exaRating = userData.stats?.exaRating ?? 800;
+    const exaTitle = getExaTitle(exaRating);
+
+    const exaIconEl = document.querySelector('[data-ef-exa-icon]');
+    const exaTitleEl = document.querySelector('[data-ef-exa-title]');
+    const exaRankEl = document.querySelector('[data-ef-exa-rank]');
+    const rankCardsEl = document.querySelector('[data-ef-rank-cards]');
+
+    if (exaIconEl && exaTitle) exaIconEl.textContent = exaTitle.icon;
+    if (exaTitleEl && exaTitle) exaTitleEl.textContent = exaTitle.name;
+    if (exaRankEl && exaTitle) exaRankEl.textContent = `RANK ${exaTitle.roman}`;
+
+    // Re-render rank cards
+    if (rankCardsEl) {
+        rankCardsEl.innerHTML = EXA_TITLES.map(t => {
+            const isCurrent = exaRating >= t.min && exaRating <= t.max;
+            const isPassed = exaRating > t.max;
+            const cardBg = isCurrent ? 'var(--brand)' : 'var(--bg-card)';
+            const border = isCurrent ? '2px solid var(--brand)' : (isPassed ? '1px solid rgba(254,105,97,0.3)' : '1px solid var(--border)');
+            const opacity = isCurrent || isPassed ? '1' : '0.4';
+            const iconColor = isCurrent ? '#ffffff' : (isPassed ? '#fe6961' : 'var(--text-muted)');
+            const textColor = isCurrent ? '#ffffff' : 'inherit';
+
+            return `
+                <div style="background:${cardBg}; border:${border}; border-radius:12px; padding:12px; opacity:${opacity}; transition:all 0.3s;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="material-icons-round" style="font-size:1.2rem; color:${iconColor};">${t.icon}</span>
+                        <div>
+                            <div style="font-weight:700; font-size:0.7rem; color:${textColor};">${t.name}</div>
+                            <div style="font-size:0.6rem; color:${isCurrent ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'};">RANK ${t.roman}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 };
 
     // ─── Mock course data (Fallback for Library) ─────────
@@ -5318,13 +5356,13 @@ window.adminPromptNotification = function(userId) {
 
                 <div style="padding: 20px 24px; background: var(--bg-inset); border-radius: 16px; border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; min-width: 260px; flex-shrink: 0;">
                     <div style="width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border: 2px solid var(--brand); border-radius: 14px;">
-                         <span class="material-icons-round" style="font-size: 2.2rem; color: var(--brand);">${exaTitle.icon}</span>
+                         <span class="material-icons-round" style="font-size: 2.2rem; color: var(--brand);" data-ef-exa-icon>${exaTitle.icon}</span>
                     </div>
                     <div>
-                        <div style="font-weight: 900; font-size: 1.1rem; text-transform: uppercase; color: var(--text); line-height: 1.1;">
+                        <div style="font-weight: 900; font-size: 1.1rem; text-transform: uppercase; color: var(--text); line-height: 1.1;" data-ef-exa-title>
                             ${exaTitle.name}
                         </div>
-                        <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px; letter-spacing: 0.05em;">
+                        <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px; letter-spacing: 0.05em;" data-ef-exa-rank>
                             RANK ${exaTitle.roman}
                         </div>
                     </div>
@@ -5336,7 +5374,7 @@ window.adminPromptNotification = function(userId) {
             <div style="font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                 <span class="material-icons-round" style="font-size: 1rem;">map</span> Progress Roadmap
             </div>
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;" data-ef-rank-cards>
     ${EXA_TITLES.map(t => {
             const isAchieved = exaRating >= t.min;
             const isCurrent = exaRating >= t.min && exaRating <= t.max;
@@ -5381,7 +5419,6 @@ window.adminPromptNotification = function(userId) {
             <div class="card stat-card card-accent" style="background: var(--brand); border-color: var(--brand);margin: 0; min-width: 0;">
                 <div class="stat-label" style="color: #ffffff !important;"><span class="material-icons-round" style="color: #ffffff !important;">public</span> National Rank</div>
                 <div class="stat-value" style="color: #ffffff !important; word-wrap: break-word;">#${nationalStats.rank}</div>
-                <div style="font-size: 0.62rem; color: rgba(255,255,255,0.85) !important; margin-top: 4px; font-weight: 600;">Out of ${nationalStats.total} Examforgites</div>
             </div>
 
             <div class="card stat-card" style="margin: 0; min-width: 0;">
@@ -9386,8 +9423,8 @@ window.mcBroadcastEventResults = async function(eventId) {
                 inbox.unshift({
                     id: 'res_' + Date.now().toString(36) + '_' + uid.substring(0,4),
                     type: 'result',
-                    title: `📊 ${evTitle} - Results Released`,
-                    message: `Your results for ${evTitle} are ready. Tap to print your result sheet.`,
+                    title: `📊 ${evTitle}`,
+                    message: `Your results for ${evTitle} are now available.`,
                     resultId: resultId,
                     eventId: eventId,
                     timestamp: new Date().toISOString()
