@@ -6120,7 +6120,7 @@ window.adminPromptNotification = function(userId) {
         } catch(e) { console.error('Schedule broadcast read failed:', e); }
         
         // Filter out schedules for exams the user has already taken
-        const takenMocksSched = userData_full.takenMocks || [];
+        const takenMocksSched = (userData_full.profile && userData_full.profile.takenMocks) || [];
         if (takenMocksSched.length) {
             broadcastScheds = broadcastScheds.filter(s => !s.mockId || !takenMocksSched.includes(s.mockId));
         }
@@ -6617,7 +6617,7 @@ window.adminPromptNotification = function(userId) {
         } catch(e) { console.error('Broadcast read failed:', e); }
         
         // Filter out notifications for exams the user has already taken
-        const takenMocks = userData_full.takenMocks || [];
+        const takenMocks = (userData_full.profile && userData_full.profile.takenMocks) || [];
         if (takenMocks.length) {
             const takenUrls = takenMocks.map(m => `/quiz?mockid=${m}`);
             broadcastItems = broadcastItems.filter(n => !n.quizUrl || !takenUrls.includes(n.quizUrl));
@@ -6676,10 +6676,10 @@ window.adminPromptNotification = function(userId) {
             const tc = typeMap[n.type] || { icon:'notifications', bg:'var(--bg-inset)', border:'var(--border)', color:'var(--text-muted)' };
             const time = n.timestamp?.toDate ? n.timestamp.toDate().toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' }) : 'Just now';
 
-            const actionRow = n.type === 'daily_quiz' && n.quizUrl ? `
+            const actionRow = n.quizUrl ? `
                 <div class="notif-footer">
                     <a href="${n.quizUrl}" class="btn btn-primary btn-sm" style="text-decoration:none;" onclick="event.stopPropagation();">
-                        <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">play_arrow</span> Start Quiz
+                        <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">${n.type === 'daily_quiz' ? 'play_arrow' : 'visibility'}</span> ${n.actionLabel || (n.type === 'daily_quiz' ? 'Start Quiz' : 'View')}
                     </a>
                     ${n.dueDate ? `<span class="notif-time">Due ${n.dueDate}${n.dueTime ? ' at ' + n.dueTime : ''}</span>` : ''}
                 </div>` : `<div class="notif-footer"><span class="notif-time">${time}</span></div>`;
@@ -9117,6 +9117,8 @@ window.mcBroadcastEventResults = async function(eventId) {
                 type: 'broadcast',
                 title: `📊 ${evTitle} - Results Released`,
                 message: `Your results for ${evTitle} are ready for ${Object.keys(studentResults).length} student(s). Tap to view.`,
+                quizUrl: '/app.html#results',
+                actionLabel: 'VIEW RESULTS',
                 brandColor: '#7c3aed',
                 brandIcon: 'gavel'
             });
