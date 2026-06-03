@@ -385,53 +385,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    /**
-     * Broadcasts a notification to ALL students via _admin_panel/data (live via onSnapshot).
-     * No per-user writes — all students see it immediately via _liveData.
-     */
     window._broadcastNotification = async function(notification) {
-        const meta = window._liveData || {};
-        const items = meta.broadcastNotifications || [];
-        items.unshift({
-            ...notification,
-            id: 'notif_' + Date.now().toString(36),
-            timestamp: new Date().toISOString()
-        });
-        if (items.length > 50) items.length = 50;
-        await window._updateAdminSection('broadcastNotifications', items);
+        try {
+            const { collection, getDocs, setDoc, doc, serverTimestamp } = await import(
+                "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+            );
+            // Read existing items
+            const existing = await getDoc(doc(db, '_notifications', 'latest'));
+            const items = existing.exists() ? (existing.data().items || []) : [];
+            items.unshift({
+                ...notification,
+                id: 'notif_' + Date.now().toString(36),
+                timestamp: new Date().toISOString()
+            });
+            if (items.length > 50) items.length = 50;
+            await setDoc(doc(db, '_notifications', 'latest'), { items });
+        } catch(e) { console.error('Broadcast notif failed:', e); }
     };
 
-    /**
-     * Broadcasts a schedule item to ALL students via _admin_panel/data (live via onSnapshot).
-     */
     window._broadcastSchedule = async function(scheduleItem) {
-        const meta = window._liveData || {};
-        const items = meta.broadcastSchedules || [];
-        items.push({
-            ...scheduleItem,
-            id: 'sched_' + Date.now().toString(36),
-            timestamp: new Date().toISOString()
-        });
-        if (items.length > 50) items.length = 50;
-        await window._updateAdminSection('broadcastSchedules', items);
+        try {
+            const { collection, getDocs, setDoc, doc, serverTimestamp } = await import(
+                "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+            );
+            const existing = await getDoc(doc(db, '_schedules', 'latest'));
+            const items = existing.exists() ? (existing.data().items || []) : [];
+            items.push({
+                ...scheduleItem,
+                id: 'sched_' + Date.now().toString(36),
+                timestamp: new Date().toISOString()
+            });
+            if (items.length > 50) items.length = 50;
+            await setDoc(doc(db, '_schedules', 'latest'), { items });
+        } catch(e) { console.error('Broadcast sched failed:', e); }
     };
 
-    /**
-     * Clear all broadcast notifications.
-     */
     window._clearAllNotifications = async function() {
         if (!confirm('Clear all broadcast notifications for all students?')) return;
-        await window._updateAdminSection('broadcastNotifications', []);
-        window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
+        try {
+            await setDoc(doc(db, '_notifications', 'latest'), { items: [] });
+            window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
+        } catch(e) { console.error('Clear notif failed:', e); }
     };
 
-    /**
-     * Clear all broadcast schedule items.
-     */
     window._clearAllSchedules = async function() {
         if (!confirm('Clear all broadcast schedule items for all students?')) return;
-        await window._updateAdminSection('broadcastSchedules', []);
-        window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
+        try {
+            await setDoc(doc(db, '_schedules', 'latest'), { items: [] });
+            window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
+        } catch(e) { console.error('Clear sched failed:', e); }
     };
 
     // ─── Local JSON course loading removed — using Firestore limit queries via SyncManager ───
@@ -6114,14 +6116,12 @@ window.adminPromptNotification = function(userId) {
             const userData_full = await window._getUserData(auth.currentUser.uid);
             let schedItems = userData_full.schedule || [];
             
-            // Load broadcast schedules directly from Firestore (1 read, always fresh)
+            // Load broadcast schedules directly
             let broadcastScheds = [];
             try {
-                const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                const liveSnap = await getDoc(doc(db, '_admin_panel', 'data'));
-                if (liveSnap.exists() && liveSnap.data().broadcastSchedules) {
-                    broadcastScheds = liveSnap.data().broadcastSchedules;
-                }
+                await sync.refresh('_schedules/latest');
+                const schedDoc = await sync.doc('_schedules/latest');
+                if (schedDoc && schedDoc.items) broadcastScheds = schedDoc.items;
             } catch(e) { console.error('Schedule broadcast read failed:', e); }
             schedItems = [...schedItems, ...broadcastScheds];
             
@@ -6604,14 +6604,12 @@ window.adminPromptNotification = function(userId) {
         const userData_full = await window._getUserData(auth.currentUser.uid);
         let notifications = userData_full.inbox || [];
         
-        // Load broadcast notifications directly from Firestore (1 read, always fresh)
+        // Load broadcast notifications directly
         let broadcastItems = [];
         try {
-            const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const liveSnap = await getDoc(doc(db, '_admin_panel', 'data'));
-            if (liveSnap.exists() && liveSnap.data().broadcastNotifications) {
-                broadcastItems = liveSnap.data().broadcastNotifications;
-            }
+            await sync.refresh('_notifications/latest');
+            const notifDoc = await sync.doc('_notifications/latest');
+            if (notifDoc && notifDoc.items) broadcastItems = notifDoc.items;
         } catch(e) { console.error('Broadcast read failed:', e); }
         notifications = [...broadcastItems, ...notifications].slice(0, 50);
 
