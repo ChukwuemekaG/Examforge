@@ -7986,7 +7986,7 @@ window.mcBroadcastEventMocks = function(eventId, title) {
                         title: `Mock Exam Ready: ${subject}`,
                         message: `Your ${subject} mock exam for "${evTitle}" is now available for ${uids.length} student(s). Tap to take it.`,
                         quizUrl: `/quiz?mockid=${mock.id}`,
-                        brandColor: '#10b981',
+                        brandColor: '#fe6961',
                         brandIcon: 'library_books'
                     });
                     
@@ -9144,7 +9144,7 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
                 title: 'Mock Exam Released!',
                 message: `Your ${subject} mock exam for "${evTitle}" is ready for ${uids.length} student(s). Tap to start.`,
                 quizUrl: `/quiz?mockid=${mockId}`,
-                brandColor: '#10b981',
+                brandColor: '#fe6961',
                 brandIcon: 'library_books'
             });
             
@@ -9234,6 +9234,23 @@ window.mcBroadcastEventResults = async function(eventId) {
                         grade: mcGradeFromScore(attempt.score || 0)
                     });
                 });
+            }
+            
+            // Fill in unattempted subjects for all registered students
+            for (const [uid, data] of Object.entries(studentResults)) {
+                const attemptedSubjects = new Set(data.subjects.map(s => s.name));
+                for (const subj of subjects) {
+                    if (!attemptedSubjects.has(subj.name)) {
+                        data.subjects.push({
+                            name: subj.name,
+                            creditUnit: subj.creditUnit,
+                            score: null,
+                            correct: 0,
+                            total: 0,
+                            grade: null
+                        });
+                    }
+                }
             }
             
             // Remove duplicate students from _data/registrations (belt-and-suspenders)
