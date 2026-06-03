@@ -6149,6 +6149,11 @@ window.adminPromptNotification = function(userId) {
             if (takenMocksSched.length) {
                 broadcastScheds = broadcastScheds.filter(s => !s.mockId || !takenMocksSched.includes(s.mockId));
             }
+            // Filter out dismissed broadcast schedule items
+            const dismissedScheds = userRaw.dismissedScheds || [];
+            if (dismissedScheds.length) {
+                broadcastScheds = broadcastScheds.filter(s => !dismissedScheds.includes(s.id || s._id));
+            }
             
             schedItems = [...schedItems, ...broadcastScheds];
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
@@ -6299,8 +6304,14 @@ window.adminPromptNotification = function(userId) {
             const userRef = doc(db, 'users', auth.currentUser.uid);
             const snap = await getDoc(userRef);
             if (!snap.exists()) return;
-            const schedule = (snap.data().schedule || []).filter(s => (s.id || s._id) !== itemId);
-            await updateDoc(userRef, { schedule });
+            const data = snap.data();
+            // Remove from personal schedule
+            const schedule = (data.schedule || []).filter(s => (s.id || s._id) !== itemId);
+            // Track dismissed broadcast schedule IDs so they don't reappear
+            const dismissedScheds = data.dismissedScheds || [];
+            if (!dismissedScheds.includes(itemId)) dismissedScheds.push(itemId);
+            if (dismissedScheds.length > 200) dismissedScheds.slice(-100);
+            await updateDoc(userRef, { schedule, dismissedScheds });
             renderSchedule();
         } catch(e) { console.error(e); }
     };
