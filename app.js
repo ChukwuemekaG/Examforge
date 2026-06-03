@@ -6131,10 +6131,12 @@ window.adminPromptNotification = function(userId) {
             </div>`;
 
         try {
-            // Refresh user data to get latest takenMocks
-            await sync.refresh('users/' + auth.currentUser.uid);
-            const userData_full = await window._getUserData(auth.currentUser.uid);
-            let schedItems = userData_full.schedule || [];
+            // Read user data raw for fresh takenMocks
+            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const userSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
+            const userRaw = userSnap.exists() ? userSnap.data() : {};
+            const takenMocksSched = userRaw.takenMocks || [];
+            let schedItems = userRaw.schedule || [];
             
             // Load broadcast schedules directly
             let broadcastScheds = [];
@@ -6145,7 +6147,6 @@ window.adminPromptNotification = function(userId) {
         } catch(e) { console.error('Schedule broadcast read failed:', e); }
         
         // Filter out schedules for exams the user has already taken
-        const takenMocksSched = (userData_full.profile && userData_full.profile.takenMocks) || [];
         if (takenMocksSched.length) {
             broadcastScheds = broadcastScheds.filter(s => !s.mockId || !takenMocksSched.includes(s.mockId));
         }
@@ -6643,10 +6644,13 @@ window.adminPromptNotification = function(userId) {
 
         // Cache-first one-time fetch (no real-time listener = zero continuous reads)
         const path = 'users/' + auth.currentUser.uid + '/notifications';
-        // Refresh user data to get latest takenMocks
-        await sync.refresh('users/' + auth.currentUser.uid);
-        const userData_full = await window._getUserData(auth.currentUser.uid);
-        let notifications = userData_full.inbox || [];
+        // Read user data raw (bypasses SyncManager cache) for fresh takenMocks
+        const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const userSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
+        const userRaw = userSnap.exists() ? userSnap.data() : {};
+        const takenMocks = userRaw.takenMocks || [];
+        const dismissedBroadcast = userRaw.dismissedBroadcast || [];
+        let notifications = userRaw.inbox || [];
         
         // Load broadcast notifications directly
         let broadcastItems = [];
@@ -6657,7 +6661,6 @@ window.adminPromptNotification = function(userId) {
         } catch(e) { console.error('Broadcast read failed:', e); }
         
         // Filter out notifications for exams the user has already taken
-        const takenMocks = (userData_full.profile && userData_full.profile.takenMocks) || [];
         if (takenMocks.length) {
             const takenUrls = takenMocks.map(m => `/quiz?mockid=${m}`);
             const before = broadcastItems.length;
@@ -6667,7 +6670,6 @@ window.adminPromptNotification = function(userId) {
         }
         
         // Filter out dismissed broadcast items
-        const dismissedBroadcast = (userData_full.profile && userData_full.profile.dismissedBroadcast) || [];
         if (dismissedBroadcast.length) {
             broadcastItems = broadcastItems.filter(n => !dismissedBroadcast.includes(n.id));
         }
