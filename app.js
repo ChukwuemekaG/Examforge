@@ -8995,51 +8995,37 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
             const mockData = await sync.doc('mock_exams/' + mockId);
             const timeLimit = (mockData && mockData.timeLimit) || 45;
 
-            // 3. Send notification + schedule item to each student
-            for (const uid of uids) {
-                // Notification
-                const notifRef = doc(collection(db, 'users', uid, 'notifications'));
-                await setDoc(notifRef, {
-                    id: notifRef.id,
-                    type: 'broadcast',
-                    title: 'Mock Exam Released!',
-                    message: `Your ${subject} mock exam for "${evTitle}" is ready. Tap to start.`,
-                    actionLabel: 'TAKE EXAM',
-                    actionPath: `/quiz?mockid=${mockId}`,
-                    createdAt: serverTimestamp(),
-                    read: false,
-                    brandColor: '#10b981',
-                    brandIcon: 'library_books'
-                });
-
-                // Schedule item
-                const schedRef = doc(collection(db, 'users', uid, 'schedule'));
-                const durDays = ev.durationDays || 30;
-                const now = new Date();
-                const expDate = new Date(now);
-                expDate.setDate(expDate.getDate() + durDays);
-                const expYear = expDate.getFullYear();
-                const expMonth = String(expDate.getMonth() + 1).padStart(2, '0');
-                const expDay = String(expDate.getDate()).padStart(2, '0');
-                await setDoc(schedRef, {
-                    id: schedRef.id,
-                    type: 'mock_exam',
-                    title: `${subject} Mock - ${evTitle}`,
-                    course: subject,
-                    mockId: mockId,
-                    eventId: eventId,
-                    timeLimit: timeLimit,
-                    quizUrl: `/quiz?mockid=${mockId}`,
-                    message: `Complete your ${subject} mock exam for "${evTitle}".`,
-                    date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-                    time: 'All day',
-                    dueDate: `${expYear}-${expMonth}-${expDay}`,
-                    dueTime: '23:59',
-                    dueTimestamp: new Date(`${expYear}-${expMonth}-${expDay}T23:59:00`),
-                    timestamp: serverTimestamp(),
-                    read: false
-                });
-            }
+            // 3. Send single notification + schedule via broadcast docs
+            const durDays = ev.durationDays || 30;
+            const now = new Date();
+            const expDate = new Date(now);
+            expDate.setDate(expDate.getDate() + durDays);
+            const expYear = expDate.getFullYear();
+            const expMonth = String(expDate.getMonth() + 1).padStart(2, '0');
+            const expDay = String(expDate.getDate()).padStart(2, '0');
+            
+            await window._broadcastNotification({
+                type: 'broadcast',
+                title: 'Mock Exam Released!',
+                message: `Your ${subject} mock exam for "${evTitle}" is ready for ${uids.length} student(s). Tap to start.`,
+                quizUrl: `/quiz?mockid=${mockId}`,
+                brandColor: '#10b981',
+                brandIcon: 'library_books'
+            });
+            
+            await window._broadcastSchedule({
+                type: 'mock_exam',
+                title: `${subject} Mock - ${evTitle}`,
+                course: subject,
+                mockId: mockId,
+                eventId: eventId,
+                timeLimit: timeLimit,
+                quizUrl: `/quiz?mockid=${mockId}`,
+                message: `Complete your ${subject} mock exam for "${evTitle}".`,
+                dueDate: `${expYear}-${expMonth}-${expDay}`,
+                dueTime: '23:59',
+                date: now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+            });
             
             document.getElementById('ef-dq-builder-modal')?.remove();
             window.showEFModal("Success", `Mock released. ${uids.length} students notified and scheduled.`, "AWESOME", null, true);
