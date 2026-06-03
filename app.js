@@ -425,14 +425,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = snap.data();
             if (!data.resultSheet) { alert('No result sheet available.'); return; }
             
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(data.resultSheet);
-            printWindow.document.close();
-            printWindow.focus();
-            setTimeout(() => printWindow.print(), 500);
+            // Generate PDF
+            if (!window.jspdf) {
+                await new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                    s.onload = resolve; s.onerror = reject;
+                    document.head.appendChild(s);
+                });
+            }
+            if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF library not loaded.'); return; }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            
+            // Extract text from resultSheet HTML for PDF
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = data.resultSheet;
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            document.body.appendChild(tempDiv);
+            const text = tempDiv.innerText || tempDiv.textContent || '';
+            document.body.removeChild(tempDiv);
+            
+            // Format PDF
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            const lines = text.split('\n');
+            let y = 15;
+            lines.forEach(line => {
+                if (y > 280) { doc.addPage(); y = 15; }
+                doc.text(line.trim(), 10, y);
+                y += 5;
+            });
+            
+            doc.save(`Result_${data.eventTitle || 'Exam'}.pdf`);
         } catch(e) {
             console.error('Print failed:', e);
-            alert('Failed to print result: ' + e.message);
+            alert('Failed to generate PDF: ' + e.message);
         }
     };
 
@@ -9181,6 +9211,25 @@ window.mcBroadcastEventResults = async function(eventId) {
                     });
                 });
             }
+            
+            // Remove duplicate students from _data/registrations (belt-and-suspenders)
+            try {
+                const regDoc = doc(db, 'subscription_events', eventId, '_data', 'registrations');
+                const regSnap = await getDoc(regDoc);
+                if (regSnap.exists()) {
+                    const rData = regSnap.data();
+                    const students = rData.students || [];
+                    const seen = new Set();
+                    const unique = students.filter(s => {
+                        if (seen.has(s.uid)) return false;
+                        seen.add(s.uid);
+                        return true;
+                    });
+                    if (unique.length !== students.length) {
+                        await updateDoc(regDoc, { students: unique });
+                    }
+                }
+            } catch(e) {}
             
             let totalSent = 0;
             
