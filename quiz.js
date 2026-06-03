@@ -1180,6 +1180,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     timestamp: serverTimestamp()
                 });
 
+                // Add to takenMocks in user doc (so inbox/schedule can hide taken exams)
+                try {
+                    const userRef = doc(db, 'users', currentUser.uid);
+                    const uData = await getDoc(userRef);
+                    const existing = uData.exists() ? (uData.data().takenMocks || []) : [];
+                    if (!existing.includes(examState.quizId)) {
+                        existing.push(examState.quizId);
+                        await updateDoc(userRef, { takenMocks: existing });
+                    }
+                } catch(e) { console.error('Failed to update takenMocks:', e); }
+
                 // ── Clean up notification & schedule after mock submission ──
                 try {
                     const { deleteDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");

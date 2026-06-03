@@ -6111,11 +6111,18 @@ window.adminPromptNotification = function(userId) {
             
             // Load broadcast schedules directly
             let broadcastScheds = [];
-            try {
-                const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                const snap = await getDoc(fDoc(db, '_schedules', 'latest'));
-                if (snap.exists()) broadcastScheds = snap.data().items || [];
-            } catch(e) { console.error('Schedule broadcast read failed:', e); }
+        try {
+            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const snap = await getDoc(fDoc(db, '_schedules', 'latest'));
+            if (snap.exists()) broadcastScheds = snap.data().items || [];
+        } catch(e) { console.error('Schedule broadcast read failed:', e); }
+        
+        // Filter out schedules for exams the user has already taken
+        const takenMocksSched = userData_full.takenMocks || [];
+        if (takenMocksSched.length) {
+            broadcastScheds = broadcastScheds.filter(s => !s.mockId || !takenMocksSched.includes(s.mockId));
+        }
+        
             schedItems = [...schedItems, ...broadcastScheds];
             
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
@@ -6604,6 +6611,14 @@ window.adminPromptNotification = function(userId) {
             const snap = await getDoc(fDoc(db, '_notifications', 'latest'));
             if (snap.exists()) broadcastItems = snap.data().items || [];
         } catch(e) { console.error('Broadcast read failed:', e); }
+        
+        // Filter out notifications for exams the user has already taken
+        const takenMocks = userData_full.takenMocks || [];
+        if (takenMocks.length) {
+            const takenUrls = takenMocks.map(m => `/quiz?mockid=${m}`);
+            broadcastItems = broadcastItems.filter(n => !n.quizUrl || !takenUrls.includes(n.quizUrl));
+        }
+        
         notifications = [...broadcastItems, ...notifications].slice(0, 50);
 
         const now = Date.now();
