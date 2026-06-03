@@ -1925,7 +1925,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                         ${tData.isStrict ? '🔒 Strict' : '🔓 Relaxed'}
                     </span>
                     <span style="font-size:clamp(0.65rem,1.8vw,0.72rem);font-weight:700;border-radius:5px;padding:3px 8px;word-break:break-word;
-                        background:${tData.isMock ? 'rgba(124,58,237,0.08)' : 'var(--bg-card)'};
+                        background:${tData.isMock ? 'rgba(254,105,97,0.08)' : 'var(--bg-card)'};
                         color:${tData.isMock ? '#fe6961' : 'var(--text-muted)'};
                         border:1px solid ${tData.isMock ? '#fe6961' : 'var(--border)'};">
                         ${tData.isMock ? '🎭 Mock' : '📊 Visible'}
