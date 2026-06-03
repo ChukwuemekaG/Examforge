@@ -6106,6 +6106,8 @@ window.adminPromptNotification = function(userId) {
             </div>`;
 
         try {
+            // Refresh user data to get latest takenMocks
+            await sync.refresh('users/' + auth.currentUser.uid);
             const userData_full = await window._getUserData(auth.currentUser.uid);
             let schedItems = userData_full.schedule || [];
             
@@ -6601,6 +6603,8 @@ window.adminPromptNotification = function(userId) {
 
         // Cache-first one-time fetch (no real-time listener = zero continuous reads)
         const path = 'users/' + auth.currentUser.uid + '/notifications';
+        // Refresh user data to get latest takenMocks
+        await sync.refresh('users/' + auth.currentUser.uid);
         const userData_full = await window._getUserData(auth.currentUser.uid);
         let notifications = userData_full.inbox || [];
         
@@ -9062,7 +9066,7 @@ window.mcBroadcastEventResults = async function(eventId) {
     window.showEFModal("Broadcast Results", "This will calculate GPA, generate result sheets, and send them to all students who took the exams.", "BROADCAST NOW", async () => {
         try {
             // Mark event as broadcasted
-            const { doc, updateDoc, setDoc, deleteDoc, serverTimestamp, collection } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const { doc, updateDoc, setDoc, deleteDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             await updateDoc(doc(db, 'subscription_events', eventId), { resultsReleased: true });
             await sync.refresh('subscription_events');
             const evData = await sync.doc('subscription_events/' + eventId) || {};
@@ -9108,9 +9112,14 @@ window.mcBroadcastEventResults = async function(eventId) {
                 });
             }
             
-            if (Object.keys(studentResults).length === 0) {
-                return window.showEFModal("No Data", "No student attempts found. Students need to take the exams first.", "OK", null, true);
-            }
+            // Send single broadcast notification for all students
+            await window._broadcastNotification({
+                type: 'broadcast',
+                title: `📊 ${evTitle} - Results Released`,
+                message: `Your results for ${evTitle} are ready for ${Object.keys(studentResults).length} student(s). Tap to view.`,
+                brandColor: '#7c3aed',
+                brandIcon: 'gavel'
+            });
             
             let totalSent = 0;
             
@@ -9144,30 +9153,6 @@ window.mcBroadcastEventResults = async function(eventId) {
                     timestamp: serverTimestamp(),
                     isMock: true,
                     releasedAt: serverTimestamp()
-                });
-                
-                // Send new notification with result sheet (no spoilers)
-                const notifRef = doc(collection(db, 'users', uid, 'notifications'));
-                await setDoc(notifRef, {
-                    id: notifRef.id,
-                    type: 'broadcast',
-                    title: `📊 ${evTitle} - Results Released`,
-                    message: `Your results for ${evTitle} are ready.\n\nTap to view your full result sheet.`,
-                    actionLabel: 'VIEW RESULT',
-                    actionPath: `/quiz?resultId=${resultId}&eventId=${eventId}`,
-                    timestamp: serverTimestamp(),
-                    read: false,
-                    brandColor: '#7c3aed',
-                    brandIcon: 'gavel',
-                    resultData: {
-                        eventId,
-                        eventTitle: evTitle,
-                        gpa,
-                        gpaComment,
-                        totalCU,
-                        subjects: data.subjects,
-                        resultHTML: resultHTML
-                    }
                 });
                 
                 totalSent++;
