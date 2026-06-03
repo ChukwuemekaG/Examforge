@@ -545,33 +545,13 @@ window.updateDashboardUI = function() {
     const exaRankEl = document.querySelector('[data-ef-exa-rank]');
     const rankCardsEl = document.querySelector('[data-ef-rank-cards]');
 
-    if (exaIconEl && exaTitle) exaIconEl.textContent = exaTitle.icon;
-    if (exaTitleEl && exaTitle) exaTitleEl.textContent = exaTitle.name;
-    if (exaRankEl && exaTitle) exaRankEl.textContent = `RANK ${exaTitle.roman}`;
+    if (exaIconEl && exaTitle?.icon) exaIconEl.textContent = exaTitle.icon;
+    if (exaTitleEl && exaTitle?.name) exaTitleEl.textContent = exaTitle.name;
+    if (exaRankEl && exaTitle?.roman) exaRankEl.textContent = `RANK ${exaTitle.roman}`;
 
     // Re-render rank cards
     if (rankCardsEl) {
-        rankCardsEl.innerHTML = EXA_TITLES.map(t => {
-            const isCurrent = exaRating >= t.min && exaRating <= t.max;
-            const isPassed = exaRating > t.max;
-            const cardBg = isCurrent ? 'var(--brand)' : 'var(--bg-card)';
-            const border = isCurrent ? '2px solid var(--brand)' : (isPassed ? '1px solid rgba(254,105,97,0.3)' : '1px solid var(--border)');
-            const opacity = isCurrent || isPassed ? '1' : '0.4';
-            const iconColor = isCurrent ? '#ffffff' : (isPassed ? '#fe6961' : 'var(--text-muted)');
-            const textColor = isCurrent ? '#ffffff' : 'inherit';
-
-            return `
-                <div style="background:${cardBg}; border:${border}; border-radius:12px; padding:12px; opacity:${opacity}; transition:all 0.3s;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span class="material-icons-round" style="font-size:1.2rem; color:${iconColor};">${t.icon}</span>
-                        <div>
-                            <div style="font-weight:700; font-size:0.7rem; color:${textColor};">${t.name}</div>
-                            <div style="font-size:0.6rem; color:${isCurrent ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'};">RANK ${t.roman}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        rankCardsEl.innerHTML = EXA_TITLES.map(t => renderRankCardHTML(t, exaRating)).join('');
     }
 };
 
@@ -778,6 +758,52 @@ function setupAdminListeners() {
 
     function getExaTitle(rating) {
         return EXA_TITLES.find(t => rating >= t.min && rating <= t.max) || EXA_TITLES[0];
+    }
+
+    function renderRankCardHTML(title, exaRating) {
+        const isCurrent = exaRating >= title.min && exaRating <= title.max;
+        const isAchieved = exaRating >= title.min;
+        const isPassed = isAchieved && !isCurrent;
+
+        let cardBg = 'var(--bg-inset)';
+        let border = '1px solid var(--border)';
+        let opacity = '0.5';
+        let icon = title.icon;
+        let iconColor = 'var(--text-muted)';
+        let textColor = 'var(--text-muted)';
+
+        if (isCurrent) {
+            cardBg = 'var(--brand)';
+            border = '2px solid var(--brand)';
+            opacity = '1';
+            iconColor = '#ffffff';
+            textColor = '#ffffff';
+        } else if (isPassed) {
+            cardBg = 'var(--bg-card)';
+            border = '1px solid var(--brand-glow, rgba(254,105,97,0.3))';
+            opacity = '1';
+            icon = 'check_circle';
+            iconColor = 'var(--brand)';
+            textColor = 'inherit';
+        } else if (isAchieved) {
+            cardBg = 'var(--bg-card)';
+            border = '1px solid var(--border)';
+            opacity = '0.8';
+            iconColor = 'var(--text-muted)';
+            textColor = 'inherit';
+        }
+
+        return `
+            <div style="background:${cardBg}; border:${border}; border-radius:12px; padding:12px 14px; opacity:${opacity}; transition:all 0.3s ease;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="material-icons-round" style="font-size:1.3rem; color:${iconColor};">${icon}</span>
+                    <div>
+                        <div style="font-weight:700; font-size:0.72rem; color:${textColor};">${title.name}</div>
+                        <div style="font-size:0.6rem; font-weight:600; color:${isCurrent ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'};">RANK ${title.roman}</div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     // ─── Streak Logic ─────────────────────────────────────────────
@@ -5375,43 +5401,7 @@ window.adminPromptNotification = function(userId) {
                 <span class="material-icons-round" style="font-size: 1rem;">map</span> Progress Roadmap
             </div>
 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;" data-ef-rank-cards>
-    ${EXA_TITLES.map(t => {
-            const isAchieved = exaRating >= t.min;
-            const isCurrent = exaRating >= t.min && exaRating <= t.max;
-            const isPassed = isAchieved && !isCurrent;
-
-            // Visual Logic
-            let cardBg = 'var(--bg-inset)';
-            let border = '1px solid var(--border)';
-            let opacity = '0.5';
-            let icon = t.icon;
-            let iconColor = 'var(--text-muted)';
-
-            if (isCurrent) {
-                cardBg = 'var(--brand)';
-                border = '2px solid var(--brand)';
-                opacity = '1';
-                iconColor = '#ffffff';
-            } else if (isPassed) {
-                cardBg = 'var(--bg-card)';
-                border = '1px solid var(--brand-glow)';
-                opacity = '1';
-                icon = 'check_circle'; // Show checkmark for passed ranks
-                iconColor = 'var(--brand)';
-            }
-
-            return `
-            <div class="card" style="padding: 14px; border-radius: 12px; border: ${border}; background: ${cardBg}; opacity: ${opacity}; transition: all 0.3s ease; position: relative; overflow: hidden;">
-                ${isCurrent ? `<div style="position:absolute; top:0; left:0; width:100%; height:4px; background:rgba(255,255,255,0.4); animation: pulse 2s infinite;"></div>` : ''}
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                    <span class="material-icons-round" style="font-size: 1.1rem; color: ${iconColor}">${icon}</span>
-                    <span style="font-size: 0.6rem; font-weight: 800; font-family: var(--font-mono); color: ${isCurrent ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'};">${t.roman}</span>
-                </div>
-                <div style="font-size: 0.7rem; font-weight: 800; line-height: 1.2; color: ${isCurrent ? '#fff' : 'var(--text)'}">${t.name}</div>
-                <div style="font-size: 0.6rem; font-weight: 600; color: ${isCurrent ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)'}; margin-top: 4px;">${isPassed ? 'Achieved' : t.min + '+'}</div>
-            </div>
-        `;
-        }).join('')}
+    ${EXA_TITLES.map(t => renderRankCardHTML(t, exaRating)).join('')}
 </div>
         </div>
 
