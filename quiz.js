@@ -1182,22 +1182,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Also update _data/registrations with score (triggers admin's real-time listener)
                 try {
-                    const regRef = doc(db, 'subscription_events', examState.quizId, '_data', 'registrations');
-                    const regSnap = await getDoc(regRef);
-                    if (regSnap.exists()) {
-                        const regData = regSnap.data();
-                        const students = regData.students || [];
-                        const idx = students.findIndex(s => s.uid === currentUser.uid);
-                        if (idx >= 0) {
-                            students[idx] = {
-                                ...students[idx],
-                                score: finalScore,
-                                correct: correct,
-                                totalQuestions: total,
-                                timeTaken: examState.timeTaken,
-                                submittedAt: new Date().toISOString()
-                            };
-                            await updateDoc(regRef, { students });
+                    // Get the subscription event ID from the mock doc
+                    const mockDoc = await sync.doc('mock_exams/' + examState.quizId);
+                    const mockEventId = mockDoc?.eventId;
+                    if (mockEventId) {
+                        const regRef = doc(db, 'subscription_events', mockEventId, '_data', 'registrations');
+                        const regSnap = await getDoc(regRef);
+                        if (regSnap.exists()) {
+                            const regData = regSnap.data();
+                            const students = regData.students || [];
+                            const idx = students.findIndex(s => s.uid === currentUser.uid);
+                            if (idx >= 0) {
+                                students[idx] = {
+                                    ...students[idx],
+                                    score: finalScore,
+                                    correct: correct,
+                                    totalQuestions: total,
+                                    timeTaken: examState.timeTaken,
+                                    submittedAt: new Date().toISOString()
+                                };
+                                await updateDoc(regRef, { students });
+                            }
                         }
                     }
                 } catch(e) { console.error('Failed to update _data/registrations:', e); }
