@@ -8,7 +8,7 @@ import {
     signInWithPopup,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, setDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -118,6 +118,26 @@ formRegister.addEventListener('submit', async (e) => {
             createdAt: new Date(),
             role: 'student'
         });
+
+        // Increment total user count for national ranking
+        try {
+            await setDoc(doc(db, '_stats', 'counters'), {
+                totalUsers: increment(1)
+            }, { merge: true });
+        } catch (e) {
+            console.warn('Could not update user counter:', e);
+        }
+
+        // Write totalUsers to this user's doc for ranking (0 future reads)
+        try {
+            const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
+            const totalUsers = counterSnap.data()?.totalUsers || 0;
+            if (totalUsers > 0) {
+                await setDoc(doc(db, 'users', user.uid), { totalUsers }, { merge: true });
+            }
+        } catch (e) {
+            console.warn('Could not write totalUsers:', e);
+        }
 
         // 3. Map Username for Login
         await setDoc(doc(db, "usernames", username), { uid: user.uid, email: email });

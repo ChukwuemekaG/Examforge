@@ -9,7 +9,7 @@ import {
     EmailAuthProvider,
     deleteUser
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, arrayUnion, arrayRemove, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, arrayUnion, arrayRemove, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { LocalCache } from './cache.js';
 import { SyncManager } from './sync.js';
 
@@ -374,6 +374,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ─── Backfill totalUsers counter for national ranking ───
+    window._backfillUserCounter = async function() {
+        if (!confirm('This will count all users and write totalUsers to _stats/counters. Continue?')) return;
+        try {
+            const snap = await getCountFromServer(collection(db, 'users'));
+            const total = snap.data().count;
+            await setDoc(doc(db, '_stats', 'counters'), { totalUsers: total }, { merge: true });
+            alert(`✅ Counter backfilled! Total users: ${total}\n\nUsers will get totalUsers on their next dashboard load.`);
+        } catch (e) {
+            alert('❌ Error: ' + e.message);
+            console.error('Backfill error:', e);
+        }
+    };
+
     window._broadcastNotification = async function(notification) {
         const { getDoc, doc: fDoc, setDoc } = await import(
             "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
@@ -679,10 +693,23 @@ function setupAdminListeners() {
     });
 }
     async function getNationalRanking(userRating) {
-        // Ranking disabled to eliminate getCountFromServer reads.
-        // Returns a placeholder to avoid breaking UI.
         try {
-            return { rank: '-', total: '-', percentile: 100 };
+            // 1 read: count users ranked above current user's rating
+            const higherSnap = await getCountFromServer(
+                query(collection(db, 'users'), where('exaRating', '>', userRating))
+            );
+            const higherCount = higherSnap.data().count;
+
+            // 0 reads: totalUsers comes from user's own doc (already loaded for dashboard)
+            const totalUsers = (userData && userData.totalUsers) 
+                ? userData.totalUsers 
+                : higherCount + 1;
+
+            const exactRank = higherCount + 1;
+            const displayTotal = Math.max(totalUsers, exactRank);
+            const percentile = exactRank === 1 ? 1 : Math.floor((exactRank / displayTotal) * 100);
+
+            return { rank: exactRank, total: displayTotal, percentile };
         } catch (error) {
             console.error("Ranking Error:", error);
             return { rank: '-', total: '-', percentile: 100 };
@@ -850,6 +877,26 @@ function setupAdminListeners() {
                         createdAt: serverTimestamp(),
                         role: 'student'
                     });
+
+                    // Increment total user count for national ranking
+                    try {
+                        await setDoc(doc(db, '_stats', 'counters'), {
+                            totalUsers: increment(1)
+                        }, { merge: true });
+                    } catch (e) {
+                        console.warn('Could not update user counter:', e);
+                    }
+
+                    // Write totalUsers to this user's doc for ranking (0 future reads)
+                    try {
+                        const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
+                        const totalUsers = counterSnap.data()?.totalUsers || 0;
+                        if (totalUsers > 0) {
+                            await setDoc(userDocRef, { totalUsers }, { merge: true });
+                        }
+                    } catch (e) {
+                        console.warn('Could not write totalUsers:', e);
+                    }
                 }
 
                 // Subscribe to user data changes (read from cache, periodic refresh)
@@ -923,6 +970,21 @@ function setupAdminListeners() {
                                 if (typeof updateDashboardUI === 'function') updateDashboardUI();
                             }
                         } catch(e) { console.error('Migration check error:', e); }
+                    })();
+                }
+
+                // ─── One-time: fetch totalUsers for ranking if missing ───
+                if (!userData.totalUsers) {
+                    (async () => {
+                        try {
+                            const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
+                            const total = counterSnap.data()?.totalUsers || 0;
+                            if (total > 0) {
+                                await setDoc(doc(db, 'users', user.uid), { totalUsers: total }, { merge: true });
+                                userData.totalUsers = total;
+                                if (typeof updateDashboardUI === 'function') updateDashboardUI();
+                            }
+                        } catch(e) { console.warn('Could not fetch totalUsers:', e); }
                     })();
                 }
 
@@ -1501,6 +1563,9 @@ async function renderMaster() {
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="window._clearAllSchedules()" style="font-size:0.65rem;padding:3px 8px;">
                     <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">event_busy</span> Clear Schedule
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="window._backfillUserCounter()">
+                    <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;margin-right:4px;">people</span> Backfill User Counter
                 </button>
             </div>
         </div>
