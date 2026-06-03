@@ -256,29 +256,25 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window._liveData = null;
     window._liveListener = null;
-    window._liveDataReady = null;
     window._liveRendering = false;
 
     /**
      * Sets up real-time data for ALL users via 1 onSnapshot on _admin_panel/data.
-     * Returns a Promise that resolves when the initial data is loaded.
-     * 1 standard read initial sync, real-time units for all updates.
      * All pages (admin + student) read from _liveData to get live data.
      */
     window._setupLiveDataListener = async function() {
         if (window._liveListener) return;
         
-        window._liveDataReady = new Promise((resolve) => {
-            window._liveListener = onSnapshot(
-                doc(db, '_admin_panel', 'data'),
-                (snap) => {
-                    if (snap.exists()) {
-                        window._liveData = snap.data();
-                    } else {
-                        window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
-                    }
-                    resolve();
-                    // Re-render current view if it depends on live data (safe: no re-entrancy)
+        window._liveListener = onSnapshot(
+            doc(db, '_admin_panel', 'data'),
+            (snap) => {
+                if (snap.exists()) {
+                    window._liveData = snap.data();
+                } else {
+                    window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
+                }
+                // Re-render current view on next tick
+                setTimeout(() => {
                     if (!window._liveRendering) {
                         window._liveRendering = true;
                         try {
@@ -292,21 +288,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             window._liveRendering = false;
                         }
                     }
-                },
-                (error) => {
-                    console.error('Live data listener error:', error);
-                    window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
-                    resolve();
-                    // Retry connection after 3s (handles rules deployed mid-session)
-                    setTimeout(() => {
-                        window._liveListener = null;
-                        window._setupLiveDataListener().catch(() => {});
-                    }, 3000);
-                }
-            );
-        });
-        
-        await window._liveDataReady;
+                }, 0);
+            },
+            (error) => {
+                console.error('Live data listener error:', error);
+                window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
+                // No retry — page refresh will reconnect if needed
+            }
+        );
     };
 
     /**
