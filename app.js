@@ -8230,6 +8230,7 @@ window.mcFetchEventMockAttemptMaps = async function(eventId) {
     const attemptsByMock = new Map();
 
     await Promise.all(allMocks.map(async (mock) => {
+        await sync.refresh('mock_exams/' + mock.id + '/attempts');
         const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
         const attemptMap = new Map();
         attempts.forEach(attempt => {
@@ -8581,6 +8582,7 @@ window.mcPrintAllEventResults = async function(eventId) {
             const subjNorm = subjects.find(s => s.name === subject);
             const creditUnit = subjNorm ? subjNorm.creditUnit : 1;
             
+            await sync.refresh('mock_exams/' + mock.id + '/attempts');
             const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
             
             attempts.forEach(attempt => {
@@ -9061,6 +9063,7 @@ window.mcBroadcastEventResults = async function(eventId) {
                 const subjNorm = subjects.find(s => s.name === subject);
                 const creditUnit = subjNorm ? subjNorm.creditUnit : 1;
                 
+                await sync.refresh('mock_exams/' + mock.id + '/attempts');
                 const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
                 
                 attempts.forEach(attempt => {
