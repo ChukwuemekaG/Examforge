@@ -429,20 +429,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const css = `
             * { margin:0; padding:0; box-sizing:border-box; }
             body { font-family:'Segoe UI',Arial,sans-serif; padding:30px; max-width:800px; margin:0 auto; color:#222; background:#fff; }
-            .top-bar { display:flex; align-items:center; gap:20px; margin-bottom:20px; border-bottom:3px solid #7c3aed; padding-bottom:15px; }
+            .top-bar { display:flex; align-items:center; gap:20px; margin-bottom:20px; border-bottom:3px solid #fe6961; padding-bottom:15px; }
             .top-bar img { max-width:120px; max-height:60px; }
             .top-bar h1 { font-size:28px; color:#222; margin:0; }
-            .top-bar h1 span { color:#7c3aed; }
+            .top-bar h1 span { color:#fe6961; }
             .top-bar .sub { font-size:12px; color:#666; text-transform:uppercase; letter-spacing:2px; }
-            .event-banner { background:#7c3aed; color:#fff; text-align:center; padding:12px; font-size:18px; font-weight:700; border-radius:8px; margin-bottom:20px; }
+            .event-banner { background:#fe6961; color:#fff; text-align:center; padding:12px; font-size:18px; font-weight:700; border-radius:8px; margin-bottom:20px; }
             .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
             .info-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:10px 14px; }
             .info-card .label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#9ca3af; font-weight:700; margin-bottom:2px; }
             .info-card .value { font-size:14px; font-weight:600; color:#111; }
             table { width:100%; border-collapse:collapse; margin-bottom:20px; }
-            th { background:#7c3aed; color:#fff; padding:10px 12px; font-size:11px; text-transform:uppercase; letter-spacing:1px; text-align:center; }
+            th { background:#fe6961; color:#fff; padding:10px 12px; font-size:11px; text-transform:uppercase; letter-spacing:1px; text-align:center; }
             td { padding:10px 12px; font-size:13px; text-align:center; border-bottom:1px solid #e5e7eb; }
-            tr:last-child td { border-bottom:2px solid #7c3aed; }
+            tr:last-child td { border-bottom:2px solid #fe6961; }
             .grade-A { color:#16a34a; font-weight:800; }
             .grade-B { color:#2563eb; font-weight:800; }
             .grade-C { color:#ca8a04; font-weight:800; }
@@ -453,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .summary-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:14px; text-align:center; }
             .summary-card .s-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#9ca3af; font-weight:700; }
             .summary-card .s-value { font-size:28px; font-weight:800; color:#111; margin-top:4px; }
-            .gpa-card .s-value { color:#7c3aed; font-size:32px; }
+            .gpa-card .s-value { color:#fe6961; font-size:32px; }
             .comment-box { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px; margin-bottom:20px; }
             .comment-box .c-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#16a34a; font-weight:700; margin-bottom:4px; }
             .comment-box .c-text { font-size:14px; color:#166534; line-height:1.5; }
@@ -1839,7 +1839,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                 const mins = t.timeLimit || 0;
                 const badges = [
                     t.isStrict ? `<span style="background:rgba(220,38,38,0.1);color:#dc2626;border:1px solid #dc2626;border-radius:3px;font-size:0.55rem;font-weight:900;padding:1px 5px;text-transform:uppercase;">Strict</span>` : '',
-                    t.isMock   ? `<span style="background:rgba(124,58,237,0.1);color:#7c3aed;border:1px solid #7c3aed;border-radius:3px;font-size:0.55rem;font-weight:900;padding:1px 5px;text-transform:uppercase;">Mock</span>` : '',
+                    t.isMock   ? `<span style="background:rgba(254,105,97,0.1);color:#fe6961;border:1px solid #fe6961;border-radius:3px;font-size:0.55rem;font-weight:900;padding:1px 5px;text-transform:uppercase;">Mock</span>` : '',
                     t.isCorrection===false ? `<span style="background:rgba(245,158,11,0.1);color:#d97706;border:1px solid #d97706;border-radius:3px;font-size:0.55rem;font-weight:900;padding:1px 5px;text-transform:uppercase;">No Review</span>` : '',
                     t.isPrivate ? `<span style="background:rgba(15,118,110,0.1);color:#0f766e;border:1px solid #0f766e;border-radius:3px;font-size:0.55rem;font-weight:900;padding:1px 5px;text-transform:uppercase;">🔐 Private</span>` : '',
                 ].filter(Boolean).join('');
@@ -1887,7 +1887,7 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                         <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">bar_chart</span> Results
                     </button>
                     <button class="btn btn-outline btn-sm" onclick="window.mcOpenBulkImportModal('${courseId}','${topicId}')"
-                        style="border-color:#7c3aed;color:#7c3aed;">
+                        style="border-color:#fe6961;color:#fe6961;">
                         <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">upload_file</span> Bulk Import
                     </button>
                     <button class="btn btn-outline btn-sm" onclick="window.mcDeleteAllQuestions('${courseId}','${topicId}')"
@@ -1926,8 +1926,8 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                     </span>
                     <span style="font-size:clamp(0.65rem,1.8vw,0.72rem);font-weight:700;border-radius:5px;padding:3px 8px;word-break:break-word;
                         background:${tData.isMock ? 'rgba(124,58,237,0.08)' : 'var(--bg-card)'};
-                        color:${tData.isMock ? '#7c3aed' : 'var(--text-muted)'};
-                        border:1px solid ${tData.isMock ? '#7c3aed' : 'var(--border)'};">
+                        color:${tData.isMock ? '#fe6961' : 'var(--text-muted)'};
+                        border:1px solid ${tData.isMock ? '#fe6961' : 'var(--border)'};">
                         ${tData.isMock ? '🎭 Mock' : '📊 Visible'}
                     </span>
                     <span style="font-size:clamp(0.65rem,1.8vw,0.72rem);font-weight:700;border-radius:5px;padding:3px 8px;word-break:break-word;
@@ -2192,8 +2192,8 @@ window.mcViewDailyAdviceDetails = async function(id) {
     overlay.innerHTML = `
         <div style="width:min(820px,100vw);height:100vh;background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden;border-left:3px solid var(--text);animation:slideInRight .25s cubic-bezier(.16,1,.3,1);">
             <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:2px solid var(--border);flex-shrink:0;">
-                <div style="width:44px;height:44px;border-radius:10px;background:rgba(124,58,237,0.08);border:1.5px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <span class="material-icons-round" style="color:#7c3aed;">tips_and_updates</span>
+                <div style="width:44px;height:44px;border-radius:10px;background:rgba(254,105,97,0.08);border:1.5px solid #fe6961;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span class="material-icons-round" style="color:#fe6961;">tips_and_updates</span>
                 </div>
                 <div style="flex:1;min-width:0;">
                     <div id="ef-adv-det-title" style="font-weight:900;font-size:1.05rem;color:var(--text);text-transform:uppercase;">Loading advice details…</div>
@@ -2329,7 +2329,7 @@ window.mcOpenCreateDailyAdviceModal = function() {
             <!-- Modal Header -->
             <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                 <div style="font-weight:900; font-size:1.2rem; color:var(--text); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
-                    <span class="material-icons-round" style="color:#7c3aed;">tips_and_updates</span> Compose Daily Advice
+                    <span class="material-icons-round" style="color:#fe6961;">tips_and_updates</span> Compose Daily Advice
                 </div>
                 <button onclick="document.getElementById('ef-adv-builder-modal').remove()" style="background:var(--bg-inset); border:2px solid var(--text);border-radius:8px; cursor:pointer; padding:6px; display:flex; align-items:center;">
                     <span class="material-icons-round" style="font-size:1.1rem; color:var(--text);">close</span>
@@ -2375,7 +2375,7 @@ window.mcOpenCreateDailyAdviceModal = function() {
             <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:3px solid var(--text); background:var(--bg-card); flex-shrink:0;">
                 <div class="adv-footer-actions" style="display:flex; align-items:center; gap:12px; width:auto;">
                     <button class="btn btn-ghost" onclick="document.getElementById('ef-adv-builder-modal').remove()" style="border:3px solid var(--border); font-weight:900;padding:10px 20px;">CANCEL</button>
-                    <button class="btn btn-primary" onclick="window.mcPublishDailyAdvice()" style="font-weight:900; border:3px solid var(--text);padding:10px 24px; background:#7c3aed; border-color:var(--text);">PUBLISH & BROADCAST</button>
+                    <button class="btn btn-primary" onclick="window.mcPublishDailyAdvice()" style="font-weight:900; border:3px solid var(--text);padding:10px 24px; background:#fe6961; border-color:var(--text);">PUBLISH & BROADCAST</button>
                 </div>
             </div>
         </div>
@@ -2531,7 +2531,7 @@ window.mcOpenCreateDailyQuizModal = function(prefill) {
                 
                 <!-- Smart Bulk Parser Panel -->
                 <div id="dq-bulk-import-panel" style="display:none; background:var(--bg-inset); border:3px solid var(--text);border-radius:12px; padding:16px; margin-bottom:12px; animation:popIn 0.25s ease;">
-                    <div style="font-weight:900; font-size:0.9rem; text-transform:uppercase; color:#7c3aed; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                    <div style="font-weight:900; font-size:0.9rem; text-transform:uppercase; color:#fe6961; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
                         <span class="material-icons-round">auto_fix_high</span> Smart Bulk Questions Parser
                     </div>
                     <div style="background:var(--bg-card); border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:0.7rem; color:var(--text-muted); line-height:1.6;">
@@ -2545,7 +2545,7 @@ window.mcOpenCreateDailyQuizModal = function(prefill) {
                     <textarea id="dq-bulk-import-textarea" rows="8" placeholder="1. What is the powerhouse of the cell?&#10;A. Nucleus&#10;B. ✅Mitochondria&#10;C. Ribosome&#10;D. Golgi Apparatus&#10;&#10;2. What is 2 + 2?&#10;A. 3  B. ✅4  C. 5  D. 6" style="font-family:var(--font-mono); font-size:0.75rem; width:100%; border:2px solid var(--text); border-radius:8px; padding:10px;box-sizing:border-box; resize:vertical; background:var(--bg-card); color:var(--text);"></textarea>
                     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
                         <button class="btn btn-ghost" onclick="window.mcToggleDQBulkImport()" style="font-size:0.7rem; padding:6px 12px; border:2px solid var(--border);">Cancel</button>
-                        <button class="btn btn-primary" onclick="window.mcProcessDQBulkImport()" style="font-size:0.7rem; padding:6px 16px; border:2px solid var(--text);background:#7c3aed; border-color:var(--text);">Analyze & Import</button>
+                        <button class="btn btn-primary" onclick="window.mcProcessDQBulkImport()" style="font-size:0.7rem; padding:6px 16px; border:2px solid var(--text);background:#fe6961; border-color:var(--text);">Analyze & Import</button>
                     </div>
                 </div>
 
@@ -2561,7 +2561,7 @@ window.mcOpenCreateDailyQuizModal = function(prefill) {
                     </div>
                     
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <button class="btn btn-outline dq-header-actions-btn" onclick="window.mcToggleDQBulkImport()" style="font-size:0.72rem; padding:6px 12px; border:2px solid #7c3aed; color:#7c3aed;font-weight:800; display:flex; align-items:center; gap:4px;">
+                        <button class="btn btn-outline dq-header-actions-btn" onclick="window.mcToggleDQBulkImport()" style="font-size:0.72rem; padding:6px 12px; border:2px solid #fe6961; color:#fe6961;font-weight:800; display:flex; align-items:center; gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">auto_fix_high</span> Bulk Import
                         </button>
                         <button class="btn btn-primary dq-header-actions-btn" onclick="window.mcAddBuilderQuestion()" style="font-size:0.72rem; padding:6px 12px; border:2px solid var(--text);font-weight:800; display:flex; align-items:center; gap:4px;">
@@ -3757,14 +3757,14 @@ function mcTopicToggleFields(data = {}) {
         <div class="mc-field" style="margin-top:4px;">
             <label>Behaviour Flags</label>
             ${tog('strict',      '🔒 Strict Mode',          'Forces exam mode only — practice option is hidden.',                           '#dc2626', !!data.isStrict)}
-            ${tog('mock',        '🎭 Mock Exam',             'Must be taken as exam. Student score and answers are hidden after submission.', '#7c3aed', !!data.isMock)}
+            ${tog('mock',        '🎭 Mock Exam',             'Must be taken as exam. Student score and answers are hidden after submission.', '#fe6961', !!data.isMock)}
             ${tog('nocorrection','🚫 Disable Corrections',   'Hides the correction/review screen after the exam.',                           '#d97706', data.isCorrection === false)}
             ${tog('private',     '🔐 Private / Restricted',  'Hidden from the Exam Library. Only accessible via direct link or Schedule.',   '#0f766e', !!data.isPrivate)}
         </div>`;
 }
 
 function mcBindTopicToggles() {
-    const colorMap = { strict: '#dc2626', mock: '#7c3aed', nocorrection: '#d97706', private: '#0f766e' };
+    const colorMap = { strict: '#dc2626', mock: '#fe6961', nocorrection: '#d97706', private: '#0f766e' };
     ['strict','mock','nocorrection','private'].forEach(id => {
         const cb = document.getElementById(`mc-tog-${id}`);
         const wrap = document.getElementById(`mc-tog-wrap-${id}`);
@@ -4130,7 +4130,7 @@ window.mcOpenBulkImportModal = function(courseId, topicId) {
     overlay.innerHTML = `
         <div class="mc-modal" style="max-width:680px;">
             <h3>
-                <span class="material-icons-round" style="color:#7c3aed;">upload_file</span>
+                <span class="material-icons-round" style="color:#fe6961;">upload_file</span>
                 Bulk Import Questions
             </h3>
 
@@ -4155,7 +4155,7 @@ window.mcOpenBulkImportModal = function(courseId, topicId) {
 
             <div class="mc-modal-actions">
                 <button class="btn btn-ghost" style="flex:1;border:2px solid var(--border);" onclick="this.closest('.mc-modal-overlay').remove()">Cancel</button>
-                <button class="btn btn-outline" style="flex:1;border:2px solid #7c3aed;color:#7c3aed;" id="mc-bulk-parse-btn">
+                <button class="btn btn-outline" style="flex:1;border:2px solid #fe6961;color:#fe6961;" id="mc-bulk-parse-btn">
                     <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">auto_fix_high</span> Preview
                 </button>
                 <button class="btn btn-primary" style="flex:2;display:none;" id="mc-bulk-save-btn">
@@ -4271,10 +4271,10 @@ const ADM = {
     typeConfig: {
         daily_quiz:    { icon:'today',          bg:'rgba(37,99,235,0.08)', border:'#2563eb', color:'#2563eb'  },
         broadcast:     { icon:'campaign',        bg:'rgba(37,99,235,0.08)', border:'#2563eb', color:'#2563eb'  },
-        advice:        { icon:'tips_and_updates',bg:'rgba(124,58,237,0.08)', border:'#7c3aed', color:'#7c3aed'  },
+        advice:        { icon:'tips_and_updates',bg:'rgba(254,105,97,0.08)', border:'#fe6961', color:'#fe6961'  },
         warning:       { icon:'report_problem',  bg:'rgba(220,38,38,0.08)',  border:'#dc2626', color:'#dc2626'  },
         congratulatory:{ icon:'emoji_events',    bg:'rgba(22,163,74,0.08)',  border:'#16a34a', color:'#16a34a'  },
-        gift:          { icon:'redeem',          bg:'rgba(124,58,237,0.08)', border:'#7c3aed', color:'#7c3aed'  },
+        gift:          { icon:'redeem',          bg:'rgba(254,105,97,0.08)', border:'#fe6961', color:'#fe6961'  },
         default:       { icon:'notifications',   bg:'var(--bg-inset)',       border:'var(--border)', color:'var(--text-muted)' },
     },
     getDueMs(item) {
@@ -4815,7 +4815,7 @@ window.udtAddNotification = function() {
     ov.style.zIndex = '1100';
     ov.innerHTML = `
         <div class="mc-modal">
-            <h3><span class="material-icons-round" style="color:#7c3aed;">send</span> Send Notification</h3>
+            <h3><span class="material-icons-round" style="color:#fe6961;">send</span> Send Notification</h3>
             <div class="mc-field"><label>Type</label>
                 <select id="uan-type">
                     <option value="broadcast">Broadcast</option>
@@ -6517,7 +6517,7 @@ window.adminPromptNotification = function(userId) {
             <div class="card" style="padding:20px; opacity:0.9;">
                 <div style="display:flex; align-items:center; gap:16px;">
                     <div style="width:44px; height:44px; border-radius:var(--r-md); background:rgba(139,92,246,0.12); border:2px solid rgba(139,92,246,0.3); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        <span class="material-icons-round" style="color:#7c3aed; font-size:1.3rem;">school</span>
+                        <span class="material-icons-round" style="color:#fe6961; font-size:1.3rem;">school</span>
                     </div>
                     <div style="flex:1;">
                         <div style="font-weight:700; font-size:0.88rem;">2026 100L Second Semester Tutorial</div>
@@ -6675,9 +6675,9 @@ window.adminPromptNotification = function(userId) {
             warning:       { icon:'report_problem', bg:'rgba(220,38,38,0.08)',  border:'#dc2626', color:'#dc2626'  },
             broadcast:     { icon:'campaign',        bg:'rgba(37,99,235,0.08)', border:'#2563eb', color:'#2563eb'  },
             congratulatory:{ icon:'emoji_events',    bg:'rgba(22,163,74,0.08)', border:'#16a34a', color:'#16a34a'  },
-            gift:          { icon:'redeem',          bg:'rgba(124,58,237,0.08)',border:'#7c3aed', color:'#7c3aed'  },
+            gift:          { icon:'redeem',          bg:'rgba(254,105,97,0.08)',border:'#fe6961', color:'#fe6961'  },
             daily_quiz:    { icon:'today',           bg:'rgba(37,99,235,0.08)', border:'#2563eb', color:'#2563eb'  },
-            advice:        { icon:'tips_and_updates',bg:'rgba(124,58,237,0.08)',border:'#7c3aed', color:'#7c3aed'  },
+            advice:        { icon:'tips_and_updates',bg:'rgba(254,105,97,0.08)',border:'#fe6961', color:'#fe6961'  },
         };
 
         // Cache-first one-time fetch (no real-time listener = zero continuous reads)
@@ -6959,9 +6959,9 @@ window.adminPromptNotification = function(userId) {
                 warning:       { icon:'report_problem', bg:'rgba(220,38,38,0.08)',  border:'#dc2626', color:'#dc2626', label:'Alert' },
                 broadcast:     { icon:'campaign',        bg:'rgba(37,99,235,0.08)', border:'#2563eb', color:'#2563eb', label:'Broadcast' },
                 congratulatory:{ icon:'emoji_events',    bg:'rgba(22,163,74,0.08)', border:'#16a34a', color:'#16a34a', label:'Achievement' },
-                gift:          { icon:'redeem',          bg:'rgba(124,58,237,0.08)',border:'#7c3aed', color:'#7c3aed', label:'Gift' },
+                gift:          { icon:'redeem',          bg:'rgba(254,105,97,0.08)',border:'#fe6961', color:'#fe6961', label:'Gift' },
                 daily_quiz:    { icon:'today',           bg:'rgba(37,99,235,0.08)', border:'#2563eb', color:'#2563eb', label:'Daily Quiz' },
-                advice:        { icon:'tips_and_updates',bg:'rgba(124,58,237,0.08)',border:'#7c3aed', color:'#7c3aed', label:'Daily Advice' },
+                advice:        { icon:'tips_and_updates',bg:'rgba(254,105,97,0.08)',border:'#fe6961', color:'#fe6961', label:'Daily Advice' },
             };
             const tc = typeMap[n.type] || { icon:'notifications', bg:'var(--bg-inset)', border:'var(--border)', color:'var(--text-muted)', label:'Notification' };
             const time = n.timestamp?.toDate ? n.timestamp.toDate().toLocaleString('en-NG', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'Just now';
@@ -7675,7 +7675,7 @@ window.mcLoadSubEvents = async function() {
             <div class="card" style="padding:20px;border:3px solid var(--text);display:flex;flex-direction:column;justify-content:space-between;gap:14px;background:var(--bg-card);transition:transform 0.2s;">
                 <div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                        <span style="font-size:0.65rem;font-weight:900;text-transform:uppercase;color:#7c3aed;background:rgba(124,58,237,0.06);padding:3px 8px;border:1.5px solid #7c3aed;border-radius:6px;letter-spacing:0.05em;">${ev.resultsReleased ? 'Results Broadcasted' : 'Active'}</span>
+                        <span style="font-size:0.65rem;font-weight:900;text-transform:uppercase;color:#fe6961;background:rgba(254,105,97,0.06);padding:3px 8px;border:1.5px solid #fe6961;border-radius:6px;letter-spacing:0.05em;">${ev.resultsReleased ? 'Results Broadcasted' : 'Active'}</span>
                         <span style="font-size:0.68rem;color:var(--text-muted);font-weight:600;">${dateStr}</span>
                     </div>
                     <h3 style="font-weight:900;font-size:1.05rem;color:var(--text);line-height:1.3;margin:0 0 10px 0;word-break:break-word;">${ev.title}</h3>
@@ -8035,8 +8035,8 @@ window.mcViewSubEventDetails = async function(eventId) {
                 style="width:32px;height:32px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                 <span class="material-icons-round">arrow_back</span>
             </button>
-            <div style="width:32px;height:32px;border-radius:6px;background:rgba(124,58,237,0.08);border:1.5px solid #7c3aed;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <span class="material-icons-round" style="color:#7c3aed;">event_note</span>
+            <div style="width:32px;height:32px;border-radius:6px;background:rgba(254,105,97,0.08);border:1.5px solid #fe6961;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-icons-round" style="color:#fe6961;">event_note</span>
             </div>
             <div style="flex:1;min-width:0;">
                 <div id="ef-se-det-title" style="font-weight:900;font-size:0.85rem;color:var(--text);">Loading Event details...</div>
@@ -8097,7 +8097,7 @@ window.mcViewSubEventDetails = async function(eventId) {
 
         const broadcastBtn = `
             <div style="display:flex;gap:8px;width:100%;flex-wrap:wrap;">
-                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:8px 10px;text-align:center;background:#7c3aed;font-size:0.7rem;white-space:normal;word-break:break-word;">
+                <button class="btn btn-primary" onclick="window.mcBroadcastEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:8px 10px;text-align:center;background:#fe6961;font-size:0.7rem;white-space:normal;word-break:break-word;">
                     <span class="material-icons-round" style="font-size:0.85rem;vertical-align:middle;">campaign</span> ${ev.resultsReleased ? 'RE-BROADCAST' : 'BROADCAST ALL'}
                 </button>
                 <button class="btn btn-outline" onclick="window.mcPrintAllEventResults('${eventId}')" style="flex:1;font-weight:900;border:3px solid var(--text);padding:8px 10px;text-align:center;font-size:0.7rem;white-space:normal;word-break:break-word;display:flex;align-items:center;justify-content:center;gap:4px;">
@@ -8126,7 +8126,7 @@ window.mcViewSubEventDetails = async function(eventId) {
                     <span id="keys-status-badge" style="font-size:0.65rem;font-weight:700;color:var(--text-muted);margin-left:8px;"></span>
                 </h3>
                 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-                    <button class="btn btn-primary btn-sm" onclick="window.mcGenerateSubEventKeys('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;background:#7c3aed;border:2px solid var(--text);display:flex;align-items:center;gap:4px;">
+                    <button class="btn btn-primary btn-sm" onclick="window.mcGenerateSubEventKeys('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;background:#fe6961;border:2px solid var(--text);display:flex;align-items:center;gap:4px;">
                         <span class="material-icons-round" style="font-size:0.85rem;">vpn_key</span> GENERATE KEYS
                     </button>
                     <button class="btn btn-outline btn-sm" onclick="window.mcCopyKeysToClipboard('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;border:2px solid var(--text);">
@@ -8161,7 +8161,7 @@ window.mcViewSubEventDetails = async function(eventId) {
                         <option value="180">6 Months</option>
                         <option value="365">1 Year</option>
                     </select>
-                    <button class="btn btn-primary btn-sm" onclick="window.mcSaveEventDuration('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;background:#7c3aed;border:2px solid var(--text);">SAVE DURATION</button>
+                    <button class="btn btn-primary btn-sm" onclick="window.mcSaveEventDuration('${eventId}')" style="font-size:0.7rem;font-weight:800;padding:6px 14px;background:#fe6961;border:2px solid var(--text);">SAVE DURATION</button>
                 </div>
             </div>
 
@@ -8786,7 +8786,7 @@ window.mcPrintAllEventResults = async function(eventId) {
     .top-bar { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #1a1a2e; }
     .top-bar img { max-width: 120px; max-height: 60px; object-fit: contain; }
     .top-bar h1 { font-size: 28px; font-weight: 900; margin: 0; color: #1a1a2e; text-transform: uppercase; letter-spacing: -0.5px; }
-    .top-bar h1 span { color: #7c3aed; }
+    .top-bar h1 span { color: #fe6961; }
     .top-bar .sub { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
     
     .event-banner { background: #1a1a2e; color: #fff; padding: 14px 20px; font-size: 18px; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; border-radius: 4px; }
@@ -8814,7 +8814,7 @@ window.mcPrintAllEventResults = async function(eventId) {
     .summary-card { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 6px; padding: 14px; text-align: center; }
     .summary-card .s-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; letter-spacing: 0.5px; }
     .summary-card .s-value { font-size: 24px; font-weight: 900; color: #1a1a2e; margin-top: 4px; }
-    .gpa-card .s-value { color: #7c3aed; }
+    .gpa-card .s-value { color: #fe6961; }
     
     .comment-box { background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
     .comment-box .c-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #92400e; letter-spacing: 0.5px; margin-bottom: 4px; }
@@ -8926,8 +8926,8 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
                             <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Strict — no practice option</div>
                         </div>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:2px solid #7c3aed;border-radius:8px;cursor:pointer;transition:border-color 0.15s;background:#7c3aed10;" id="mc-tog-wrap-mock">
-                        <input type="checkbox" id="mc-tog-mock" checked style="width:16px;height:16px;margin-top:1px;accent-color:#7c3aed;flex-shrink:0;">
+                    <label style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:2px solid #fe6961;border-radius:8px;cursor:pointer;transition:border-color 0.15s;background:#fe696110;" id="mc-tog-wrap-mock">
+                        <input type="checkbox" id="mc-tog-mock" checked style="width:16px;height:16px;margin-top:1px;accent-color:#fe6961;flex-shrink:0;">
                         <div>
                             <div style="font-weight:800;font-size:0.78rem;color:var(--text);">🎭 Hide Results</div>
                             <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Students won't see score/answers after submission</div>
@@ -8955,7 +8955,7 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
                     <textarea id="dq-bulk-import-textarea" rows="8" placeholder="Paste questions here..." style="font-family:var(--font-mono); font-size:0.75rem; width:100%; border:2px solid var(--text); border-radius:8px; padding:10px;box-sizing:border-box; resize:vertical; background:var(--bg-card); color:var(--text);"></textarea>
                     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
                         <button class="btn btn-ghost" onclick="window.mcToggleDQBulkImport()" style="font-size:0.7rem; padding:6px 12px; border:2px solid var(--border);">Cancel</button>
-                        <button class="btn btn-primary" onclick="window.mcProcessDQBulkImport()" style="font-size:0.7rem; padding:6px 16px; border:2px solid var(--text);background:#7c3aed; border-color:var(--text);">Analyze & Import</button>
+                        <button class="btn btn-primary" onclick="window.mcProcessDQBulkImport()" style="font-size:0.7rem; padding:6px 16px; border:2px solid var(--text);background:#fe6961; border-color:var(--text);">Analyze & Import</button>
                     </div>
                 </div>
 
@@ -8969,7 +8969,7 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
                     </div>
                     
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <button class="btn btn-outline dq-header-actions-btn" onclick="window.mcToggleDQBulkImport()" style="font-size:0.72rem; padding:6px 12px; border:2px solid #7c3aed; color:#7c3aed;font-weight:800; display:flex; align-items:center; gap:4px;">
+                        <button class="btn btn-outline dq-header-actions-btn" onclick="window.mcToggleDQBulkImport()" style="font-size:0.72rem; padding:6px 12px; border:2px solid #fe6961; color:#fe6961;font-weight:800; display:flex; align-items:center; gap:4px;">
                             <span class="material-icons-round" style="font-size:0.95rem;">auto_fix_high</span> Bulk Import
                         </button>
                         <button class="btn btn-primary dq-header-actions-btn" onclick="window.mcAddBuilderQuestion()" style="font-size:0.72rem; padding:6px 12px; border:2px solid var(--text);font-weight:800; display:flex; align-items:center; gap:4px;">
@@ -8994,7 +8994,7 @@ window.mcOpenCreateEventMockModal = async function(eventId, subject) {
     await window.mcPreloadEventMock(eventId, subject);
 
     // Bind toggle color updates
-    const colorMap = { strict: '#dc2626', mock: '#7c3aed', nocorrection: '#d97706', private: '#0f766e' };
+    const colorMap = { strict: '#dc2626', mock: '#fe6961', nocorrection: '#d97706', private: '#0f766e' };
     ['strict','mock','nocorrection','private'].forEach(id => {
         const cb = document.getElementById(`mc-tog-${id}`);
         const wrap = document.getElementById(`mc-tog-wrap-${id}`);
@@ -9027,7 +9027,7 @@ window.mcPreloadEventMock = async function(eventId, subject) {
                 'mc-tog-nocorrection': m.isCorrection === false,
                 'mc-tog-private': m.isPrivate
             };
-            const colorMap2 = { strict: '#dc2626', mock: '#7c3aed', nocorrection: '#d97706', private: '#0f766e' };
+            const colorMap2 = { strict: '#dc2626', mock: '#fe6961', nocorrection: '#d97706', private: '#0f766e' };
             toggleIds.forEach(id => {
                 const cb = document.getElementById(id);
                 if (cb && toggleStates[id] !== undefined) {
@@ -9236,11 +9236,25 @@ window.mcBroadcastEventResults = async function(eventId) {
                 });
             }
             
-            // Fill in unattempted subjects for all registered students
+            // Load registration data
+            const regDoc = doc(db, 'subscription_events', eventId, '_data', 'registrations');
+            const regSnap = await getDoc(regDoc);
+            const students = regSnap.exists() ? (regSnap.data().students || []) : [];
+            
+            // Build a map of uid → registered subjects
+            const uidToRegisteredSubjects = {};
+            for (const s of students) {
+                uidToRegisteredSubjects[s.uid] = new Set(s.subjects || []);
+            }
+            
+            // Fill in unattempted subjects — only for subjects the student registered for
             for (const [uid, data] of Object.entries(studentResults)) {
+                const regSubjects = uidToRegisteredSubjects[uid];
+                if (!regSubjects) continue; // skip if no registration data
+
                 const attemptedSubjects = new Set(data.subjects.map(s => s.name));
                 for (const subj of subjects) {
-                    if (!attemptedSubjects.has(subj.name)) {
+                    if (regSubjects.has(subj.name) && !attemptedSubjects.has(subj.name)) {
                         data.subjects.push({
                             name: subj.name,
                             creditUnit: subj.creditUnit,
@@ -9255,20 +9269,14 @@ window.mcBroadcastEventResults = async function(eventId) {
             
             // Remove duplicate students from _data/registrations (belt-and-suspenders)
             try {
-                const regDoc = doc(db, 'subscription_events', eventId, '_data', 'registrations');
-                const regSnap = await getDoc(regDoc);
-                if (regSnap.exists()) {
-                    const rData = regSnap.data();
-                    const students = rData.students || [];
-                    const seen = new Set();
-                    const unique = students.filter(s => {
-                        if (seen.has(s.uid)) return false;
-                        seen.add(s.uid);
-                        return true;
-                    });
-                    if (unique.length !== students.length) {
-                        await updateDoc(regDoc, { students: unique });
-                    }
+                const seen = new Set();
+                const unique = students.filter(s => {
+                    if (seen.has(s.uid)) return false;
+                    seen.add(s.uid);
+                    return true;
+                });
+                if (unique.length !== students.length) {
+                    await updateDoc(regDoc, { students: unique });
                 }
             } catch(e) {}
             
