@@ -6114,8 +6114,15 @@ window.adminPromptNotification = function(userId) {
     async function renderSchedule() {
         workspace.innerHTML = `
             <div class="page-header">
-                <div class="page-title">Schedule</div>
-                <div class="page-sub">Your upcoming quizzes and exam bookings</div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; width:100%; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <div class="page-title">Schedule</div>
+                        <div class="page-sub">Your upcoming quizzes and exam bookings</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" id="btnClearSchedule" style="display:none;font-weight:800;color:var(--brand);">
+                        <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">event_busy</span> Clear Schedule
+                    </button>
+                </div>
             </div>
             <div id="schedule-content">
                 <div style="text-align:center;padding:56px;color:var(--text-muted);">
@@ -6150,6 +6157,17 @@ window.adminPromptNotification = function(userId) {
 
         const container = document.getElementById('schedule-content');
         if (!container) return;
+
+        // Wire clear schedule button
+        const clearSchedBtn = document.getElementById('btnClearSchedule');
+        if (clearSchedBtn) {
+            clearSchedBtn.style.display = schedItems.length ? 'inline-flex' : 'none';
+            clearSchedBtn.onclick = async () => {
+                if (!confirm('Clear all schedule items?')) return;
+                await updateDoc(doc(db, 'users', auth.currentUser.uid), { schedule: [] });
+                renderSchedule();
+            };
+        }
 
         const now = Date.now();
         const getDueMs = s => {
@@ -6279,7 +6297,11 @@ window.adminPromptNotification = function(userId) {
 
     window.deleteScheduleItem = async function(itemId) {
         try {
-            await deleteDoc(doc(db, `users/${auth.currentUser.uid}/schedule`, itemId));
+            const userRef = doc(db, 'users', auth.currentUser.uid);
+            const snap = await getDoc(userRef);
+            if (!snap.exists()) return;
+            const schedule = (snap.data().schedule || []).filter(s => s.id !== itemId);
+            await updateDoc(userRef, { schedule });
             renderSchedule();
         } catch(e) { console.error(e); }
     };
@@ -6644,6 +6666,12 @@ window.adminPromptNotification = function(userId) {
             console.log(`[Inbox] Filtered ${filtered} notifications, ${broadcastItems.length} remaining, takenMocks:`, takenMocks);
         }
         
+        // Filter out dismissed broadcast items
+        const dismissedBroadcast = (userData_full.profile && userData_full.profile.dismissedBroadcast) || [];
+        if (dismissedBroadcast.length) {
+            broadcastItems = broadcastItems.filter(n => !dismissedBroadcast.includes(n.id));
+        }
+        
         notifications = [...broadcastItems, ...notifications].slice(0, 50);
 
         const now = Date.now();
@@ -6675,7 +6703,13 @@ window.adminPromptNotification = function(userId) {
         clearBtn.onclick = async () => {
             if (!confirm('Clear all notifications?')) return;
             try {
-                await updateDoc(doc(db, 'users', auth.currentUser.uid), { inbox: [] });
+                const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                if (!snap.exists()) return;
+                // Dismiss all current broadcast item IDs
+                const sData = snap.data();
+                const dismissed = sData.dismissedBroadcast || [];
+                broadcastItems.forEach(n => { if (!dismissed.includes(n.id)) dismissed.push(n.id); });
+                await updateDoc(doc(db, 'users', auth.currentUser.uid), { inbox: [], dismissedBroadcast: dismissed.slice(-200) });
                 renderInbox();
             } catch(e) { console.error('Clear failed:', e); }
         };
@@ -6731,8 +6765,14 @@ window.adminPromptNotification = function(userId) {
             const userRef = doc(db, 'users', auth.currentUser.uid);
             const snap = await getDoc(userRef);
             if (!snap.exists()) return;
-            const inbox = (snap.data().inbox || []).filter(n => n.id !== notifId);
-            await updateDoc(userRef, { inbox });
+            const data = snap.data();
+            // Remove from personal inbox
+            const inbox = (data.inbox || []).filter(n => n.id !== notifId);
+            // Also track dismissed broadcast IDs so they don't reappear
+            const dismissed = data.dismissedBroadcast || [];
+            if (!dismissed.includes(notifId)) dismissed.push(notifId);
+            if (dismissed.length > 200) dismissed.slice(-100);
+            await updateDoc(userRef, { inbox, dismissedBroadcast: dismissed });
             renderInbox();
         } catch(e) { console.error(e); }
     };
