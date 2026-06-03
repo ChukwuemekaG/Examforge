@@ -420,80 +420,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window._clearAllNotifications = async function() {
         if (!confirm('Clear all broadcast notifications for all students?')) return;
-        const { doc: fDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        await setDoc(fDoc(db, '_notifications', 'latest'), { items: [] });
-        window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
+        try {
+            const { doc: fDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            await setDoc(fDoc(db, '_notifications', 'latest'), { items: [] });
+            window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
+        } catch(e) {
+            console.error('Clear notifications failed:', e);
+            alert('Failed to clear notifications: ' + e.message);
+        }
     };
 
     window._clearAllSchedules = async function() {
         if (!confirm('Clear all broadcast schedule items for all students?')) return;
-        const { doc: fDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        await setDoc(fDoc(db, '_schedules', 'latest'), { items: [] });
-        window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
-    };
-
-    window.printResult = async function(resultId, eventId) {
         try {
-            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
-            if (!snap.exists()) { alert('Result not found.'); return; }
-            const data = snap.data();
-            if (!data.resultSheet) { alert('No result sheet available.'); return; }
-            
-            const css = `
-            * { margin:0; padding:0; box-sizing:border-box; }
-            body { font-family:'Segoe UI',Arial,sans-serif; padding:30px; max-width:800px; margin:0 auto; color:#222; background:#fff; }
-            .top-bar { display:flex; align-items:center; gap:20px; margin-bottom:20px; border-bottom:3px solid #fe6961; padding-bottom:15px; }
-            .top-bar img { max-width:120px; max-height:60px; }
-            .top-bar h1 { font-size:28px; color:#222; margin:0; }
-            .top-bar h1 span { color:#fe6961; }
-            .top-bar .sub { font-size:12px; color:#666; text-transform:uppercase; letter-spacing:2px; }
-            .event-banner { background:#fe6961; color:#fff; text-align:center; padding:12px; font-size:18px; font-weight:700; border-radius:8px; margin-bottom:20px; }
-            .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
-            .info-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:10px 14px; }
-            .info-card .label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#9ca3af; font-weight:700; margin-bottom:2px; }
-            .info-card .value { font-size:14px; font-weight:600; color:#111; }
-            table { width:100%; border-collapse:collapse; margin-bottom:20px; }
-            th { background:#fe6961; color:#fff; padding:10px 12px; font-size:11px; text-transform:uppercase; letter-spacing:1px; text-align:center; }
-            td { padding:10px 12px; font-size:13px; text-align:center; border-bottom:1px solid #e5e7eb; }
-            tr:last-child td { border-bottom:2px solid #fe6961; }
-            .grade-A { color:#16a34a; font-weight:800; }
-            .grade-B { color:#2563eb; font-weight:800; }
-            .grade-C { color:#ca8a04; font-weight:800; }
-            .grade-D { color:#d97706; font-weight:800; }
-            .grade-E,.grade-F { color:#dc2626; font-weight:800; }
-            .na-subject { color:#9ca3af; font-style:italic; }
-            .summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
-            .summary-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:14px; text-align:center; }
-            .summary-card .s-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#9ca3af; font-weight:700; }
-            .summary-card .s-value { font-size:28px; font-weight:800; color:#111; margin-top:4px; }
-            .gpa-card .s-value { color:#fe6961; font-size:32px; }
-            .comment-box { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px; margin-bottom:20px; }
-            .comment-box .c-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#16a34a; font-weight:700; margin-bottom:4px; }
-            .comment-box .c-text { font-size:14px; color:#166534; line-height:1.5; }
-            .grade-ref { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; padding:10px; background:#f9fafb; border-radius:6px; }
-            .grade-ref-item { font-size:11px; color:#666; font-weight:600; }
-            .grade-ref-item:nth-child(1){color:#16a34a}
-            .grade-ref-item:nth-child(2){color:#2563eb}
-            .grade-ref-item:nth-child(3){color:#ca8a04}
-            .grade-ref-item:nth-child(4){color:#d97706}
-            .grade-ref-item:nth-child(5),.grade-ref-item:nth-child(6){color:#dc2626}
-            .signature-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
-            .signature-box { text-align:center; font-size:11px; color:#888; font-weight:600; }
-            .signature-box .line { border-top:2px solid #333; margin-bottom:6px; width:200px; margin:0 auto 6px; }
-            .footer { text-align:center; font-size:10px; color:#9ca3af; border-top:1px solid #e5e7eb; padding-top:12px; }
-            .footer p { margin:2px 0; }
-            `;
-            
-            const w = window.open('', '_blank');
-            w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ExamForge Result</title><style>'+css+'</style></head><body>');
-            w.document.write(data.resultSheet);
-            w.document.write('</body></html>');
-            w.document.close();
-            w.focus();
+            const { doc: fDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            await setDoc(fDoc(db, '_schedules', 'latest'), { items: [] });
+            window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
         } catch(e) {
-            console.error('Print failed:', e);
-            alert('Failed to open result: ' + e.message);
+            console.error('Clear schedule failed:', e);
+            alert('Failed to clear schedule: ' + e.message);
         }
     };
 
