@@ -386,54 +386,47 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window._broadcastNotification = async function(notification) {
-        try {
-            const { collection, getDocs, setDoc, doc, serverTimestamp } = await import(
-                "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
-            );
-            // Read existing items
-            const existing = await getDoc(doc(db, '_notifications', 'latest'));
-            const items = existing.exists() ? (existing.data().items || []) : [];
-            items.unshift({
-                ...notification,
-                id: 'notif_' + Date.now().toString(36),
-                timestamp: new Date().toISOString()
-            });
-            if (items.length > 50) items.length = 50;
-            await setDoc(doc(db, '_notifications', 'latest'), { items });
-        } catch(e) { console.error('Broadcast notif failed:', e); }
+        const { getDoc, doc: fDoc, setDoc } = await import(
+            "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+        );
+        const existing = await getDoc(fDoc(db, '_notifications', 'latest'));
+        const items = existing.exists() ? (existing.data().items || []) : [];
+        items.unshift({
+            ...notification,
+            id: 'notif_' + Date.now().toString(36),
+            timestamp: new Date().toISOString()
+        });
+        if (items.length > 50) items.length = 50;
+        await setDoc(fDoc(db, '_notifications', 'latest'), { items });
     };
 
     window._broadcastSchedule = async function(scheduleItem) {
-        try {
-            const { collection, getDocs, setDoc, doc, serverTimestamp } = await import(
-                "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
-            );
-            const existing = await getDoc(doc(db, '_schedules', 'latest'));
-            const items = existing.exists() ? (existing.data().items || []) : [];
-            items.push({
-                ...scheduleItem,
-                id: 'sched_' + Date.now().toString(36),
-                timestamp: new Date().toISOString()
-            });
-            if (items.length > 50) items.length = 50;
-            await setDoc(doc(db, '_schedules', 'latest'), { items });
-        } catch(e) { console.error('Broadcast sched failed:', e); }
+        const { getDoc, doc: fDoc, setDoc } = await import(
+            "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+        );
+        const existing = await getDoc(fDoc(db, '_schedules', 'latest'));
+        const items = existing.exists() ? (existing.data().items || []) : [];
+        items.push({
+            ...scheduleItem,
+            id: 'sched_' + Date.now().toString(36),
+            timestamp: new Date().toISOString()
+        });
+        if (items.length > 50) items.length = 50;
+        await setDoc(fDoc(db, '_schedules', 'latest'), { items });
     };
 
     window._clearAllNotifications = async function() {
         if (!confirm('Clear all broadcast notifications for all students?')) return;
-        try {
-            await setDoc(doc(db, '_notifications', 'latest'), { items: [] });
-            window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
-        } catch(e) { console.error('Clear notif failed:', e); }
+        const { doc: fDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        await setDoc(fDoc(db, '_notifications', 'latest'), { items: [] });
+        window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
     };
 
     window._clearAllSchedules = async function() {
         if (!confirm('Clear all broadcast schedule items for all students?')) return;
-        try {
-            await setDoc(doc(db, '_schedules', 'latest'), { items: [] });
-            window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
-        } catch(e) { console.error('Clear sched failed:', e); }
+        const { doc: fDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        await setDoc(fDoc(db, '_schedules', 'latest'), { items: [] });
+        window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
     };
 
     // ─── Local JSON course loading removed — using Firestore limit queries via SyncManager ───
