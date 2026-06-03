@@ -6130,29 +6130,27 @@ window.adminPromptNotification = function(userId) {
                 </div>
             </div>`;
 
+        let schedItems = [];
+        let broadcastScheds = [];
+        
         try {
             // Read user data raw for fresh takenMocks
             const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             const userSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
             const userRaw = userSnap.exists() ? userSnap.data() : {};
             const takenMocksSched = userRaw.takenMocks || [];
-            let schedItems = userRaw.schedule || [];
+            schedItems = userRaw.schedule || [];
             
             // Load broadcast schedules directly
-            let broadcastScheds = [];
-        try {
-            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const snap = await getDoc(fDoc(db, '_schedules', 'latest'));
-            if (snap.exists()) broadcastScheds = snap.data().items || [];
-        } catch(e) { console.error('Schedule broadcast read failed:', e); }
-        
-        // Filter out schedules for exams the user has already taken
-        if (takenMocksSched.length) {
-            broadcastScheds = broadcastScheds.filter(s => !s.mockId || !takenMocksSched.includes(s.mockId));
-        }
-        
-            schedItems = [...schedItems, ...broadcastScheds];
+            const schedSnap = await getDoc(fDoc(db, '_schedules', 'latest'));
+            if (schedSnap.exists()) broadcastScheds = schedSnap.data().items || [];
             
+            // Filter out schedules for exams the user has already taken
+            if (takenMocksSched.length) {
+                broadcastScheds = broadcastScheds.filter(s => !s.mockId || !takenMocksSched.includes(s.mockId));
+            }
+            
+            schedItems = [...schedItems, ...broadcastScheds];
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
         } catch(e) { console.error(e); }
 
