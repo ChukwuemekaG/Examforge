@@ -6116,12 +6116,16 @@ window.adminPromptNotification = function(userId) {
             
             // Also load broadcast schedules from live data
             let broadcastScheds = (window._liveData && window._liveData.broadcastSchedules) || [];
-            // Fallback: try direct read if live data is empty
+            // Fallback: direct Firestore read (bypasses cache) if live data is empty
             if (!broadcastScheds.length) {
                 try {
-                    const liveSnap = await sync.doc('_admin_panel/data');
-                    if (liveSnap && liveSnap.broadcastSchedules) broadcastScheds = liveSnap.broadcastSchedules;
-                } catch(e) {}
+                    const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                    const liveSnap = await getDoc(doc(db, '_admin_panel', 'data'));
+                    if (liveSnap.exists()) {
+                        const data = liveSnap.data();
+                        if (data.broadcastSchedules) broadcastScheds = data.broadcastSchedules;
+                    }
+                } catch(e) { console.error('Schedule broadcast fallback failed:', e); }
             }
             schedItems = [...schedItems, ...broadcastScheds];
             
@@ -6606,12 +6610,16 @@ window.adminPromptNotification = function(userId) {
         
         // Also load broadcast notifications from live data
         let broadcastItems = (window._liveData && window._liveData.broadcastNotifications) || [];
-        // Fallback: try direct read if live data is empty (onSnapshot might have errored before rules deployed)
+        // Fallback: direct Firestore read (bypasses cache) if live data is empty
         if (!broadcastItems.length) {
             try {
-                const liveSnap = await sync.doc('_admin_panel/data');
-                if (liveSnap && liveSnap.broadcastNotifications) broadcastItems = liveSnap.broadcastNotifications;
-            } catch(e) {}
+                const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                const liveSnap = await getDoc(doc(db, '_admin_panel', 'data'));
+                if (liveSnap.exists()) {
+                    const data = liveSnap.data();
+                    if (data.broadcastNotifications) broadcastItems = data.broadcastNotifications;
+                }
+            } catch(e) { console.error('Broadcast fallback failed:', e); }
         }
         notifications = [...broadcastItems, ...notifications].slice(0, 50);
 
