@@ -6620,7 +6620,10 @@ window.adminPromptNotification = function(userId) {
         const takenMocks = (userData_full.profile && userData_full.profile.takenMocks) || [];
         if (takenMocks.length) {
             const takenUrls = takenMocks.map(m => `/quiz?mockid=${m}`);
+            const before = broadcastItems.length;
             broadcastItems = broadcastItems.filter(n => !n.quizUrl || !takenUrls.includes(n.quizUrl));
+            const filtered = before - broadcastItems.length;
+            console.log(`[Inbox] Filtered ${filtered} notifications, ${broadcastItems.length} remaining, takenMocks:`, takenMocks);
         }
         
         notifications = [...broadcastItems, ...notifications].slice(0, 50);
@@ -9112,13 +9115,11 @@ window.mcBroadcastEventResults = async function(eventId) {
                 });
             }
             
-            // Send single broadcast notification for all students
+            // Send single broadcast notification for all students (informational — no action button)
             await window._broadcastNotification({
                 type: 'broadcast',
                 title: `📊 ${evTitle} - Results Released`,
-                message: `Your results for ${evTitle} are ready for ${Object.keys(studentResults).length} student(s). Tap to view.`,
-                quizUrl: '/app.html#results',
-                actionLabel: 'VIEW RESULTS',
+                message: `Your results for ${evTitle} are ready for ${Object.keys(studentResults).length} student(s). Check your dashboard to view.`,
                 brandColor: '#7c3aed',
                 brandIcon: 'gavel'
             });
