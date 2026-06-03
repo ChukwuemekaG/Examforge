@@ -429,6 +429,24 @@ document.addEventListener('DOMContentLoaded', () => {
         window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
     };
 
+    window.printResult = async function(resultId, eventId) {
+        try {
+            const snap = await getDoc(doc(db, 'users', auth.currentUser.uid, 'results', resultId));
+            if (!snap.exists()) { alert('Result not found.'); return; }
+            const data = snap.data();
+            if (!data.resultSheet) { alert('No result sheet available.'); return; }
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(data.resultSheet);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 500);
+        } catch(e) {
+            console.error('Print failed:', e);
+            alert('Failed to print result: ' + e.message);
+        }
+    };
+
     // ─── Local JSON course loading removed — using Firestore limit queries via SyncManager ───
 
     // Firebase User Data State
@@ -6654,14 +6672,12 @@ window.adminPromptNotification = function(userId) {
         const active = notifications;
 
         clearBtn.style.display = active.length ? 'inline-flex' : 'none';
-        clearBtn.onclick = () => {
+        clearBtn.onclick = async () => {
             if (!confirm('Clear all notifications?')) return;
-            const b = writeBatch(db);
-            active.forEach(n => {
-                const ref = doc(db, path, n.id);
-                b.delete(ref);
-            });
-            b.commit().catch(console.error);
+            try {
+                await updateDoc(doc(db, 'users', auth.currentUser.uid), { inbox: [] });
+                renderInbox();
+            } catch(e) { console.error('Clear failed:', e); }
         };
 
         if (!active.length) {
@@ -6679,7 +6695,13 @@ window.adminPromptNotification = function(userId) {
             const tc = typeMap[n.type] || { icon:'notifications', bg:'var(--bg-inset)', border:'var(--border)', color:'var(--text-muted)' };
             const time = n.timestamp?.toDate ? n.timestamp.toDate().toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' }) : 'Just now';
 
-            const actionRow = n.quizUrl ? `
+            const actionRow = n.type === 'result' && n.resultId ? `
+                <div class="notif-footer">
+                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();window.printResult('${n.resultId}', '${n.eventId}')">
+                        <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">print</span> Print Result
+                    </button>
+                    <span class="notif-time">${time}</span>
+                </div>` : n.quizUrl ? `
                 <div class="notif-footer">
                     <a href="${n.quizUrl}" class="btn btn-primary btn-sm" style="text-decoration:none;" onclick="event.stopPropagation();">
                         <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">${n.type === 'daily_quiz' ? 'play_arrow' : 'visibility'}</span> ${n.actionLabel || (n.type === 'daily_quiz' ? 'Start Quiz' : 'View')}
@@ -6706,7 +6728,12 @@ window.adminPromptNotification = function(userId) {
 
     window.deleteNotification = async function(notifId) {
         try {
-            await deleteDoc(doc(db, `users/${auth.currentUser.uid}/notifications`, notifId));
+            const userRef = doc(db, 'users', auth.currentUser.uid);
+            const snap = await getDoc(userRef);
+            if (!snap.exists()) return;
+            const inbox = (snap.data().inbox || []).filter(n => n.id !== notifId);
+            await updateDoc(userRef, { inbox });
+            renderInbox();
         } catch(e) { console.error(e); }
     };
 
@@ -9115,15 +9142,6 @@ window.mcBroadcastEventResults = async function(eventId) {
                 });
             }
             
-            // Send single broadcast notification for all students (informational — no action button)
-            await window._broadcastNotification({
-                type: 'broadcast',
-                title: `📊 ${evTitle} - Results Released`,
-                message: `Your results for ${evTitle} are ready for ${Object.keys(studentResults).length} student(s). Check your dashboard to view.`,
-                brandColor: '#7c3aed',
-                brandIcon: 'gavel'
-            });
-            
             let totalSent = 0;
             
             // Process each student
@@ -9157,6 +9175,21 @@ window.mcBroadcastEventResults = async function(eventId) {
                     isMock: true,
                     releasedAt: serverTimestamp()
                 });
+                
+                // Add notification to user's inbox
+                const userRef = doc(db, 'users', uid);
+                const userSnap = await getDoc(userRef);
+                const inbox = userSnap.exists() ? (userSnap.data().inbox || []) : [];
+                inbox.unshift({
+                    id: 'res_' + Date.now().toString(36) + '_' + uid.substring(0,4),
+                    type: 'result',
+                    title: `📊 ${evTitle} - Results Released`,
+                    message: `Your results for ${evTitle} are ready. Tap to print your result sheet.`,
+                    resultId: resultId,
+                    eventId: eventId,
+                    timestamp: new Date().toISOString()
+                });
+                await updateDoc(userRef, { inbox });
                 
                 totalSent++;
             }
