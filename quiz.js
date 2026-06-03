@@ -1180,6 +1180,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     timestamp: serverTimestamp()
                 });
 
+                // Also update _data/registrations with score (triggers admin's real-time listener)
+                try {
+                    const regRef = doc(db, 'subscription_events', examState.quizId, '_data', 'registrations');
+                    const regSnap = await getDoc(regRef);
+                    if (regSnap.exists()) {
+                        const regData = regSnap.data();
+                        const students = regData.students || [];
+                        const idx = students.findIndex(s => s.uid === currentUser.uid);
+                        if (idx >= 0) {
+                            students[idx] = {
+                                ...students[idx],
+                                score: finalScore,
+                                correct: correct,
+                                totalQuestions: total,
+                                timeTaken: examState.timeTaken,
+                                submittedAt: new Date().toISOString()
+                            };
+                            await updateDoc(regRef, { students });
+                        }
+                    }
+                } catch(e) { console.error('Failed to update _data/registrations:', e); }
+
                 // Add to takenMocks in user doc (so inbox/schedule can hide taken exams)
                 try {
                     const userRef = doc(db, 'users', currentUser.uid);
