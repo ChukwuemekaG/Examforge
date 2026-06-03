@@ -5757,29 +5757,22 @@ window.adminPromptNotification = function(userId) {
                     });
                 });
 
-                // Also append to _data/registrations doc (1 doc for all students, 0 reads)
+                // Append to _data/registrations without duplicates
                 try {
-                    await updateDoc(doc(db, 'subscription_events', eventId, '_data', 'registrations'), {
-                        students: arrayUnion({
-                            uid: uid,
-                            subjects: selected,
-                            displayName: auth.currentUser.displayName || '',
-                            email: auth.currentUser.email || '',
-                            registeredAt: new Date().toISOString()
-                        })
+                    const regRef = doc(db, 'subscription_events', eventId, '_data', 'registrations');
+                    const snap = await getDoc(regRef);
+                    let students = snap.exists() ? (snap.data().students || []) : [];
+                    // Remove any existing entry for this user
+                    students = students.filter(s => s.uid !== uid);
+                    students.push({
+                        uid: uid,
+                        subjects: selected,
+                        displayName: auth.currentUser.displayName || '',
+                        email: auth.currentUser.email || '',
+                        registeredAt: new Date().toISOString()
                     });
-                } catch(e) {
-                    // Doc doesn't exist yet, create it
-                    await setDoc(doc(db, 'subscription_events', eventId, '_data', 'registrations'), {
-                        students: [{
-                            uid: uid,
-                            subjects: selected,
-                            displayName: auth.currentUser.displayName || '',
-                            email: auth.currentUser.email || '',
-                            registeredAt: new Date().toISOString()
-                        }]
-                    });
-                }
+                    await setDoc(regRef, { students });
+                } catch(e) { console.error('Failed to update _data/registrations:', e); }
 
                 modal.remove();
                 window.showEFModal("Success", "Registration successful! You will be notified when your exams are ready.", "AWESOME", null, true);
@@ -9455,6 +9448,27 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
         window.showEFModal("Error", e.message, "OK", null, true);
     }
 };
+
+
+
+// -- Print individual result sheet --
+    window.printResult = async function(resultId, eventId) {
+        try {
+            const snap = await getDoc(doc(db, 'users', auth.currentUser.uid, 'results', resultId));
+            if (!snap.exists()) { alert('Result not found.'); return; }
+            const data = snap.data();
+            if (!data.resultSheet) { alert('No result sheet available.'); return; }
+            const w = window.open('', '_blank', 'width=800,height=600');
+            w.document.write('<html><head><title>ExamForge Result</title><style>body{font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto;}</style></head><body>');
+            w.document.write(data.resultSheet);
+            w.document.write('</body></html>');
+            w.document.close();
+            w.focus();
+        } catch(e) {
+            console.error('Print failed:', e);
+            alert('Failed to open result: ' + e.message);
+        }
+    };
 
 // Global Modal Scroll Preventer
 const _modalObserver = new MutationObserver(() => {
