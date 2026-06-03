@@ -6288,7 +6288,7 @@ window.adminPromptNotification = function(userId) {
                         <a href="${s.quizUrl}" class="btn btn-primary btn-sm" style="text-decoration:none;">
                             <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">play_arrow</span> Start
                         </a>` : ''}
-                        <button onclick="window.deleteScheduleItem('${s._id}')" title="Remove"
+                        <button onclick="window.deleteScheduleItem('${s.id || s._id || ''}')" title="Remove"
                             style="background:transparent;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;padding:5px;color:var(--text-muted);display:flex;align-items:center;transition:border-color .15s;"
                             onmouseenter="this.style.borderColor='#dc2626';this.style.color='#dc2626';"
                             onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)';">
