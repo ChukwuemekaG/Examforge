@@ -6114,19 +6114,15 @@ window.adminPromptNotification = function(userId) {
             const userData_full = await window._getUserData(auth.currentUser.uid);
             let schedItems = userData_full.schedule || [];
             
-            // Also load broadcast schedules from live data
-            let broadcastScheds = (window._liveData && window._liveData.broadcastSchedules) || [];
-            // Fallback: direct Firestore read (bypasses cache) if live data is empty
-            if (!broadcastScheds.length) {
-                try {
-                    const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                    const liveSnap = await getDoc(doc(db, '_admin_panel', 'data'));
-                    if (liveSnap.exists()) {
-                        const data = liveSnap.data();
-                        if (data.broadcastSchedules) broadcastScheds = data.broadcastSchedules;
-                    }
-                } catch(e) { console.error('Schedule broadcast fallback failed:', e); }
-            }
+            // Load broadcast schedules directly from Firestore (1 read, always fresh)
+            let broadcastScheds = [];
+            try {
+                const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                const liveSnap = await getDoc(doc(db, '_admin_panel', 'data'));
+                if (liveSnap.exists() && liveSnap.data().broadcastSchedules) {
+                    broadcastScheds = liveSnap.data().broadcastSchedules;
+                }
+            } catch(e) { console.error('Schedule broadcast read failed:', e); }
             schedItems = [...schedItems, ...broadcastScheds];
             
             userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
@@ -6608,19 +6604,15 @@ window.adminPromptNotification = function(userId) {
         const userData_full = await window._getUserData(auth.currentUser.uid);
         let notifications = userData_full.inbox || [];
         
-        // Also load broadcast notifications from live data
-        let broadcastItems = (window._liveData && window._liveData.broadcastNotifications) || [];
-        // Fallback: direct Firestore read (bypasses cache) if live data is empty
-        if (!broadcastItems.length) {
-            try {
-                const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                const liveSnap = await getDoc(doc(db, '_admin_panel', 'data'));
-                if (liveSnap.exists()) {
-                    const data = liveSnap.data();
-                    if (data.broadcastNotifications) broadcastItems = data.broadcastNotifications;
-                }
-            } catch(e) { console.error('Broadcast fallback failed:', e); }
-        }
+        // Load broadcast notifications directly from Firestore (1 read, always fresh)
+        let broadcastItems = [];
+        try {
+            const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const liveSnap = await getDoc(doc(db, '_admin_panel', 'data'));
+            if (liveSnap.exists() && liveSnap.data().broadcastNotifications) {
+                broadcastItems = liveSnap.data().broadcastNotifications;
+            }
+        } catch(e) { console.error('Broadcast read failed:', e); }
         notifications = [...broadcastItems, ...notifications].slice(0, 50);
 
         const now = Date.now();
