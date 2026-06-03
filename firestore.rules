@@ -1,7 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all authenticated users to read everything
+    // Explicit matches for all used collections
+    match /_notifications/{doc} {
+      allow read, write: if request.auth != null;
+    }
+    match /_schedules/{doc} {
+      allow read, write: if request.auth != null;
+    }
+    match /_admin_panel/{doc} {
+      allow read, write: if request.auth != null;
+    }
+    match /_data/{doc} {
+      allow read, write: if request.auth != null;
+    }
+    // Catch-all for everything else
     match /{document=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null;

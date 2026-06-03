@@ -6119,9 +6119,9 @@ window.adminPromptNotification = function(userId) {
             // Load broadcast schedules directly
             let broadcastScheds = [];
             try {
-                await sync.refresh('_schedules/latest');
-                const schedDoc = await sync.doc('_schedules/latest');
-                if (schedDoc && schedDoc.items) broadcastScheds = schedDoc.items;
+                const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                const snap = await getDoc(fDoc(db, '_schedules', 'latest'));
+                if (snap.exists()) broadcastScheds = snap.data().items || [];
             } catch(e) { console.error('Schedule broadcast read failed:', e); }
             schedItems = [...schedItems, ...broadcastScheds];
             
@@ -6607,9 +6607,9 @@ window.adminPromptNotification = function(userId) {
         // Load broadcast notifications directly
         let broadcastItems = [];
         try {
-            await sync.refresh('_notifications/latest');
-            const notifDoc = await sync.doc('_notifications/latest');
-            if (notifDoc && notifDoc.items) broadcastItems = notifDoc.items;
+            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const snap = await getDoc(fDoc(db, '_notifications', 'latest'));
+            if (snap.exists()) broadcastItems = snap.data().items || [];
         } catch(e) { console.error('Broadcast read failed:', e); }
         notifications = [...broadcastItems, ...notifications].slice(0, 50);
 
