@@ -420,49 +420,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.printResult = async function(resultId, eventId) {
         try {
-            const snap = await getDoc(doc(db, 'users', auth.currentUser.uid, 'results', resultId));
+            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
             if (!snap.exists()) { alert('Result not found.'); return; }
             const data = snap.data();
             if (!data.resultSheet) { alert('No result sheet available.'); return; }
             
-            // Generate PDF
-            if (!window.jspdf) {
-                await new Promise((resolve, reject) => {
-                    const s = document.createElement('script');
-                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                    s.onload = resolve; s.onerror = reject;
-                    document.head.appendChild(s);
-                });
-            }
-            if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF library not loaded.'); return; }
-            
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4');
-            
-            // Extract text from resultSheet HTML for PDF
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = data.resultSheet;
-            tempDiv.style.position = 'absolute';
-            tempDiv.style.left = '-9999px';
-            document.body.appendChild(tempDiv);
-            const text = tempDiv.innerText || tempDiv.textContent || '';
-            document.body.removeChild(tempDiv);
-            
-            // Format PDF
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            const lines = text.split('\n');
-            let y = 15;
-            lines.forEach(line => {
-                if (y > 280) { doc.addPage(); y = 15; }
-                doc.text(line.trim(), 10, y);
-                y += 5;
-            });
-            
-            doc.save(`Result_${data.eventTitle || 'Exam'}.pdf`);
+            const w = window.open('', '_blank');
+            w.document.write('<html><head><title>ExamForge Result</title><style>body{font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ddd;padding:8px;text-align:left;}th{background:#f5f5f5;}</style></head><body>');
+            w.document.write(data.resultSheet);
+            w.document.write('</body></html>');
+            w.document.close();
+            w.focus();
         } catch(e) {
             console.error('Print failed:', e);
-            alert('Failed to generate PDF: ' + e.message);
+            alert('Failed to open result: ' + e.message);
         }
     };
 
@@ -9161,6 +9133,20 @@ window.mcBroadcastEventResults = async function(eventId) {
             // Mark event as broadcasted
             const { doc, updateDoc, setDoc, deleteDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             await updateDoc(doc(db, 'subscription_events', eventId), { resultsReleased: true });
+        // Force cleanup duplicates in _data/registrations
+        try {
+            const regRef = doc(db, 'subscription_events', eventId, '_data', 'registrations');
+            const regSnap = await getDoc(regRef);
+            if (regSnap.exists()) {
+                const students = regSnap.data().students || [];
+                const seen = new Set();
+                const unique = students.filter(s => { if(seen.has(s.uid)) return false; seen.add(s.uid); return true; });
+                if (unique.length !== students.length) {
+                    await updateDoc(regRef, { students: unique });
+                    console.log(`Deduped ${students.length - unique.length} duplicate registrations`);
+                }
+            }
+        } catch(e) {}
             await sync.refresh('subscription_events');
             const evData = await sync.doc('subscription_events/' + eventId) || {};
             const evTitle = evData.title || 'Mock Exam';
@@ -9454,11 +9440,12 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
 // -- Print individual result sheet --
     window.printResult = async function(resultId, eventId) {
         try {
-            const snap = await getDoc(doc(db, 'users', auth.currentUser.uid, 'results', resultId));
+            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
             if (!snap.exists()) { alert('Result not found.'); return; }
             const data = snap.data();
             if (!data.resultSheet) { alert('No result sheet available.'); return; }
-            const w = window.open('', '_blank', 'width=800,height=600');
+            const w = window.open('', '_blank');
             w.document.write('<html><head><title>ExamForge Result</title><style>body{font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto;}</style></head><body>');
             w.document.write(data.resultSheet);
             w.document.write('</body></html>');
