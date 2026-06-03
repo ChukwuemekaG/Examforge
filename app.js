@@ -8104,6 +8104,10 @@ window.mcViewSubEventDetails = async function(eventId) {
                     const regHeading = document.getElementById('ef-se-det-reg-heading');
                     if (regHeading) regHeading.textContent = `(${count} total)`;
                 }
+                // Also re-render student table with latest attempt data
+                if (window.mcRenderRegStudentsTable) {
+                    window.mcRenderRegStudentsTable(eventId);
+                }
             },
             (error) => console.error('Reg data listener error:', error)
         );
