@@ -6299,7 +6299,7 @@ window.adminPromptNotification = function(userId) {
             const userRef = doc(db, 'users', auth.currentUser.uid);
             const snap = await getDoc(userRef);
             if (!snap.exists()) return;
-            const schedule = (snap.data().schedule || []).filter(s => s.id !== itemId);
+            const schedule = (snap.data().schedule || []).filter(s => (s.id || s._id) !== itemId);
             await updateDoc(userRef, { schedule });
             renderSchedule();
         } catch(e) { console.error(e); }
