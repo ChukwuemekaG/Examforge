@@ -9601,6 +9601,7 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
 
 // -- Print individual result sheet (PDF download) --
     window.printResult = async function(resultId, eventId) {
+        let container, toast;
         try {
             const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
@@ -9609,23 +9610,24 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             if (!data.resultSheet) { alert('No result sheet available.'); return; }
 
             // Show loading indicator
-            const toast = document.createElement('div');
+            toast = document.createElement('div');
             toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#18160F;color:#fff;padding:12px 24px;border-radius:12px;font-family:Poppins,sans-serif;font-weight:600;font-size:14px;z-index:99999;box-shadow:0 4px 24px rgba(0,0,0,0.2);';
             toast.textContent = '⏳ Generating PDF...';
             document.body.appendChild(toast);
 
             // Create hidden container for PDF rendering
-            const container = document.createElement('div');
+            container = document.createElement('div');
             container.style.cssText = 'position:absolute;left:-9999px;top:0;width:210mm;background:#fbfcff;font-family:Poppins,sans-serif;padding:20px;';
             container.innerHTML = data.resultSheet;
             document.body.appendChild(container);
 
             // Load html2pdf.js
             await new Promise((resolve, reject) => {
+                if (typeof html2pdf !== 'undefined') { resolve(); return; }
                 const s = document.createElement('script');
                 s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-                s.onload = resolve;
-                s.onerror = reject;
+                s.onload = () => typeof html2pdf !== 'undefined' ? resolve() : reject(new Error('html2pdf failed to init'));
+                s.onerror = () => reject(new Error('Failed to load html2pdf library'));
                 document.head.appendChild(s);
             });
 
@@ -9634,38 +9636,38 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
                 margin: [10, 10, 10, 10],
                 filename: 'ExamForge_Result_Sheet.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: {
-                    scale: 2,
-                    useCORS: true,
-                    letterRendering: true,
-                    backgroundColor: '#fbfcff'
-                },
-                jsPDF: {
-                    unit: 'mm',
-                    format: 'a4',
-                    orientation: 'portrait'
-                }
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#fbfcff' },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             }).from(container).save();
-
-            // Clean up
-            document.body.removeChild(container);
-            document.body.removeChild(toast);
         } catch(e) {
             console.error('PDF generation failed:', e);
             // Fallback: try opening in new tab
             try {
+                const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                 const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
                 const data = snap.data();
                 if (data?.resultSheet) {
                     const w = window.open('', '_blank');
-                    w.document.write('<html><head><title>ExamForge Result</title><style>body{font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto;}</style></head><body>');
-                    w.document.write(data.resultSheet);
-                    w.document.write('</body></html>');
-                    w.document.close();
-                    w.focus();
+                    if (w) {
+                        w.document.write('<html><head><title>ExamForge Result</title><style>body{font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto;}</style></head><body>');
+                        w.document.write(data.resultSheet);
+                        w.document.write('</body></html>');
+                        w.document.close();
+                        w.focus();
+                    } else {
+                        alert('Please allow popups to view the result.');
+                    }
                 }
             } catch(e2) {
-                alert('Failed to generate PDF: ' + e.message);
+                alert('Failed to generate PDF: ' + e2.message);
+            }
+        } finally {
+            // Safely clean up DOM elements
+            try {
+                if (container && container.parentNode) document.body.removeChild(container);
+                if (toast && toast.parentNode) document.body.removeChild(toast);
+            } catch(cleanupErr) {
+                console.warn('Cleanup warning:', cleanupErr);
             }
         }
     };
