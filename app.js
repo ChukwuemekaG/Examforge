@@ -6825,14 +6825,10 @@ window.adminPromptNotification = function(userId) {
             if (snap.exists()) broadcastItems = snap.data().items || [];
         } catch(e) { console.error('Broadcast read failed:', e); }
         
-        // Filter out notifications for exams the user has already taken
-        if (takenMocks.length) {
-            const takenUrls = takenMocks.map(m => `/quiz?mockid=${m}`);
-            const before = broadcastItems.length;
-            broadcastItems = broadcastItems.filter(n => !n.quizUrl || !takenUrls.includes(n.quizUrl));
-            const filtered = before - broadcastItems.length;
-            console.log(`[Inbox] Filtered ${filtered} notifications, ${broadcastItems.length} remaining, takenMocks:`, takenMocks);
-        }
+        // Filter out all broadcast notifications with a quizUrl (exam-related — only schedule items)
+        const before = broadcastItems.length;
+        broadcastItems = broadcastItems.filter(n => !n.quizUrl);
+        console.log(`[Inbox] Filtered ${before - broadcastItems.length} exam notifications, ${broadcastItems.length} remaining`);
         
         // Filter out dismissed broadcast items
         if (dismissedBroadcast.length) {

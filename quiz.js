@@ -270,23 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timerEl2 = document.getElementById('rule-timer');
                 if (timerEl2) timerEl2.style.display = 'block';
 
-                // Check if this mock was already taken/started
-                if (examState.isMockExam && examState.quizId) {
-                    try {
-                        const { doc: fDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                        const userRef = fDoc(db, 'users', currentUser.uid);
-                        const uData = await getDoc(userRef);
-                        const takenMocks = uData.exists() ? (uData.data().takenMocks || []) : [];
-                        if (takenMocks.includes(examState.quizId)) {
-                            alert('You have already taken this exam. Each exam can only be attempted once.');
-                            window.location.href = '/app.html';
-                            return;
-                        }
-                    } catch(e) {
-                        console.error('Failed to check takenMocks:', e);
-                    }
-                }
-
                 switchView('warning');
             } catch (e) {
                 showLoadError(e);
