@@ -9423,15 +9423,16 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             // Build self-contained full HTML document (same approach as printResultSheet)
             const fullDoc = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>ExamForge - Official Result Sheet</title>\n<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">\n<style>' + getResultSheetCSS() + '</style>\n</head>\n<body>\n    <div class="result-container">\n        ' + data.resultSheet + '\n    </div>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>\n<script>\nsetTimeout(function() {\n    var el = document.querySelector(\'.result-container\');\n    if (!el) return;\n    html2pdf().set({\n        margin: [10, 10, 10, 10],\n        filename: \'ExamForge_Result_Sheet.pdf\',\n        image: { type: \'jpeg\', quality: 0.98 },\n        html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: \'#fbfcff\' },\n        jsPDF: { unit: \'mm\', format: \'a4\', orientation: \'portrait\' }\n    }).from(el).save().then(function() {\n        try { window.parent.postMessage(\'pdfDone\', '*'); } catch(e) {}\n    }).catch(function() {\n        try { window.parent.postMessage(\'pdfDone\', '*'); } catch(e) {}\n    });\n}, 2000);\n<\/script>\n</body>\n</html>';
 
-            // Create blob URL
-            const blob = new Blob([fullDoc], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-
-            // Load in hidden iframe — the embedded html2pdf script auto-runs inside the iframe
+            // Create hidden iframe
             iframe = document.createElement('iframe');
             iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;opacity:0.01;pointer-events:none;z-index:-1;border:none;';
             document.body.appendChild(iframe);
-            iframe.src = url;
+
+            // Write the self-contained full document directly (same-origin — downloads work)
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(fullDoc);
+            iframeDoc.close();
 
             // Wait for PDF generation — listen for completion message from iframe
             await new Promise((resolve) => {
@@ -9450,7 +9451,6 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             });
 
             // Clean up
-            URL.revokeObjectURL(url);
             document.body.removeChild(toast);
             if (iframe && iframe.parentNode) document.body.removeChild(iframe);
         } catch(e) {
