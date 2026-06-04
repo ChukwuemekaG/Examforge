@@ -6290,21 +6290,16 @@ window.adminPromptNotification = function(userId) {
         let broadcastScheds = [];
         
         try {
-            // Read user data raw for fresh takenMocks
+            // Read user data raw for fresh schedule data
             const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             const userSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
             const userRaw = userSnap.exists() ? userSnap.data() : {};
-            const takenMocksSched = userRaw.takenMocks || [];
             schedItems = userRaw.schedule || [];
             
             // Load broadcast schedules directly
             const schedSnap = await getDoc(fDoc(db, '_schedules', 'latest'));
             if (schedSnap.exists()) broadcastScheds = schedSnap.data().items || [];
             
-            // Filter out schedules for exams the user has already taken
-            if (takenMocksSched.length) {
-                broadcastScheds = broadcastScheds.filter(s => !s.mockId || !takenMocksSched.includes(s.mockId));
-            }
             // Filter out dismissed broadcast schedule items
             const dismissedScheds = userRaw.dismissedScheds || [];
             if (dismissedScheds.length) {
@@ -6809,11 +6804,10 @@ window.adminPromptNotification = function(userId) {
 
         // Cache-first one-time fetch (no real-time listener = zero continuous reads)
         const path = 'users/' + auth.currentUser.uid + '/notifications';
-        // Read user data raw (bypasses SyncManager cache) for fresh takenMocks
+        // Read user data raw (bypasses SyncManager cache) for fresh inbox data
         const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         const userSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
         const userRaw = userSnap.exists() ? userSnap.data() : {};
-        const takenMocks = userRaw.takenMocks || [];
         const dismissedBroadcast = userRaw.dismissedBroadcast || [];
         let notifications = userRaw.inbox || [];
         
@@ -7439,20 +7433,6 @@ function mcGPAComment(gpa) {
 }
 
 window._startMockExam = async function(mockId, quizUrl) {
-    if (!mockId) { window.location.href = quizUrl; return; }
-    if (!auth.currentUser) { window.location.href = quizUrl; return; }
-    try {
-        const { doc: fDoc, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const userRef = fDoc(db, 'users', auth.currentUser.uid);
-        const uData = await getDoc(userRef);
-        const existing = uData.exists() ? (uData.data().takenMocks || []) : [];
-        if (!existing.includes(mockId)) {
-            existing.push(mockId);
-            await updateDoc(userRef, { takenMocks: existing });
-        }
-    } catch(e) {
-        console.error('Failed to record mock start:', e);
-    }
     window.location.href = quizUrl;
 };
 

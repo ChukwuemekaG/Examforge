@@ -508,21 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
             setTimeout(beginActiveQuiz, 500);
 
-            // Record this mock as taken/started immediately
-            if (examState.isMockExam && examState.quizId) {
-                try {
-                    const { doc: fDoc, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                    const userRef = fDoc(db, 'users', currentUser.uid);
-                    const uData = await getDoc(userRef);
-                    const existing = uData.exists() ? (uData.data().takenMocks || []) : [];
-                    if (!existing.includes(examState.quizId)) {
-                        existing.push(examState.quizId);
-                        await updateDoc(userRef, { takenMocks: existing });
-                    }
-                } catch(e) {
-                    console.error('Failed to record mock start:', e);
-                }
-            }
         } catch (err) {
             console.warn("Fullscreen blocked.");
         }
@@ -1224,16 +1209,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } catch(e) { console.error('Failed to update _data/registrations:', e); }
 
-                // Add to takenMocks in user doc (so inbox/schedule can hide taken exams)
-                try {
-                    const userRef = doc(db, 'users', currentUser.uid);
-                    const uData = await getDoc(userRef);
-                    const existing = uData.exists() ? (uData.data().takenMocks || []) : [];
-                    if (!existing.includes(examState.quizId)) {
-                        existing.push(examState.quizId);
-                        await updateDoc(userRef, { takenMocks: existing });
-                    }
-                } catch(e) { console.error('Failed to update takenMocks:', e); }
 
                 // ── Clean up notification & schedule after mock submission ──
                 try {
