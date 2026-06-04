@@ -1,4 +1,4 @@
-const FONT_CACHE = 'examforge-cache-v18';
+const FONT_CACHE = 'examforge-cache-v19';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
