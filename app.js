@@ -9404,82 +9404,17 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
 
 // -- Print individual result sheet (PDF download) --
     window.printResult = async function(resultId, eventId) {
-        let iframe, toast;
         try {
             const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
             if (!snap.exists()) { alert('Result not found.'); return; }
             const data = snap.data();
             if (!data.resultSheet) { alert('No result sheet available.'); return; }
-
-            // Show loading indicator
-            toast = document.createElement('div');
-            toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#18160F;color:#fff;padding:12px 24px;border-radius:12px;font-family:Poppins,sans-serif;font-weight:600;font-size:14px;z-index:99999;box-shadow:0 4px 24px rgba(0,0,0,0.2);';
-            toast.textContent = '⏳ Generating PDF...';
-            document.body.appendChild(toast);
-
-            // Build self-contained full HTML document (same approach as printResultSheet)
-            const fullDoc = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>ExamForge - Official Result Sheet</title>\n<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">\n<style>' + getResultSheetCSS() + '</style>\n</head>\n<body>\n    <div class="result-container">\n        ' + data.resultSheet + '\n    </div>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>\n<script>\nsetTimeout(function() {\n    try {\n        window.parent.postMessage(\'pdfStatus:loading library\', \'*\');\n    } catch(e) {}\n    \n    if (typeof html2pdf === \'undefined\') {\n        try { window.parent.postMessage(\'pdfStatus:html2pdf not loaded\', \'*\'); } catch(e) {}\n        return;\n    }\n    \n    try {\n        window.parent.postMessage(\'pdfStatus:starting capture\', \'*\');\n    } catch(e) {}\n    \n    var el = document.querySelector(\'.result-container\');\n    if (!el) {\n        try { window.parent.postMessage(\'pdfStatus:element not found\', \'*\'); } catch(e) {}\n        return;\n    }\n    \n    html2pdf().set({\n        margin: [10, 10, 10, 10],\n        filename: \'ExamForge_Result_Sheet.pdf\',\n        image: { type: \'jpeg\', quality: 0.98 },\n        html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: \'#fbfcff\' },\n        jsPDF: { unit: \'mm\', format: \'a4\', orientation: \'portrait\' }\n    }).from(el).save().then(function() {\n        try { window.parent.postMessage(\'pdfDone\', \'*\'); } catch(e) {}\n    }).catch(function(err) {\n        try { window.parent.postMessage(\'pdfStatus:\' + (err.message || \'save failed\'), \'*\'); } catch(e) {}\n    });\n}, 2000);\n<\/script>\n</body>\n</html>';
-
-            // Create hidden iframe
-            iframe = document.createElement('iframe');
-            iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;opacity:0.01;pointer-events:none;z-index:-1;border:none;';
-            document.body.appendChild(iframe);
-
-            // Write the self-contained full document directly via srcdoc
-            iframe.srcdoc = fullDoc;
-
-            // Wait for PDF generation — listen for completion message from iframe
-            await new Promise((resolve) => {
-                const onMessage = function(event) {
-                    if (event.source !== iframe.contentWindow) return;
-                    if (event.data === 'pdfDone') {
-                        window.removeEventListener('message', onMessage);
-                        resolve();
-                    } else if (typeof event.data === 'string' && event.data.startsWith('pdfStatus:')) {
-                        console.log('[PDF] ' + event.data.slice(10));
-                    }
-                };
-                window.addEventListener('message', onMessage);
-                // Fallback: clean up after 10s regardless
-                setTimeout(() => {
-                    window.removeEventListener('message', onMessage);
-                    resolve();
-                }, 10000);
-            });
-
-            // Clean up
-            document.body.removeChild(toast);
-            if (iframe && iframe.parentNode) document.body.removeChild(iframe);
+            // Use the proven printResultSheet function — opens a tab, auto-downloads PDF, shows success
+            window.printResultSheet(data.resultSheet);
         } catch(e) {
-            console.error('PDF generation failed:', e);
-            if (toast && toast.parentNode) try { document.body.removeChild(toast); } catch(ex) {}
-            if (iframe && iframe.parentNode) try { document.body.removeChild(iframe); } catch(ex) {}
-            // Fallback: try opening in new tab
-            try {
-                const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
-                const data = snap.data();
-                if (data?.resultSheet) {
-                    const w = window.open('', '_blank');
-                    if (w) {
-                        w.document.write('<html><head><title>ExamForge Result</title><style>body{font-family:sans-serif;padding:20px;max-width:700px;margin:0 auto;}</style></head><body>');
-                        w.document.write(data.resultSheet);
-                        w.document.write('</body></html>');
-                        w.document.close();
-                        w.focus();
-                    } else {
-                        alert('Please allow popups to view the result.');
-                    }
-                }
-            } catch(e2) {
-                alert('Failed to generate PDF: ' + e2.message);
-            }
-        } finally {
-            try {
-                if (toast && toast.parentNode) document.body.removeChild(toast);
-                if (iframe && iframe.parentNode) document.body.removeChild(iframe);
-            } catch(ex) {}
+            console.error('Print failed:', e);
+            alert('Failed to open result: ' + e.message);
         }
     };
 
