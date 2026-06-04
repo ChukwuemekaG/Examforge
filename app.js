@@ -9406,8 +9406,7 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
 
 // -- Print individual result sheet (PDF download) --
     window.printResult = async function(resultId, eventId) {
-        let iframe;
-        let toast;
+        let iframe, toast;
         try {
             const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
@@ -9421,76 +9420,28 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             toast.textContent = '⏳ Generating PDF...';
             document.body.appendChild(toast);
 
-            // Create hidden iframe — CSS inside it won't leak to the parent page
+            // Build self-contained full HTML document (same approach as printResultSheet)
+            const fullDoc = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>ExamForge - Official Result Sheet</title>\n<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">\n<style>' + getResultSheetCSS() + '</style>\n</head>\n<body>\n    <div class="result-container">\n        ' + data.resultSheet + '\n    </div>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>\n<script>\nsetTimeout(function() {\n    var el = document.querySelector(\'.result-container\');\n    if (!el) return;\n    html2pdf().set({\n        margin: [10, 10, 10, 10],\n        filename: \'ExamForge_Result_Sheet.pdf\',\n        image: { type: \'jpeg\', quality: 0.98 },\n        html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: \'#fbfcff\' },\n        jsPDF: { unit: \'mm\', format: \'a4\', orientation: \'portrait\' }\n    }).from(el).save();\n}, 2000);\n<\/script>\n</body>\n</html>';
+
+            // Create blob URL
+            const blob = new Blob([fullDoc], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+
+            // Load in hidden iframe — the embedded html2pdf script auto-runs inside the iframe
             iframe = document.createElement('iframe');
-            // Use 0.01 opacity instead of 0 so browsers still load fonts/images
             iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;opacity:0.01;pointer-events:none;z-index:-1;border:none;';
-
-            // Set onload BEFORE writing content to avoid missing the load event
-            const iframeLoaded = new Promise((resolve) => { 
-                iframe.onload = resolve;
-                // Fallback in case onload already fired
-                setTimeout(resolve, 3000);
-            });
-
             document.body.appendChild(iframe);
+            iframe.src = url;
 
-            // Write full HTML document into the iframe (with CSS, fonts, and content)
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-            iframeDoc.open();
-            iframeDoc.write('<!DOCTYPE html>\n<html>\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>ExamForge - Official Result Sheet</title>\n    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">\n    <style>' + getResultSheetCSS() + '</style>\n</head>\n<body>\n    <div class="result-container">' + data.resultSheet + '</div>\n</body>\n</html>');
-            iframeDoc.close();
-
-            // Wait for iframe to load
-            await iframeLoaded;
-
-            // Wait for fonts and rendering to settle
-            try { await iframeDoc.fonts.ready; } catch(e) {}
-            await new Promise(r => setTimeout(r, 800));
-
-            // Load html2pdf.js
-            await new Promise((resolve, reject) => {
-                if (typeof html2pdf !== 'undefined') { resolve(); return; }
-                const s = document.createElement('script');
-                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-                s.onload = () => typeof html2pdf !== 'undefined' ? resolve() : reject(new Error('html2pdf failed to init'));
-                s.onerror = () => reject(new Error('Failed to load html2pdf library'));
-                document.head.appendChild(s);
-            });
-
-            // Generate PDF from the iframe's result-container element
-            const element = iframeDoc.querySelector('.result-container');
-            if (!element) throw new Error('Result container not found in iframe');
-
-            // Wrap html2pdf in a promise for proper await
-            await new Promise((resolve, reject) => {
-                html2pdf().set({
-                    margin: [10, 10, 10, 10],
-                    filename: 'ExamForge_Result_Sheet.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { 
-                        scale: 2, 
-                        useCORS: true,
-                        letterRendering: true,
-                        backgroundColor: '#fbfcff'
-                    },
-                    jsPDF: { 
-                        unit: 'mm', 
-                        format: 'a4', 
-                        orientation: 'portrait' 
-                    }
-                }).from(element).save().then(() => {
-                    // Give a small delay for the save to complete
-                    setTimeout(resolve, 500);
-                }).catch(reject);
-            });
+            // Wait for PDF generation (2s timer + rendering time)
+            await new Promise(r => setTimeout(r, 5000));
 
             // Clean up
+            URL.revokeObjectURL(url);
             document.body.removeChild(toast);
             if (iframe && iframe.parentNode) document.body.removeChild(iframe);
         } catch(e) {
             console.error('PDF generation failed:', e);
-            // Clean up on error
             if (toast && toast.parentNode) try { document.body.removeChild(toast); } catch(ex) {}
             if (iframe && iframe.parentNode) try { document.body.removeChild(iframe); } catch(ex) {}
             // Fallback: try opening in new tab
@@ -9514,7 +9465,6 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
                 alert('Failed to generate PDF: ' + e2.message);
             }
         } finally {
-            // Final cleanup
             try {
                 if (toast && toast.parentNode) document.body.removeChild(toast);
                 if (iframe && iframe.parentNode) document.body.removeChild(iframe);
