@@ -17,6 +17,98 @@ import { SyncManager } from './sync.js';
 let sync = null;
 let localCache = null;
 
+function getResultSheetCSS() {
+    return `
+        @page { margin: 10mm; size: A4 portrait; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        .result-container {
+            font-family: 'Poppins', sans-serif;
+            color: #18160F;
+            font-size: 15px;
+            line-height: 1.6;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            position: relative;
+            background: #fbfcff;
+            padding: 20px;
+        }
+        .result-container::before {
+            content: '';
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px; height: 600px;
+            background-image: url('/examforge.jpeg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .result-container { max-width: 210mm; margin: 0 auto; position: relative; z-index: 1; }
+        .top-bar {
+            display: flex; align-items: center; gap: 16px;
+            padding: 20px 24px; background: #FFFFFF;
+            border: 2px solid #6d6d6d; margin-bottom: 28px;
+        }
+        .top-bar img { max-width:120px; max-height:60px; width:auto; height:auto; object-fit:contain; }
+        .top-bar .title-area { flex: 1; }
+        .top-bar .title-area h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 24px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: -0.03em;
+            color: #18160F; line-height: 1;
+        }
+        .top-bar .title-area h1 span { color: #fe6961; }
+        .top-bar .title-area .sub {
+            font-size: 12px; font-weight: 600;
+            color: #3a3b3d; text-transform: uppercase;
+            letter-spacing: 0.07em; margin-top: 4px;
+        }
+        .event-banner {
+            background: #fe6961; color: #FFFFFF;
+            padding: 14px 20px; font-size: 20px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.04em;
+            border: 2px solid #6d6d6d; margin-bottom: 20px;
+        }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+        .info-card { background: #FFFFFF; border: 1px solid #6d6d6d; padding: 12px 16px; }
+        .info-card .label { font-size: 10px; font-weight: 700; color: #3a3b3d; text-transform: uppercase; letter-spacing: 0.08em; }
+        .info-card .value { font-size: 16px; font-weight: 900; color: #18160F; margin-top: 2px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; background: #FFFFFF; border: 2px solid #6d6d6d; }
+        table th { background: #18160F; color: #FFFFFF; padding: 10px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid #333; text-align: center; }
+        table th:first-child { text-align: left; }
+        table td { padding: 10px 8px; border: 1px solid #666; text-align: center; font-size: 14px; font-weight: 600; color: #353637; }
+        table td:first-child { text-align: left; font-weight: 700; color: #18160F; }
+        table tr:nth-child(even) td { background: #f4f4f0; }
+        .grade-A { color: #16a34a; font-weight: 800; }
+        .grade-B { color: #2563eb; font-weight: 800; }
+        .grade-C { color: #ca8a04; font-weight: 800; }
+        .grade-D { color: #d97706; font-weight: 800; }
+        .grade-E { color: #b06030; font-weight: 800; }
+        .grade-F { color: #dc2626; font-weight: 800; }
+        .na-subject { color: #999; font-style: italic; font-weight: 500; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+        .summary-card { background: #FFFFFF; border: 2px solid #6d6d6d; padding: 16px; text-align: center; }
+        .summary-card.gpa-card { background: #fe6961; color: #FFFFFF; border-color: #18160F; }
+        .summary-card .s-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #3a3b3d; }
+        .summary-card.gpa-card .s-label { color: rgba(255,255,255,0.85); }
+        .summary-card .s-value { font-size: 32px; font-weight: 900; color: #18160F; line-height: 1.1; margin-top: 4px; letter-spacing: -0.03em; }
+        .summary-card.gpa-card .s-value { color: #FFFFFF; }
+        .comment-box { background: #FFFFFF; border: 2px solid #18160F; padding: 16px 20px; margin-bottom: 24px; }
+        .comment-box .c-label { font-size: 10px; font-weight: 700; color: #3a3b3d; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+        .comment-box .c-text { font-size: 18px; font-weight: 700; color: #18160F; }
+        .grade-ref { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 24px; padding: 12px 16px; background: #FFFFFF; border: 1px solid #666; }
+        .grade-ref-item { font-size: 10px; font-weight: 700; padding: 2px 8px; border: 1px solid #666; }
+        .signature-row { display: flex; justify-content: space-between; margin-top: 32px; padding: 0 10px; }
+        .signature-box { text-align: center; font-size: 11px; font-weight: 600; color: #3a3b3d; }
+        .signature-box .line { width: 180px; border-top: 2px solid #18160F; margin: 32px auto 6px; }
+        .footer { margin-top: 32px; padding-top: 16px; border-top: 2px solid #666; font-size: 9px; color: #3a3b3d; font-weight: 600; text-align: center; text-transform: uppercase; letter-spacing: 0.05em; }
+        @media (max-width: 600px) { .info-grid, .summary-grid { grid-template-columns: 1fr; } .signature-row { flex-direction: column; gap: 16px; } }
+    `;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // ─── DOM refs ────────────────────────────────────────────────
@@ -703,98 +795,6 @@ function setupAdminListeners() {
 
     function getExaTitle(rating) {
         return EXA_TITLES.find(t => rating >= t.min && rating <= t.max) || EXA_TITLES[0];
-    }
-
-    function getResultSheetCSS() {
-        return `
-            @page { margin: 10mm; size: A4 portrait; }
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body {
-                font-family: 'Poppins', sans-serif;
-                color: #18160F;
-                font-size: 15px;
-                line-height: 1.6;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                position: relative;
-                background: #fbfcff;
-                padding: 20px;
-            }
-            body::before {
-                content: '';
-                position: fixed;
-                top: 50%; left: 50%;
-                transform: translate(-50%, -50%);
-                width: 600px; height: 600px;
-                background-image: url('/examforge.jpeg');
-                background-size: contain;
-                background-repeat: no-repeat;
-                background-position: center;
-                opacity: 0.04;
-                pointer-events: none;
-                z-index: -1;
-            }
-            .result-container { max-width: 210mm; margin: 0 auto; position: relative; z-index: 1; }
-            .top-bar {
-                display: flex; align-items: center; gap: 16px;
-                padding: 20px 24px; background: #FFFFFF;
-                border: 2px solid #6d6d6d; margin-bottom: 28px;
-            }
-            .top-bar img { max-width:120px; max-height:60px; width:auto; height:auto; object-fit:contain; }
-            .top-bar .title-area { flex: 1; }
-            .top-bar .title-area h1 {
-                font-family: 'Poppins', sans-serif;
-                font-size: 24px; font-weight: 800;
-                text-transform: uppercase; letter-spacing: -0.03em;
-                color: #18160F; line-height: 1;
-            }
-            .top-bar .title-area h1 span { color: #fe6961; }
-            .top-bar .title-area .sub {
-                font-size: 12px; font-weight: 600;
-                color: #3a3b3d; text-transform: uppercase;
-                letter-spacing: 0.07em; margin-top: 4px;
-            }
-            .event-banner {
-                background: #fe6961; color: #FFFFFF;
-                padding: 14px 20px; font-size: 20px; font-weight: 800;
-                text-transform: uppercase; letter-spacing: 0.04em;
-                border: 2px solid #6d6d6d; margin-bottom: 20px;
-            }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
-            .info-card { background: #FFFFFF; border: 1px solid #6d6d6d; padding: 12px 16px; }
-            .info-card .label { font-size: 10px; font-weight: 700; color: #3a3b3d; text-transform: uppercase; letter-spacing: 0.08em; }
-            .info-card .value { font-size: 16px; font-weight: 900; color: #18160F; margin-top: 2px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 24px; background: #FFFFFF; border: 2px solid #6d6d6d; }
-            table th { background: #18160F; color: #FFFFFF; padding: 10px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid #333; text-align: center; }
-            table th:first-child { text-align: left; }
-            table td { padding: 10px 8px; border: 1px solid #666; text-align: center; font-size: 14px; font-weight: 600; color: #353637; }
-            table td:first-child { text-align: left; font-weight: 700; color: #18160F; }
-            table tr:nth-child(even) td { background: #f4f4f0; }
-            .grade-A { color: #16a34a; font-weight: 800; }
-            .grade-B { color: #2563eb; font-weight: 800; }
-            .grade-C { color: #ca8a04; font-weight: 800; }
-            .grade-D { color: #d97706; font-weight: 800; }
-            .grade-E { color: #b06030; font-weight: 800; }
-            .grade-F { color: #dc2626; font-weight: 800; }
-            .na-subject { color: #999; font-style: italic; font-weight: 500; }
-            .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-            .summary-card { background: #FFFFFF; border: 2px solid #6d6d6d; padding: 16px; text-align: center; }
-            .summary-card.gpa-card { background: #fe6961; color: #FFFFFF; border-color: #18160F; }
-            .summary-card .s-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #3a3b3d; }
-            .summary-card.gpa-card .s-label { color: rgba(255,255,255,0.85); }
-            .summary-card .s-value { font-size: 32px; font-weight: 900; color: #18160F; line-height: 1.1; margin-top: 4px; letter-spacing: -0.03em; }
-            .summary-card.gpa-card .s-value { color: #FFFFFF; }
-            .comment-box { background: #FFFFFF; border: 2px solid #18160F; padding: 16px 20px; margin-bottom: 24px; }
-            .comment-box .c-label { font-size: 10px; font-weight: 700; color: #3a3b3d; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-            .comment-box .c-text { font-size: 18px; font-weight: 700; color: #18160F; }
-            .grade-ref { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 24px; padding: 12px 16px; background: #FFFFFF; border: 1px solid #666; }
-            .grade-ref-item { font-size: 10px; font-weight: 700; padding: 2px 8px; border: 1px solid #666; }
-            .signature-row { display: flex; justify-content: space-between; margin-top: 32px; padding: 0 10px; }
-            .signature-box { text-align: center; font-size: 11px; font-weight: 600; color: #3a3b3d; }
-            .signature-box .line { width: 180px; border-top: 2px solid #18160F; margin: 32px auto 6px; }
-            .footer { margin-top: 32px; padding-top: 16px; border-top: 2px solid #666; font-size: 9px; color: #3a3b3d; font-weight: 600; text-align: center; text-transform: uppercase; letter-spacing: 0.05em; }
-            @media (max-width: 600px) { .info-grid, .summary-grid { grid-template-columns: 1fr; } .signature-row { flex-direction: column; gap: 16px; } }
-        `;
     }
 
     function renderRankCardHTML(title, exaRating) {
