@@ -9406,7 +9406,8 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
 
 // -- Print individual result sheet (PDF download) --
     window.printResult = async function(resultId, eventId) {
-        let container, toast;
+        let iframe;
+        let toast;
         try {
             const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
@@ -9420,11 +9421,20 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             toast.textContent = '⏳ Generating PDF...';
             document.body.appendChild(toast);
 
-            // Create hidden container for PDF rendering
-            container = document.createElement('div');
-            container.style.cssText = 'position:fixed;top:0;left:0;width:210mm;background:#fbfcff;font-family:Poppins,sans-serif;opacity:0;pointer-events:none;z-index:-1;';
-            container.innerHTML = `<style>${getResultSheetCSS()}</style><div class="result-container">${data.resultSheet}</div>`;
-            document.body.appendChild(container);
+            // Create hidden iframe — CSS inside it won't leak to the parent page
+            iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;opacity:0;pointer-events:none;z-index:-1;border:none;';
+            document.body.appendChild(iframe);
+
+            // Write full HTML document into the iframe (with CSS, fonts, and content)
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write('<!DOCTYPE html>\n<html>\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>ExamForge - Official Result Sheet</title>\n    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">\n    <style>' + getResultSheetCSS() + '</style>\n</head>\n<body>\n    <div class="result-container">' + data.resultSheet + '</div>\n</body>\n</html>');
+            iframeDoc.close();
+
+            // Wait for iframe to load and fonts to be ready
+            await new Promise((resolve) => { iframe.onload = resolve; setTimeout(resolve, 2000); });
+            try { await iframeDoc.fonts.ready; } catch(e) {}
 
             // Load html2pdf.js
             await new Promise((resolve, reject) => {
@@ -9436,16 +9446,35 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
                 document.head.appendChild(s);
             });
 
-            // Generate and download PDF
+            // Generate PDF from the iframe's result-container element
+            const element = iframeDoc.querySelector('.result-container');
+            if (!element) throw new Error('Result container not found in iframe');
+
             await html2pdf().set({
                 margin: [10, 10, 10, 10],
                 filename: 'ExamForge_Result_Sheet.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#fbfcff' },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).from(container).save();
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true,
+                    letterRendering: true,
+                    backgroundColor: '#fbfcff'
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait' 
+                }
+            }).from(element).save();
+
+            // Clean up
+            document.body.removeChild(toast);
+            if (iframe && iframe.parentNode) document.body.removeChild(iframe);
         } catch(e) {
             console.error('PDF generation failed:', e);
+            // Clean up on error
+            if (toast && toast.parentNode) try { document.body.removeChild(toast); } catch(ex) {}
+            if (iframe && iframe.parentNode) try { document.body.removeChild(iframe); } catch(ex) {}
             // Fallback: try opening in new tab
             try {
                 const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
@@ -9467,13 +9496,11 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
                 alert('Failed to generate PDF: ' + e2.message);
             }
         } finally {
-            // Safely clean up DOM elements
+            // Final cleanup
             try {
-                if (container && container.parentNode) document.body.removeChild(container);
                 if (toast && toast.parentNode) document.body.removeChild(toast);
-            } catch(cleanupErr) {
-                console.warn('Cleanup warning:', cleanupErr);
-            }
+                if (iframe && iframe.parentNode) document.body.removeChild(iframe);
+            } catch(ex) {}
         }
     };
 
