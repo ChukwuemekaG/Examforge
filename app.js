@@ -9423,7 +9423,16 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
 
             // Create hidden iframe — CSS inside it won't leak to the parent page
             iframe = document.createElement('iframe');
-            iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;opacity:0;pointer-events:none;z-index:-1;border:none;';
+            // Use 0.01 opacity instead of 0 so browsers still load fonts/images
+            iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;opacity:0.01;pointer-events:none;z-index:-1;border:none;';
+
+            // Set onload BEFORE writing content to avoid missing the load event
+            const iframeLoaded = new Promise((resolve) => { 
+                iframe.onload = resolve;
+                // Fallback in case onload already fired
+                setTimeout(resolve, 3000);
+            });
+
             document.body.appendChild(iframe);
 
             // Write full HTML document into the iframe (with CSS, fonts, and content)
@@ -9432,13 +9441,12 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             iframeDoc.write('<!DOCTYPE html>\n<html>\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>ExamForge - Official Result Sheet</title>\n    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">\n    <style>' + getResultSheetCSS() + '</style>\n</head>\n<body>\n    <div class="result-container">' + data.resultSheet + '</div>\n</body>\n</html>');
             iframeDoc.close();
 
-            // Wait for iframe to load and fonts to be ready
-            await new Promise((resolve) => { 
-                let done = false;
-                iframe.onload = () => { if (!done) { done = true; resolve(); } };
-                setTimeout(() => { if (!done) { done = true; resolve(); } }, 2000);
-            });
+            // Wait for iframe to load
+            await iframeLoaded;
+
+            // Wait for fonts and rendering to settle
             try { await iframeDoc.fonts.ready; } catch(e) {}
+            await new Promise(r => setTimeout(r, 800));
 
             // Load html2pdf.js
             await new Promise((resolve, reject) => {
