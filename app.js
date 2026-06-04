@@ -513,8 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window._clearAllNotifications = async function() {
         if (!confirm('Clear all broadcast notifications for all students?')) return;
         try {
-            const { doc: fDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            await setDoc(fDoc(db, '_notifications', 'latest'), { items: [] });
+            await setDoc(doc(db, '_notifications', 'latest'), { items: [] });
             window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
         } catch(e) {
             console.error('Clear notifications failed:', e);
@@ -525,8 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window._clearAllSchedules = async function() {
         if (!confirm('Clear all broadcast schedule items for all students?')) return;
         try {
-            const { doc: fDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            await setDoc(fDoc(db, '_schedules', 'latest'), { items: [] });
+            await setDoc(doc(db, '_schedules', 'latest'), { items: [] });
             window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
         } catch(e) {
             console.error('Clear schedule failed:', e);
