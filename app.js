@@ -9433,7 +9433,11 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             iframeDoc.close();
 
             // Wait for iframe to load and fonts to be ready
-            await new Promise((resolve) => { iframe.onload = resolve; setTimeout(resolve, 2000); });
+            await new Promise((resolve) => { 
+                let done = false;
+                iframe.onload = () => { if (!done) { done = true; resolve(); } };
+                setTimeout(() => { if (!done) { done = true; resolve(); } }, 2000);
+            });
             try { await iframeDoc.fonts.ready; } catch(e) {}
 
             // Load html2pdf.js
@@ -9450,22 +9454,28 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             const element = iframeDoc.querySelector('.result-container');
             if (!element) throw new Error('Result container not found in iframe');
 
-            await html2pdf().set({
-                margin: [10, 10, 10, 10],
-                filename: 'ExamForge_Result_Sheet.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2, 
-                    useCORS: true,
-                    letterRendering: true,
-                    backgroundColor: '#fbfcff'
-                },
-                jsPDF: { 
-                    unit: 'mm', 
-                    format: 'a4', 
-                    orientation: 'portrait' 
-                }
-            }).from(element).save();
+            // Wrap html2pdf in a promise for proper await
+            await new Promise((resolve, reject) => {
+                html2pdf().set({
+                    margin: [10, 10, 10, 10],
+                    filename: 'ExamForge_Result_Sheet.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { 
+                        scale: 2, 
+                        useCORS: true,
+                        letterRendering: true,
+                        backgroundColor: '#fbfcff'
+                    },
+                    jsPDF: { 
+                        unit: 'mm', 
+                        format: 'a4', 
+                        orientation: 'portrait' 
+                    }
+                }).from(element).save().then(() => {
+                    // Give a small delay for the save to complete
+                    setTimeout(resolve, 500);
+                }).catch(reject);
+            });
 
             // Clean up
             document.body.removeChild(toast);
