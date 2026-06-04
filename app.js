@@ -6443,7 +6443,7 @@ window.adminPromptNotification = function(userId) {
                     </div>
                     <div class="sched-actions">
                         ${s.quizUrl ? `
-                        <button onclick="event.preventDefault();window._startMockExam('${s.mockId || ''}', '${s.quizUrl}')" class="btn btn-primary btn-sm" style="text-decoration:none;border:none;cursor:pointer;">
+                        <button onclick="window._startMockExam('${s.mockId || ''}', '${s.quizUrl}')" class="btn btn-primary btn-sm" style="text-decoration:none;border:none;cursor:pointer;">
                             <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">play_arrow</span> Start
                         </button>` : ''}
                         <button onclick="window.deleteScheduleItem('${s.id || s._id || ''}')" title="Remove"
@@ -7446,6 +7446,7 @@ function mcGPAComment(gpa) {
 
 window._startMockExam = async function(mockId, quizUrl) {
     if (!mockId) { window.location.href = quizUrl; return; }
+    if (!auth.currentUser) { window.location.href = quizUrl; return; }
     try {
         const { doc: fDoc, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         const userRef = fDoc(db, 'users', auth.currentUser.uid);
