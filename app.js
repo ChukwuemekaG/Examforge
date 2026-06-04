@@ -9422,7 +9422,7 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
 
             // Create hidden container for PDF rendering
             container = document.createElement('div');
-            container.style.cssText = 'position:absolute;left:-9999px;top:0;width:210mm;background:#fbfcff;font-family:Poppins,sans-serif;';
+            container.style.cssText = 'position:fixed;top:0;left:0;width:210mm;background:#fbfcff;font-family:Poppins,sans-serif;opacity:0;pointer-events:none;z-index:-1;';
             container.innerHTML = `<style>${getResultSheetCSS()}</style><div class="result-container">${data.resultSheet}</div>`;
             document.body.appendChild(container);
 
