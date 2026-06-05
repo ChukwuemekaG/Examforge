@@ -288,18 +288,32 @@ CREATE INDEX IF NOT EXISTS idx_event_keys_event ON event_keys(event_id);
 
 // Run all table creation
 export async function initSchema(db) {
-  // Split by CREATE statements and execute each
+  // Split schema into individual statements
   const statements = SCHEMA_SQL
     .split(';')
     .map(s => s.trim())
-    .filter(s => s.length > 0 && s.toUpperCase().startsWith('CREATE'));
+    .filter(s => s.length > 0)
+    .filter(s => s.toUpperCase().startsWith('CREATE'));
   
-  for (const sql of statements) {
-    try {
-      await db.execute(sql + ';');
-    } catch (e) {
-      console.warn('[Schema] Error creating table:', e.message);
+  // Send all statements as a single batch (handles ordering correctly)
+  try {
+    const results = await db.batch(statements.map(s => ({ sql: s + ';', params: [] })));
+    const errors = results.filter(r => r && r.error);
+    if (errors.length > 0) {
+      console.warn('[Schema] Some tables had errors:', errors.map(e => e.error).join(', '));
+    } else {
+      console.log('[Schema] All tables created successfully');
+    }
+  } catch (e) {
+    console.warn('[Schema] Batch creation failed, trying one-by-one:', e.message);
+    // Fallback: create tables one by one
+    for (const sql of statements) {
+      try {
+        await db.execute(sql + ';');
+      } catch (e2) {
+        console.warn('[Schema] Error creating table:', e2.message);
+      }
     }
   }
-  console.log('[Schema] All tables initialized');
+  console.log('[Schema] Schema initialization complete');
 }
