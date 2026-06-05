@@ -1,13 +1,22 @@
 // Turso HTTP Database Client
-// Uses the libsql HTTP pipeline API via a Firebase Cloud Function proxy
+// Uses the libsql HTTP pipeline API via a CORS proxy
 // (Direct Turso URL is not used in browser to avoid CORS issues)
+//
+// Proxy options (in order of preference):
+//   1. Deployed Firebase Cloud Function (production)
+//   2. Firebase Emulator (http://localhost:5001)
+//   3. Standalone Node.js proxy (http://localhost:3001 — run: node turso-proxy.js)
 
 const PROXY_URL_PROD = 'https://us-central1-examforgetest.cloudfunctions.net/tursoProxy';
-const PROXY_URL_LOCAL = 'http://localhost:5001/examforgetest/us-central1/tursoProxy';
+const PROXY_URL_LOCAL_EMULATOR = 'http://localhost:5001/examforgetest/us-central1/tursoProxy';
+const PROXY_URL_LOCAL_STANDALONE = 'http://localhost:3001';
 
 function getApiUrl() {
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  return isLocalhost ? PROXY_URL_LOCAL : PROXY_URL_PROD;
+  if (!isLocalhost) return PROXY_URL_PROD;
+  // On localhost, try standalone proxy first (user runs: node turso-proxy.js)
+  // If unavailable, fall back to Firebase emulator
+  return PROXY_URL_LOCAL_STANDALONE;
 }
 
 // Internal read tracking
