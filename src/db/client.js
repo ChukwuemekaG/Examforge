@@ -1,4 +1,4 @@
-// Turso HTTP Database Client
+// Turso HTTP Database Client — v2/pipeline API
 
 const TURSO_PROXY_URL = 'https://examforge-turso-proxy.godsonchukwuemeka595.workers.dev';
 
@@ -18,8 +18,24 @@ export function getReadsUsed() { return window.__efReads; }
 export function getWritesUsed() { return window.__efWrites; }
 export function resetBudget() { window.__efReads = 0; }
 
+// Convert typed row values to raw values
+function untype(row) {
+  if (!row || !Array.isArray(row)) return row;
+  return row.map(cell => {
+    if (cell && typeof cell === 'object' && 'type' in cell && 'value' in cell) {
+      return cell.value;
+    }
+    return cell;
+  });
+}
+
 async function request(sql, params = []) {
-  const body = { sql, args: params };
+  const body = {
+    requests: [
+      { type: 'execute', stmt: { sql, args: params } },
+      { type: 'close' }
+    ]
+  };
 
   const res = await fetch(TURSO_PROXY_URL, {
     method: 'POST',
@@ -33,19 +49,29 @@ async function request(sql, params = []) {
   }
 
   const data = await res.json();
-  if (data.error) throw new Error(`Turso: ${data.error}`);
-  if (!data.results) throw new Error('Turso: empty response');
-
-  return data.results;
+  const execResult = data?.results?.[0];
+  
+  if (execResult?.type === 'error') {
+    throw new Error(`Turso: ${execResult.response?.error?.message || 'Unknown error'}`);
+  }
+  
+  const result = execResult?.response?.result;
+  if (!result) throw new Error('Turso: empty response');
+  
+  return result;
 }
 
 export async function exec(sql, params = []) {
   const result = await request(sql, params);
-  if (!result || !result.columns) return [];
-  const cols = result.columns;
-  return (result.rows || []).map(row => {
+  if (!result || !result.cols) return [];
+  
+  const cols = result.cols.map(c => c.name);
+  const rows = result.rows || [];
+  
+  return rows.map(row => {
+    const rawRow = untype(row);
     const obj = {};
-    cols.forEach((col, i) => { obj[col] = row[i]; });
+    cols.forEach((col, i) => { obj[col] = rawRow[i]; });
     return obj;
   });
 }
@@ -59,12 +85,11 @@ export async function execute(sql, params = []) {
   trackWrite();
   const result = await request(sql, params);
   return {
-    affectedRows: result.rows_written || result.affected_row_count || 0,
-    lastInsertId: result.last_insert_rowid || null
+    affectedRows: result.affected_row_count || 0,
+    lastInsertId: result.last_insert_rowid
   };
 }
 
-// Batch multiple SQL statements — executes one by one
 export async function batch(statements) {
   const results = [];
   for (const stmt of statements) {
@@ -72,7 +97,7 @@ export async function batch(statements) {
       const sql = stmt.sql || stmt;
       const params = stmt.params || [];
       const result = await request(sql, params);
-      results.push({ results: result });
+      results.push({ results: { cols: result.cols || [], rows: result.rows || [] } });
     } catch (e) {
       results.push({ error: e.message });
     }
