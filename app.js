@@ -542,16 +542,6 @@ document.addEventListener('DOMContentLoaded', () => {
         inbox: [],
         stats: { streak: 0, highestStreak: 0, rank: 'N/A', lastExamDate: null, exaRating: 800 }
     };
-// ─── Throttled cache refresh (prevents stale data without excessive reads) ───
-window._lastRefresh = {};
-window._throttledRefresh = async function(path, minIntervalMs = 15000) {
-    const now = Date.now();
-    const last = window._lastRefresh[path];
-    if (last && (now - last < minIntervalMs)) return;
-    window._lastRefresh[path] = now;
-    try { await sync.refresh(path); } catch(e) {}
-};
-
 // Real-time dashboard UI update (called by subscriber when user data changes)
 window.updateDashboardUI = function() {
     if (currentView !== 'dashboard') return;
@@ -1071,6 +1061,13 @@ function setupAdminListeners() {
                         } catch(e) { console.error('Migration check error:', e); }
                     })();
                 }
+
+                // Pre-load essential data into SyncManager cache (0 reads if IndexedDB has it cached)
+                sync.preload([
+                    '_notifications/latest',
+                    '_schedules/latest',
+                    '_admin_panel/data'
+                ]).catch(() => {});
 
                 // ─── One-time: fetch totalUsers for ranking if missing ───
                 if (!userData.totalUsers) {
@@ -2613,7 +2610,7 @@ window.mcPublishDailyAdvice = async function() {
         const modal = document.getElementById('ef-adv-builder-modal');
         if (modal) modal.remove();
 
-        await sync.refresh('daily_advices');
+
         window.showEFModal("Advice Broadcasted", `Daily Advice published and successfully broadcasted to ${totalUsers} students!`, "EXCELLENT", null, true);
         mcLoadDailyAdvices();
 
@@ -4066,8 +4063,7 @@ window.mcOpenEditQuestionModal = async function(courseId, topicId, questionIndex
             await updateDoc(tRef, { questions: qs });
                 // Sync course doc with all questions
                 window._syncCourseQuestions(courseId).catch(() => {});
-            await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
-            overlay.remove();
+                    overlay.remove();
             mcRenderCoursesTab(courseId, topicId);
         } catch (e) { btn.disabled = false; btn.textContent = 'Save Changes'; alert('Error: ' + e.message); }
     };
@@ -4416,7 +4412,6 @@ window.mcOpenBulkImportModal = function(courseId, topicId) {
             await updateDoc(tRef, { questions: [...existing, ...stamped] });
                 // Sync course doc with all questions
                 window._syncCourseQuestions(courseId).catch(() => {});
-            await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
             overlay.remove();
             mcRenderCoursesTab(courseId, topicId);
             mcLoadStats();
@@ -5075,7 +5070,6 @@ window.mcDeleteAllQuestions = async function(courseId, topicId) {
                             await updateDoc(tRef, { questions: [] });
                             // Sync course doc with all questions
                             window._syncCourseQuestions(courseId).catch(() => {});
-                            await sync.refresh('unicourses/' + courseId + '/topics/' + topicId);
                             window.mcRenderCoursesTab(courseId, topicId);
                             await mcLoadStats();
                             window.showEFModal("Success", `Wiped out all ${questions.length} questions successfully!`, "OKAY", null, true);
@@ -7675,7 +7669,6 @@ window.mcSaveSubEvent = async function() {
         section.unshift({ id: eventRef.id, title, description: desc, availableSubjects, maxSubjects: maxSubs, createdAt: new Date().toISOString() });
         window._updateAdminSection('subscriptionEvents', section).catch(() => {});
 
-        await sync.refresh('subscription_events');
         document.getElementById('ef-subevent-modal')?.remove();
         window.showEFModal("Event Created", "Subscription event created successfully.", "OK", null, true);
         window.mcLoadSubEvents();
@@ -7718,7 +7711,6 @@ window.mcDeleteSubEvent = function(eventId, title) {
                 const filtered = eventSection.filter(e => e.id !== eventId);
                 window._updateAdminSection('subscriptionEvents', filtered).catch(() => {});
                 
-                await sync.refresh('subscription_events');
                 window.mcLoadSubEvents();
             } catch (e) {
                 console.error(e);
@@ -7775,7 +7767,6 @@ window.mcGenerateSubEventKeys = async function(eventId) {
         }
         
         await batch.commit();
-        await sync.refresh('subscription_events/' + eventId + '/keys');
         
         window.showEFModal("Keys Generated", `Successfully generated ${generated} key(s) for this event.`, "AWESOME", null, true);
         
@@ -8253,7 +8244,6 @@ window.mcFetchEventMockAttemptMaps = async function(eventId) {
     const attemptsByMock = new Map();
 
     await Promise.all(allMocks.map(async (mock) => {
-        await sync.refresh('mock_exams/' + mock.id + '/attempts');
         const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
         const attemptMap = new Map();
         attempts.forEach(attempt => {
@@ -8605,7 +8595,6 @@ window.mcPrintAllEventResults = async function(eventId) {
             const subjNorm = subjects.find(s => s.name === subject);
             const creditUnit = subjNorm ? subjNorm.creditUnit : 1;
             
-            await sync.refresh('mock_exams/' + mock.id + '/attempts');
             const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
             
             attempts.forEach(attempt => {
