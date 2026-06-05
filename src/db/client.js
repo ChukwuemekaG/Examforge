@@ -1,10 +1,7 @@
-// Turso HTTP Database Client
-// Uses the libsql HTTP pipeline API via the built-in Express proxy (server.js)
-// The proxy is always at /v2/pipeline on the same server (dev or production)
+// Turso HTTP Database Client via Cloudflare Worker proxy
 
-function getApiUrl() {
-  return '/v2/pipeline';
-}
+// ⚠️ IMPORTANT: Replace this with your Cloudflare Worker URL after deploying
+const TURSO_PROXY_URL = 'https://examforge-turso-proxy.your-subdomain.workers.dev/v2/pipeline';
 
 // Internal read tracking
 window.__efReads = 0;
@@ -37,13 +34,9 @@ async function request(sql, args = {}) {
     ]
   };
 
-  const apiUrl = getApiUrl();
-
-  const res = await fetch(apiUrl, {
+  const res = await fetch(TURSO_PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
 
@@ -62,7 +55,6 @@ async function request(sql, args = {}) {
   return result;
 }
 
-// Execute a query and return rows as objects
 export async function exec(sql, args = {}) {
   const result = await request(sql, args);
   if (!result || !result.columns) return [];
@@ -74,13 +66,11 @@ export async function exec(sql, args = {}) {
   });
 }
 
-// Execute a query and return first row or null
 export async function execOne(sql, args = {}) {
   const rows = await exec(sql, args);
   return rows.length > 0 ? rows[0] : null;
 }
 
-// Execute a write query (INSERT/UPDATE/DELETE)
 export async function execute(sql, args = {}) {
   trackWrite();
   const result = await request(sql, args);
@@ -88,28 +78,4 @@ export async function execute(sql, args = {}) {
     affectedRows: result.affected_row_count || 0,
     lastInsertId: result.last_insert_rowid
   };
-}
-
-// Batch multiple SQL statements in one request
-export async function batch(statements) {
-  const body = {
-    requests: statements.map(s => ({
-      type: 'execute',
-      stmt: { sql: s.sql, args: s.args || {} }
-    })).concat({ type: 'close' })
-  };
-
-  const apiUrl = getApiUrl();
-
-  const res = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) throw new Error(`Turso batch error: ${res.status}`);
-  const data = await res.json();
-  return (data.results || []).slice(0, -1).map(r => r.response?.result);
 }
