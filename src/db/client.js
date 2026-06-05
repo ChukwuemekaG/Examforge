@@ -32,7 +32,15 @@ function untype(row) {
 async function request(sql, params = []) {
   const body = {
     requests: [
-      { type: 'execute', stmt: { sql, args: params } },
+      { 
+        type: 'execute', 
+        stmt: { 
+          sql, 
+          args: params.length > 0 
+            ? params.map(v => ({ type: typeof v === 'number' ? 'integer' : 'text', value: v })) 
+            : null 
+        } 
+      },
       { type: 'close' }
     ]
   };
