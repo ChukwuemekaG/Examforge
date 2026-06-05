@@ -170,6 +170,18 @@ export class SyncManager {
      */
     this._sweeperInterval = null;
 
+    /**
+     * Read budget for limiting Firestore reads per session.
+     * @type {number}
+     */
+    this._readBudget = 10;
+
+    /**
+     * Number of Firestore reads used in the current session.
+     * @type {number}
+     */
+    this._readsUsed = 0;
+
     // (Sweeper removed — IndexedDB is now the persistent source of truth)
   }
 
@@ -227,6 +239,28 @@ export class SyncManager {
     }
   }
 
+  /**
+   * Checks whether the read budget has been exhausted.
+   * If so, throws an error — the caller should fall back to cached data.
+   *
+   * @param {string} path - The Firestore path (used for the error message).
+   * @throws {Error} If the read budget is exhausted.
+   */
+  _checkReadBudget(path) {
+    if (this._readsUsed >= this._readBudget) {
+      console.warn(
+        `[Sync] Read budget exhausted (${this._readsUsed}/${this._readBudget}). ` +
+        `Cannot fetch "${path}" from Firestore.`
+      );
+      throw new Error(
+        `Read budget exhausted (${this._readsUsed}/${this._readBudget}). ` +
+        `Cannot fetch "${path}" from Firestore without a budget reset.`
+      );
+    }
+    this._readsUsed++;
+    console.log(`[Sync] Read ${this._readsUsed}/${this._readBudget}: "${path}"`);
+  }
+
   // ─── Private Internals ────────────────────────────────────────────────────
 
   // (Sweeper removed — IndexedDB is now the persistent source of truth)
@@ -257,6 +291,9 @@ export class SyncManager {
    * @returns {Promise<object|null>} The document data, or null if it doesn't exist.
    */
   async _fetchDoc(path) {
+    // Check read budget before making a Firestore call
+    this._checkReadBudget(path);
+
     const cacheKey = buildCacheKey(path);
     const docRef = doc(this._db, path);
     try {
@@ -287,6 +324,9 @@ export class SyncManager {
    * @returns {Promise<Array<object>>} Array of document data.
    */
   async _fetchCollection(path) {
+    // Check read budget before making a Firestore call
+    this._checkReadBudget(path);
+
     const cacheKey = buildCacheKey(path);
     const colRef = collection(this._db, path);
     try {
@@ -312,6 +352,9 @@ export class SyncManager {
    * @returns {Promise<Array<object>>} Array of document data.
    */
   async _fetchQuery(path, constraints) {
+    // Check read budget before making a Firestore call
+    this._checkReadBudget(path);
+
     const cacheKey = buildCacheKey(path, constraints);
     const colRef = collection(this._db, path);
     const q = query(colRef, ...constraints);
@@ -342,6 +385,9 @@ export class SyncManager {
    * @returns {Promise<Array<object>>} Array of document data with `_refPath` metadata.
    */
   async _fetchCollectionGroup(collectionId, constraints) {
+    // Check read budget before making a Firestore call
+    this._checkReadBudget('cg:' + collectionId);
+
     const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
     const colGroupRef = collectionGroup(this._db, collectionId);
     const q = query(colGroupRef, ...constraints);
@@ -526,6 +572,72 @@ export class SyncManager {
    */
   async docs(path) {
     return this.collection(path);
+  }
+
+  /**
+   * Pre-loads data for multiple Firestore paths at session start.
+   *
+   * Iterates over the given paths, calling `doc()` for each one. This populates
+   * both the IndexedDB cache and the in-memory cache so that subsequent reads
+   * are served instantly without hitting Firestore.
+   *
+   * Failed preloads (e.g. due to read budget exhaustion or network errors) are
+   * logged as warnings and do NOT halt preloading of remaining paths.
+   *
+   * @param {string[]} paths - Array of Firestore document paths to pre-load.
+   * @returns {Promise<Object<string, *>>} A map of path → loaded data (null for failures).
+   *
+   * @example
+   *   const data = await sync.preload([
+   *     'users/abc123',
+   *     'settings/app',
+   *     'courses/xyz789'
+   *   ]);
+   *   console.log(data['users/abc123']);
+   */
+  async preload(paths) {
+    if (!Array.isArray(paths)) {
+      throw new Error('[SyncManager] preload() requires an array of paths');
+    }
+    const results = {};
+    for (const path of paths) {
+      try {
+        results[path] = await this.doc(path);
+      } catch (e) {
+        console.warn(`[Sync] Preload failed for "${path}":`, e.message);
+        results[path] = null;
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Returns the number of Firestore reads used so far in this session.
+   *
+   * @returns {number} The number of reads consumed.
+   */
+  getReadsUsed() {
+    return this._readsUsed;
+  }
+
+  /**
+   * Returns the total read budget allocated for this session.
+   *
+   * @returns {number} The maximum number of Firestore reads allowed.
+   */
+  getReadBudget() {
+    return this._readBudget;
+  }
+
+  /**
+   * Resets the read budget counter back to zero.
+   *
+   * Call this to allow additional Firestore reads beyond the original budget.
+   * Useful after a session refresh or when the user explicitly requests a sync.
+   */
+  resetBudget() {
+    this._readsUsed = 0;
+    console.log(`[Sync] Read budget reset. New budget: ${this._readBudget} reads available.`);
   }
 
   /**
