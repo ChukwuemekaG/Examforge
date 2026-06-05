@@ -1,7 +1,7 @@
 // Turso HTTP Database Client via Cloudflare Worker proxy
 
 // ⚠️ IMPORTANT: Replace this with your Cloudflare Worker URL after deploying
-const TURSO_PROXY_URL = 'https://examforge-turso-proxy.your-subdomain.workers.dev/v2/pipeline';
+const TURSO_PROXY_URL = 'https://examforge-turso-proxy.godsonchukwuemeka595.workers.dev/v2/pipeline';
 
 // Internal read tracking
 window.__efReads = 0;
