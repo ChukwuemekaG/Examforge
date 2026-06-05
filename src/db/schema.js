@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- User inbox (notifications)
 CREATE TABLE IF NOT EXISTS user_inbox (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
+  user_id TEXT NOT NULL,
   type TEXT DEFAULT 'info',
   title TEXT NOT NULL,
   message TEXT,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS user_inbox (
 -- User schedule items
 CREATE TABLE IF NOT EXISTS user_schedule (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
+  user_id TEXT NOT NULL,
   title TEXT NOT NULL,
   type TEXT DEFAULT 'study',
   course TEXT,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS user_schedule (
 -- Recent results (embedded in user profile, but also stored here)
 CREATE TABLE IF NOT EXISTS user_results (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
+  user_id TEXT NOT NULL,
   quiz_id TEXT,
   course TEXT,
   score REAL DEFAULT 0,
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS courses (
 -- Topics (within courses)
 CREATE TABLE IF NOT EXISTS topics (
   id TEXT PRIMARY KEY,
-  course_id TEXT NOT NULL REFERENCES courses(id),
+  course_id TEXT NOT NULL,
   title TEXT NOT NULL,
   time_limit INTEGER DEFAULT 0,
   is_strict INTEGER DEFAULT 0,
@@ -108,8 +108,8 @@ CREATE TABLE IF NOT EXISTS topics (
 -- Questions (within topics)
 CREATE TABLE IF NOT EXISTS questions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  topic_id TEXT NOT NULL REFERENCES topics(id),
-  course_id TEXT NOT NULL REFERENCES courses(id),
+  topic_id TEXT NOT NULL,
+  course_id TEXT NOT NULL,
   question TEXT NOT NULL,
   option_a TEXT NOT NULL DEFAULT '',
   option_b TEXT NOT NULL DEFAULT '',
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS daily_quizzes (
 -- Daily quiz questions
 CREATE TABLE IF NOT EXISTS daily_quiz_questions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  quiz_id TEXT NOT NULL REFERENCES daily_quizzes(id),
+  quiz_id TEXT NOT NULL,
   question TEXT NOT NULL,
   option_a TEXT NOT NULL DEFAULT '',
   option_b TEXT NOT NULL DEFAULT '',
@@ -146,8 +146,8 @@ CREATE TABLE IF NOT EXISTS daily_quiz_questions (
 -- Daily quiz attempts per user
 CREATE TABLE IF NOT EXISTS daily_quiz_attempts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  quiz_id TEXT NOT NULL REFERENCES daily_quizzes(id),
-  user_id TEXT NOT NULL REFERENCES users(id),
+  quiz_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
   score REAL DEFAULT 0,
   correct INTEGER DEFAULT 0,
   total INTEGER DEFAULT 0,
@@ -179,8 +179,8 @@ CREATE TABLE IF NOT EXISTS subscription_events (
 -- Event registrations
 CREATE TABLE IF NOT EXISTS event_registrations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  event_id TEXT NOT NULL REFERENCES subscription_events(id),
-  user_id TEXT NOT NULL REFERENCES users(id),
+  event_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
   display_name TEXT DEFAULT '',
   email TEXT DEFAULT '',
   subjects TEXT DEFAULT '[]',
@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS event_registrations (
 -- Event registration keys
 CREATE TABLE IF NOT EXISTS event_keys (
   id TEXT PRIMARY KEY,
-  event_id TEXT NOT NULL REFERENCES subscription_events(id),
+  event_id TEXT NOT NULL,
   used_by TEXT,
   used_at TEXT
 );
@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS event_keys (
 -- Mock exams
 CREATE TABLE IF NOT EXISTS mock_exams (
   id TEXT PRIMARY KEY,
-  event_id TEXT NOT NULL REFERENCES subscription_events(id),
+  event_id TEXT NOT NULL,
   subject TEXT NOT NULL,
   title TEXT DEFAULT '',
   time_limit INTEGER DEFAULT 0,
@@ -213,8 +213,8 @@ CREATE TABLE IF NOT EXISTS mock_exams (
 -- Mock exam attempts
 CREATE TABLE IF NOT EXISTS mock_exam_attempts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  mock_id TEXT NOT NULL REFERENCES mock_exams(id),
-  user_id TEXT NOT NULL REFERENCES users(id),
+  mock_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
   display_name TEXT DEFAULT '',
   email TEXT DEFAULT '',
   score REAL DEFAULT 0,

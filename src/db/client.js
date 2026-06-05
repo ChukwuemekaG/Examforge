@@ -86,5 +86,6 @@ export async function batch(statements) {
 
   if (!res.ok) throw new Error(`Turso batch error: ${res.status}`);
   const data = await res.json();
-  return data.map(d => d.results || d);
+  if (!Array.isArray(data)) return data?.results || data || [];
+  return data.map(d => d?.results || d || {});
 }
