@@ -27,12 +27,10 @@ export function getWritesUsed() { return window.__efWrites; }
 export function resetBudget() { window.__efReads = 0; }
 
 async function request(sql, args = {}) {
-  const body = {
-    requests: [
-      { type: 'execute', stmt: { sql, args } },
-      { type: 'close' }
-    ]
-  };
+  const body = [
+    { type: 'execute', stmt: { sql, args } },
+    { type: 'close' }
+  ];
 
   const res = await fetch(TURSO_PROXY_URL, {
     method: 'POST',
@@ -46,10 +44,10 @@ async function request(sql, args = {}) {
   }
 
   const data = await res.json();
-  const result = data.results?.[0]?.response?.result;
+  const result = data[0]?.response?.result;
   if (!result) throw new Error('Turso: empty response');
-  if (data.results?.[0]?.type === 'error') {
-    throw new Error(`Turso: ${data.results[0].response?.error?.message || 'query error'}`);
+  if (data[0]?.type === 'error') {
+    throw new Error(`Turso: ${data[0].response?.error?.message || 'query error'}`);
   }
 
   return result;
