@@ -6813,6 +6813,7 @@ window.adminPromptNotification = function(userId) {
         const path = 'users/' + auth.currentUser.uid + '/notifications';
         // Read user data raw (bypasses SyncManager cache) for fresh inbox data
         const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        window.__efTrackRead('users/' + auth.currentUser.uid + ' (inbox)');
         const userSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
         const userRaw = userSnap.exists() ? userSnap.data() : {};
         const dismissedBroadcast = userRaw.dismissedBroadcast || [];
@@ -6822,6 +6823,7 @@ window.adminPromptNotification = function(userId) {
         let broadcastItems = [];
         try {
             const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            window.__efTrackRead('_notifications/latest (inbox)');
             const snap = await getDoc(fDoc(db, '_notifications', 'latest'));
             if (snap.exists()) broadcastItems = snap.data().items || [];
         } catch(e) { console.error('Broadcast read failed:', e); }
