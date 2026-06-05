@@ -6,16 +6,16 @@ export async function getAllAdvices() {
 }
 
 export async function getAdvice(id) {
-  return execOne('SELECT * FROM daily_advices WHERE id = ?', { 1: id });
+  return execOne('SELECT * FROM daily_advices WHERE id = ?', [id]);
 }
 
 export async function createAdvice(advice) {
   const id = advice.id || 'adv_' + Date.now().toString(36);
   await execute('INSERT INTO daily_advices (id, title, category, content) VALUES (?, ?, ?, ?)',
-    { 1: id, 2: advice.title, 3: advice.category || '', 4: advice.content || '' });
+    [id, advice.title, advice.category || '', advice.content || '']);
   return id;
 }
 
 export async function deleteAdvice(id) {
-  return execute('DELETE FROM daily_advices WHERE id = ?', { 1: id });
+  return execute('DELETE FROM daily_advices WHERE id = ?', [id]);
 }

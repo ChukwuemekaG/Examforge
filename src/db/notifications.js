@@ -2,7 +2,7 @@ import { execOne, exec, execute, trackRead } from './client.js';
 
 export async function getBroadcastNotifications(limit = 50) {
   trackRead('broadcast_notifications');
-  return exec('SELECT * FROM broadcast_notifications ORDER BY created_at DESC LIMIT ?', { 1: limit });
+  return exec('SELECT * FROM broadcast_notifications ORDER BY created_at DESC LIMIT ?', [limit]);
 }
 
 export async function addBroadcastNotification(notif) {
@@ -10,7 +10,7 @@ export async function addBroadcastNotification(notif) {
   await execute(
     `INSERT INTO broadcast_notifications (id, type, title, message, quiz_url, brand_color, brand_icon)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    { 1: id, 2: notif.type || 'broadcast', 3: notif.title, 4: notif.message || '', 5: notif.quizUrl || null, 6: notif.brandColor || '#fe6961', 7: notif.brandIcon || 'notifications' }
+    [id, notif.type || 'broadcast', notif.title, notif.message || '', notif.quizUrl || null, notif.brandColor || '#fe6961', notif.brandIcon || 'notifications']
   );
   return id;
 }

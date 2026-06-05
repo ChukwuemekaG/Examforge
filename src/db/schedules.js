@@ -2,7 +2,7 @@ import { execOne, exec, execute, trackRead } from './client.js';
 
 export async function getBroadcastSchedules(limit = 50) {
   trackRead('broadcast_schedules');
-  return exec('SELECT * FROM broadcast_schedules ORDER BY created_at DESC LIMIT ?', { 1: limit });
+  return exec('SELECT * FROM broadcast_schedules ORDER BY created_at DESC LIMIT ?', [limit]);
 }
 
 export async function addBroadcastSchedule(item) {
@@ -10,7 +10,7 @@ export async function addBroadcastSchedule(item) {
   await execute(
     `INSERT INTO broadcast_schedules (id, type, title, course, mock_id, event_id, quiz_url, time_limit, due_date, due_time, message)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    { 1: id, 2: item.type || 'mock_exam', 3: item.title, 4: item.course || '', 5: item.mockId || null, 6: item.eventId || null, 7: item.quizUrl || null, 8: item.timeLimit || null, 9: item.dueDate || null, 10: item.dueTime || null, 11: item.message || '' }
+    [id, item.type || 'mock_exam', item.title, item.course || '', item.mockId || null, item.eventId || null, item.quizUrl || null, item.timeLimit || null, item.dueDate || null, item.dueTime || null, item.message || '']
   );
   return id;
 }

@@ -1,36 +1,28 @@
-// Turso HTTP Database Client via Cloudflare Worker proxy
+// Turso HTTP Database Client
 
-// ⚠️ IMPORTANT: Replace this with your Cloudflare Worker URL after deploying
-const TURSO_PROXY_URL = 'https://examforge-turso-proxy.godsonchukwuemeka595.workers.dev/v2/pipeline';
+const TURSO_PROXY_URL = 'https://examforge-turso-proxy.godsonchukwuemeka595.workers.dev';
 
-// Internal read tracking
 window.__efReads = 0;
 window.__efReadBudget = 10;
 window.__efWrites = 0;
 
 export function trackRead(label) {
-  if (window.__efReads >= window.__efReadBudget) {
-    console.warn(`[DB] Budget exhausted (${window.__efReads}/${window.__efReadBudget})`);
-    return true;
-  }
+  if (window.__efReads >= window.__efReadBudget) return true;
   window.__efReads++;
   console.log(`[DB] Read ${window.__efReads}/${window.__efReadBudget}: ${label}`);
   return false;
 }
 
-export function trackWrite() {
-  window.__efWrites++;
-}
-
+export function trackWrite() { window.__efWrites++; }
 export function getReadsUsed() { return window.__efReads; }
 export function getWritesUsed() { return window.__efWrites; }
 export function resetBudget() { window.__efReads = 0; }
 
-async function request(sql, args = {}) {
-  const body = [
-    { type: 'execute', stmt: { sql, args } },
-    { type: 'close' }
-  ];
+async function request(sql, params = []) {
+  // Build statement: simple string if no params, object with params if needed
+  const stmt = params.length > 0 ? { q: sql, params } : sql;
+
+  const body = { statements: [stmt] };
 
   const res = await fetch(TURSO_PROXY_URL, {
     method: 'POST',
@@ -44,17 +36,17 @@ async function request(sql, args = {}) {
   }
 
   const data = await res.json();
-  const result = data[0]?.response?.result;
-  if (!result) throw new Error('Turso: empty response');
-  if (data[0]?.type === 'error') {
-    throw new Error(`Turso: ${data[0].response?.error?.message || 'query error'}`);
+  const result = data[0]?.results;
+  if (!result && data[0]?.error) {
+    throw new Error(`Turso: ${data[0].error}`);
   }
+  if (!result) throw new Error('Turso: empty response');
 
   return result;
 }
 
-export async function exec(sql, args = {}) {
-  const result = await request(sql, args);
+export async function exec(sql, params = []) {
+  const result = await request(sql, params);
   if (!result || !result.columns) return [];
   const cols = result.columns;
   return (result.rows || []).map(row => {
@@ -64,16 +56,35 @@ export async function exec(sql, args = {}) {
   });
 }
 
-export async function execOne(sql, args = {}) {
-  const rows = await exec(sql, args);
+export async function execOne(sql, params = []) {
+  const rows = await exec(sql, params);
   return rows.length > 0 ? rows[0] : null;
 }
 
-export async function execute(sql, args = {}) {
+export async function execute(sql, params = []) {
   trackWrite();
-  const result = await request(sql, args);
+  const result = await request(sql, params);
   return {
-    affectedRows: result.affected_row_count || 0,
-    lastInsertId: result.last_insert_rowid
+    affectedRows: result.rows_written || result.affected_row_count || 0,
+    lastInsertId: result.last_insert_rowid || null
   };
+}
+
+// Batch multiple SQL statements
+export async function batch(statements) {
+  trackWrite();
+  const body = { statements: statements.map(s => {
+    if (s.params && s.params.length > 0) return { q: s.sql, params: s.params };
+    return s.sql;
+  })};
+
+  const res = await fetch(TURSO_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) throw new Error(`Turso batch error: ${res.status}`);
+  const data = await res.json();
+  return data.map(d => d.results || d);
 }
