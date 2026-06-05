@@ -19,10 +19,7 @@ export function getWritesUsed() { return window.__efWrites; }
 export function resetBudget() { window.__efReads = 0; }
 
 async function request(sql, params = []) {
-  // Build statement: simple string if no params, object with params if needed
-  const stmt = params.length > 0 ? { q: sql, params } : sql;
-
-  const body = { statements: [stmt] };
+  const body = { sql, args: params };
 
   const res = await fetch(TURSO_PROXY_URL, {
     method: 'POST',
@@ -36,13 +33,10 @@ async function request(sql, params = []) {
   }
 
   const data = await res.json();
-  const result = data[0]?.results;
-  if (!result && data[0]?.error) {
-    throw new Error(`Turso: ${data[0].error}`);
-  }
-  if (!result) throw new Error('Turso: empty response');
+  if (data.error) throw new Error(`Turso: ${data.error}`);
+  if (!data.results) throw new Error('Turso: empty response');
 
-  return result;
+  return data.results;
 }
 
 export async function exec(sql, params = []) {
@@ -70,22 +64,18 @@ export async function execute(sql, params = []) {
   };
 }
 
-// Batch multiple SQL statements
+// Batch multiple SQL statements — executes one by one
 export async function batch(statements) {
-  trackWrite();
-  const body = { statements: statements.map(s => {
-    if (s.params && s.params.length > 0) return { q: s.sql, params: s.params };
-    return s.sql;
-  })};
-
-  const res = await fetch(TURSO_PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) throw new Error(`Turso batch error: ${res.status}`);
-  const data = await res.json();
-  if (!Array.isArray(data)) return data?.results || data || [];
-  return data.map(d => d?.results || d || {});
+  const results = [];
+  for (const stmt of statements) {
+    try {
+      const sql = stmt.sql || stmt;
+      const params = stmt.params || [];
+      const result = await request(sql, params);
+      results.push({ results: result });
+    } catch (e) {
+      results.push({ error: e.message });
+    }
+  }
+  return results;
 }

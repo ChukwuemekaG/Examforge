@@ -34,7 +34,7 @@ export default {
     try {
       const body = await request.json();
       
-      const response = await fetch(TURSO_URL, {
+      const response = await fetch(TURSO_URL + '/v1/execute', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + TURSO_TOKEN,
