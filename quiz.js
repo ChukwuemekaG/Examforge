@@ -1189,6 +1189,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const mockEventId = mockDoc?.eventId;
                     if (mockEventId) {
                         const regRef = doc(db, 'subscription_events', mockEventId, '_data', 'registrations');
+                        window.__efTrackRead('registration (quiz submit)');
                         const regSnap = await getDoc(regRef);
                         if (regSnap.exists()) {
                             const regData = regSnap.data();

@@ -51,6 +51,26 @@ import {
   limit,
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
+// ─── Global read counter ────────────────────────────────────────────────────
+
+/**
+ * Global read counter function for direct Firestore reads.
+ * Tracks ALL Firestore reads (including sync.js internal ones) against a shared budget.
+ * Returns true if budget is exhausted, false if OK to read.
+ */
+window.__efTrackRead = function(path) {
+    if (typeof window.__efReads === 'undefined') window.__efReads = 0;
+    if (typeof window.__efReadBudget === 'undefined') window.__efReadBudget = 10;
+
+    if (window.__efReads >= window.__efReadBudget) {
+        console.warn(`[Firestore] Budget exhausted (${window.__efReads}/${window.__efReadBudget}). Blocked: ${path}`);
+        return true;
+    }
+    window.__efReads++;
+    console.log(`[Firestore] Read ${window.__efReads}/${window.__efReadBudget}: ${path}`);
+    return false;
+};
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 /** @type {number} Default TTL for cached documents (5 minutes) */
@@ -170,18 +190,6 @@ export class SyncManager {
      */
     this._sweeperInterval = null;
 
-    /**
-     * Read budget for limiting Firestore reads per session.
-     * @type {number}
-     */
-    this._readBudget = 10;
-
-    /**
-     * Number of Firestore reads used in the current session.
-     * @type {number}
-     */
-    this._readsUsed = 0;
-
     // (Sweeper removed — IndexedDB is now the persistent source of truth)
   }
 
@@ -240,25 +248,23 @@ export class SyncManager {
   }
 
   /**
-   * Checks whether the read budget has been exhausted.
-   * If so, throws an error — the caller should fall back to cached data.
+   * Checks whether the global read budget has been exhausted.
+   * Uses the shared window.__efReads / window.__efReadBudget counters.
    *
-   * @param {string} path - The Firestore path (used for the error message).
-   * @throws {Error} If the read budget is exhausted.
+   * @param {string} path - The Firestore path (used for the error message / log).
+   * @returns {boolean} true if budget is exhausted, false if OK to read.
    */
   _checkReadBudget(path) {
-    if (this._readsUsed >= this._readBudget) {
-      console.warn(
-        `[Sync] Read budget exhausted (${this._readsUsed}/${this._readBudget}). ` +
-        `Cannot fetch "${path}" from Firestore.`
-      );
-      throw new Error(
-        `Read budget exhausted (${this._readsUsed}/${this._readBudget}). ` +
-        `Cannot fetch "${path}" from Firestore without a budget reset.`
-      );
+    if (typeof window.__efReads === 'undefined') window.__efReads = 0;
+    if (typeof window.__efReadBudget === 'undefined') window.__efReadBudget = 10;
+
+    if (window.__efReads >= window.__efReadBudget) {
+      console.warn(`[Sync] Read budget exhausted (${window.__efReads}/${window.__efReadBudget}). Cannot fetch "${path}".`);
+      return true;
     }
-    this._readsUsed++;
-    console.log(`[Sync] Read ${this._readsUsed}/${this._readBudget}: "${path}"`);
+    window.__efReads++;
+    console.log(`[Sync] Read ${window.__efReads}/${window.__efReadBudget}: "${path}"`);
+    return false;
   }
 
   // ─── Private Internals ────────────────────────────────────────────────────
@@ -292,7 +298,12 @@ export class SyncManager {
    */
   async _fetchDoc(path) {
     // Check read budget before making a Firestore call
-    this._checkReadBudget(path);
+    if (this._checkReadBudget(path)) {
+      // Budget exhausted — try IndexedDB cache as fallback
+      const cached = await this._cache.get(buildCacheKey(path));
+      if (cached && cached.data) return cached.data;
+      throw new Error(`[Sync] Read budget exhausted for "${path}"`);
+    }
 
     const cacheKey = buildCacheKey(path);
     const docRef = doc(this._db, path);
@@ -325,7 +336,11 @@ export class SyncManager {
    */
   async _fetchCollection(path) {
     // Check read budget before making a Firestore call
-    this._checkReadBudget(path);
+    if (this._checkReadBudget(path)) {
+      const cached = await this._cache.get(buildCacheKey(path));
+      if (cached && cached.data) return cached.data;
+      throw new Error(`[Sync] Read budget exhausted for "${path}"`);
+    }
 
     const cacheKey = buildCacheKey(path);
     const colRef = collection(this._db, path);
@@ -353,7 +368,11 @@ export class SyncManager {
    */
   async _fetchQuery(path, constraints) {
     // Check read budget before making a Firestore call
-    this._checkReadBudget(path);
+    if (this._checkReadBudget(path)) {
+      const cached = await this._cache.get(buildCacheKey(path, constraints));
+      if (cached && cached.data) return cached.data;
+      throw new Error(`[Sync] Read budget exhausted for "${path}"`);
+    }
 
     const cacheKey = buildCacheKey(path, constraints);
     const colRef = collection(this._db, path);
@@ -386,7 +405,12 @@ export class SyncManager {
    */
   async _fetchCollectionGroup(collectionId, constraints) {
     // Check read budget before making a Firestore call
-    this._checkReadBudget('cg:' + collectionId);
+    if (this._checkReadBudget('cg:' + collectionId)) {
+      const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
+      const cached = await this._cache.get(cacheKey);
+      if (cached && cached.data) return cached.data;
+      throw new Error(`[Sync] Read budget exhausted for "cg:${collectionId}"`);
+    }
 
     const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
     const colGroupRef = collectionGroup(this._db, collectionId);
@@ -617,7 +641,7 @@ export class SyncManager {
    * @returns {number} The number of reads consumed.
    */
   getReadsUsed() {
-    return this._readsUsed;
+    return typeof window.__efReads === 'undefined' ? 0 : window.__efReads;
   }
 
   /**
@@ -626,7 +650,7 @@ export class SyncManager {
    * @returns {number} The maximum number of Firestore reads allowed.
    */
   getReadBudget() {
-    return this._readBudget;
+    return typeof window.__efReadBudget === 'undefined' ? 10 : window.__efReadBudget;
   }
 
   /**
@@ -636,8 +660,9 @@ export class SyncManager {
    * Useful after a session refresh or when the user explicitly requests a sync.
    */
   resetBudget() {
-    this._readsUsed = 0;
-    console.log(`[Sync] Read budget reset. New budget: ${this._readBudget} reads available.`);
+    window.__efReads = 0;
+    const budget = typeof window.__efReadBudget === 'undefined' ? 10 : window.__efReadBudget;
+    console.log(`[Sync] Read budget reset. New budget: ${budget} reads available.`);
   }
 
   /**

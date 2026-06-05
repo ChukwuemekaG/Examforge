@@ -92,6 +92,7 @@ formRegister.addEventListener('submit', async (e) => {
 
     try {
         const userRef = doc(db, "usernames", username);
+        window.__efTrackRead('username check');
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
@@ -130,6 +131,7 @@ formRegister.addEventListener('submit', async (e) => {
 
         // Write totalUsers to this user's doc for ranking (0 future reads)
         try {
+            window.__efTrackRead('_stats/counters (signup)');
             const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
             const totalUsers = counterSnap.data()?.totalUsers || 0;
             if (totalUsers > 0) {
@@ -173,6 +175,7 @@ formRegister.addEventListener('submit', async (e) => {
                         emailToAuth = cachedEmail;
                     } else {
                         const userRef = doc(db, "usernames", identifier);
+                        window.__efTrackRead('username resolve');
                         const userSnap = await getDoc(userRef);
 
                         if (userSnap.exists()) {

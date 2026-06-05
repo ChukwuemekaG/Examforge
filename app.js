@@ -357,6 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window._setupLiveDataListener = async function() {
         if (window._liveListener) return;
         
+        window.__efTrackRead('_admin_panel/data (onSnapshot)');
         window._liveListener = onSnapshot(
             doc(db, '_admin_panel', 'data'),
             (snap) => {
@@ -396,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window._ensureAdminSection = async function(section) {
         if (!window._liveData) { // Force initial load via sync fetch fallback
+            window.__efTrackRead('_admin_panel/data');
             try {
                 const snap = await getDoc(doc(db, '_admin_panel', 'data'));
                 window._liveData = snap.exists() ? snap.data() : { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
@@ -470,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window._backfillUserCounter = async function() {
         if (!confirm('This will count all users and write totalUsers to _stats/counters. Continue?')) return;
         try {
+            window.__efTrackRead('users count (backfill)');
             const snap = await getCountFromServer(collection(db, 'users'));
             const total = snap.data().count;
             await setDoc(doc(db, '_stats', 'counters'), { totalUsers: total }, { merge: true });
@@ -484,6 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { getDoc, doc: fDoc, setDoc } = await import(
             "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
         );
+        window.__efTrackRead('_notifications/latest');
         const existing = await getDoc(fDoc(db, '_notifications', 'latest'));
         const items = existing.exists() ? (existing.data().items || []) : [];
         items.unshift({
@@ -499,6 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { getDoc, doc: fDoc, setDoc } = await import(
             "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
         );
+        window.__efTrackRead('_schedules/latest');
         const existing = await getDoc(fDoc(db, '_schedules', 'latest'));
         const items = existing.exists() ? (existing.data().items || []) : [];
         items.push({
@@ -738,6 +743,7 @@ function setupAdminListeners() {
     async function getNationalRanking(userRating) {
         try {
             // 1 read: count users ranked above current user's rating
+            window.__efTrackRead('ranking count');
             const higherSnap = await getCountFromServer(
                 query(collection(db, 'users'), where('exaRating', '>', userRating))
             );
@@ -978,6 +984,7 @@ function setupAdminListeners() {
 
                     // Write totalUsers to this user's doc for ranking (0 future reads)
                     try {
+                        window.__efTrackRead('_stats/counters (new user)');
                         const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
                         const totalUsers = counterSnap.data()?.totalUsers || 0;
                         if (totalUsers > 0) {
@@ -1073,6 +1080,7 @@ function setupAdminListeners() {
                 if (!userData.totalUsers) {
                     (async () => {
                         try {
+                            window.__efTrackRead('_stats/counters (init)');
                             const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
                             const total = counterSnap.data()?.totalUsers || 0;
                             if (total > 0) {
@@ -1116,6 +1124,7 @@ function setupAdminListeners() {
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
                 // ── onSnapshot on user doc for real-time updates (uses real-time read units) ──
                 if (window._userDocListener) window._userDocListener();
+                window.__efTrackRead('users/'+user.uid+' (onSnapshot)');
                 window._userDocListener = onSnapshot(doc(db, 'users', user.uid), (snap) => {
                     if (snap.exists()) {
                         const data = snap.data();
@@ -1791,6 +1800,7 @@ function mcRenderUsersTab() {
                 ),
                 limit(10)
             );
+            window.__efTrackRead('admin user search');
             const snap = await getDocs(q);
             const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -2421,6 +2431,7 @@ window.mcDeleteDailyAdvice = function(id, title) {
                 try {
                     const { collectionGroup, getDocs, writeBatch, query, where } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
                     const q = query(collectionGroup(db, 'notifications'), where('adviceId', '==', id));
+                    window.__efTrackRead('notification cleanup');
                     const snap = await getDocs(q);
                     
                     if (snap.size > 0) {
@@ -3191,6 +3202,7 @@ window.mcViewDailyQuizDetails = async function(dqid) {
 
         if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} }
 
+        window.__efTrackRead('daily_quiz/'+dqid+' (onSnapshot)');
         window._attemptsListener = onSnapshot(
             doc(db, 'daily_quizzes/' + dqid),
             (snap) => {
@@ -5803,6 +5815,7 @@ window.adminPromptNotification = function(userId) {
 
             try {
                 const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                window.__efTrackRead('event key');
                 const keyDoc = await getDoc(doc(db, 'subscription_events', eventId, 'keys', key));
 
                 if (!keyDoc.exists()) {
@@ -5898,6 +5911,7 @@ window.adminPromptNotification = function(userId) {
                 // Append to _data/registrations without duplicates
                 try {
                     const regRef = doc(db, 'subscription_events', eventId, '_data', 'registrations');
+                    window.__efTrackRead('registration');
                     const snap = await getDoc(regRef);
                     let students = snap.exists() ? (snap.data().students || []) : [];
                     // Remove any existing entry for this user
@@ -6284,15 +6298,13 @@ window.adminPromptNotification = function(userId) {
         let broadcastScheds = [];
         
         try {
-            // Read user data raw for fresh schedule data
-            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const userSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
-            const userRaw = userSnap.exists() ? userSnap.data() : {};
-            schedItems = userRaw.schedule || [];
+            // Read user data via sync (cache-first, already preloaded)
+            const userDoc = await sync.doc('users/' + auth.currentUser.uid) || {};
+            schedItems = userDoc.schedule || [];
             
-            // Load broadcast schedules directly
-            const schedSnap = await getDoc(fDoc(db, '_schedules', 'latest'));
-            if (schedSnap.exists()) broadcastScheds = schedSnap.data().items || [];
+            // Load broadcast schedules via sync (already preloaded)
+            const schedDoc = await sync.doc('_schedules/latest') || {};
+            broadcastScheds = schedDoc.items || [];
             
             // Filter out dismissed broadcast schedule items
             const dismissedScheds = userRaw.dismissedScheds || [];
@@ -6447,6 +6459,7 @@ window.adminPromptNotification = function(userId) {
     window.deleteScheduleItem = async function(itemId) {
         try {
             const userRef = doc(db, 'users', auth.currentUser.uid);
+            window.__efTrackRead('users/userId (deleteSchedule)');
             const snap = await getDoc(userRef);
             if (!snap.exists()) return;
             const data = snap.data();
@@ -8088,6 +8101,7 @@ window.mcViewSubEventDetails = async function(eventId) {
         // ── Real-time updates via _data doc onSnapshot (1 read initial sync, real-time units for updates) ──
         if (window._regDataListener) { try { window._regDataListener(); } catch(e) {} }
         
+        window.__efTrackRead('event registrations (onSnapshot)');
         window._regDataListener = onSnapshot(
             doc(db, 'subscription_events/' + eventId + '/_data/registrations'),
             (snap) => {
