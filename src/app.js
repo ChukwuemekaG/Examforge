@@ -2,7 +2,7 @@
 import { auth } from '../firebase-config.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { initSchema } from './db/schema.js';
-import { exec, execOne, execute, trackRead } from './db/client.js';
+import { exec, execOne, execute, trackRead, batch } from './db/client.js';
 import * as core from './ui/core.js';
 import * as authModule from './ui/auth.js';
 import { renderDashboard, updateDashboardUI } from './ui/dashboard.js';
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize Turso schema
   try {
-    await initSchema({ execute });
+    await initSchema({ execute, batch });
   } catch (e) {
     console.warn('[App] Schema init skipped:', e.message);
   }
