@@ -1,8 +1,14 @@
 // Turso HTTP Database Client
-// Uses the libsql HTTP pipeline API
+// Uses the libsql HTTP pipeline API via a Firebase Cloud Function proxy
+// (Direct Turso URL is not used in browser to avoid CORS issues)
 
-const TURSO_URL = 'https://examforge-chukwuemekagodson.aws-us-east-2.turso.io';
-const TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODA2NzY1NzEsImlkIjoiMDE5ZTk4OTYtYmQwMS03ZjM0LWExYTMtNzNkYzZiZjg2OWI0IiwicmlkIjoiNWM4M2NlN2QtYmMyOC00NzE5LWI1NjUtZTNhMzRlNzAxNzE5In0.xbL2U_ccoauF-kteJ3WvQMcVeGrl2vW9ND8XJ8ajMpopVIPAEVdbGdvpwNCqbtjIwFsYCfiJN_lcd1Mk9281Ag';
+const PROXY_URL_PROD = 'https://us-central1-examforgetest.cloudfunctions.net/tursoProxy';
+const PROXY_URL_LOCAL = 'http://localhost:5001/examforgetest/us-central1/tursoProxy';
+
+function getApiUrl() {
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return isLocalhost ? PROXY_URL_LOCAL : PROXY_URL_PROD;
+}
 
 // Internal read tracking
 window.__efReads = 0;
@@ -34,28 +40,29 @@ async function request(sql, args = {}) {
       { type: 'close' }
     ]
   };
-  
-  const res = await fetch(`${TURSO_URL}/v2/pipeline`, {
+
+  const apiUrl = getApiUrl();
+
+  const res = await fetch(apiUrl, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${TURSO_TOKEN}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(body)
   });
-  
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Turso error (${res.status}): ${text}`);
   }
-  
+
   const data = await res.json();
   const result = data.results?.[0]?.response?.result;
   if (!result) throw new Error('Turso: empty response');
   if (data.results?.[0]?.type === 'error') {
     throw new Error(`Turso: ${data.results[0].response?.error?.message || 'query error'}`);
   }
-  
+
   return result;
 }
 
@@ -96,10 +103,11 @@ export async function batch(statements) {
     })).concat({ type: 'close' })
   };
 
-  const res = await fetch(`${TURSO_URL}/v2/pipeline`, {
+  const apiUrl = getApiUrl();
+
+  const res = await fetch(apiUrl, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${TURSO_TOKEN}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(body)

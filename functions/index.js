@@ -91,3 +91,49 @@ exports.sendPushNotification = functions.firestore
             console.error(`FCM error for ${uid}:`, error.message);
         }
     });
+
+// Turso database proxy — adds CORS headers for browser access
+exports.tursoProxy = functions.https.onRequest(async (req, res) => {
+  // CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  // Only accept POST
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  const TURSO_URL = 'https://examforge-chukwuemekagodson.aws-us-east-2.turso.io';
+  const TURSO_TOKEN = functions.config().turso?.token || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODA2NzY1NzEsImlkIjoiMDE5ZTk4OTYtYmQwMS03ZjM0LWExYTMtNzNkYzZiZjg2OWI0IiwicmlkIjoiNWM4M2NlN2QtYmMyOC00NzE5LWI1NjUtZTNhMzRlNzAxNzE5In0.xbL2U_ccoauF-kteJ3WvQMcVeGrl2vW9ND8XJ8ajMpopVIPAEVdbGdvpwNCqbtjIwFsYCfiJN_lcd1Mk9281Ag';
+
+  try {
+    const response = await fetch(TURSO_URL + '/v2/pipeline', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TURSO_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(req.body)
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      res.status(response.status).json({ error: text });
+      return;
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (e) {
+    console.error('Turso proxy error:', e);
+    res.status(502).json({ error: e.message });
+  }
+});
