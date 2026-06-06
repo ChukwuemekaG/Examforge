@@ -85,28 +85,28 @@ async function handleViewChange(view) {
   try {
     switch (view) {
       case 'dashboard':
-        await renderDashboard();
+        renderDashboard();
         break;
       case 'schedule':
-        await renderSchedule();
+        renderSchedule();
         break;
       case 'inbox':
-        await renderInbox();
+        renderInbox();
         break;
       case 'results':
         renderResults();
         break;
       case 'library':
-        await renderLibrary();
+        renderLibrary();
         break;
       case 'subscriptions':
-        await renderSubscriptions();
+        renderSubscriptions();
         break;
       case 'settings':
         renderSettings();
         break;
       case 'master':
-        if (core.getState().userData?.role === 'admin') await renderMaster();
+        if (core.getState().userData?.role === 'admin') renderMaster();
         else workspace.innerHTML = '<div class="empty-state">Access denied</div>';
         break;
       default:

@@ -5,18 +5,21 @@ import { generateId } from '../utils/helpers.js';
 
 export async function renderInbox() {
   const { userData, workspace } = getState();
-  
-  let inboxItems = userData.inbox || [];
-  let broadcastItems = [];
+  const inboxItems = userData.inbox || [];
+
+  // RENDER IMMEDIATELY with cached inbox
+  renderInboxList(inboxItems, []);
+
+  // FETCH broadcast notifications in background
   try {
-    broadcastItems = await notifications.getBroadcastNotifications();
-  } catch (e) { console.warn('Could not load broadcast notifications:', e); }
-  
-  // Filter out all broadcast notifications with quizUrl (exam-related)
-  broadcastItems = broadcastItems.filter(n => !n.quiz_url);
-  
-  // Merge broadcast + personal inbox, limit to 50
-  const allItems = [...broadcastItems.map(n => ({ ...n, isBroadcast: true })), ...inboxItems].slice(0, 50);
+    const broadcastItems = await notifications.getBroadcastNotifications();
+    renderInboxList(inboxItems, broadcastItems.filter(n => !n.quiz_url));
+  } catch (e) { /* use cached */ }
+}
+
+function renderInboxList(personal, broadcast) {
+  const { workspace } = getState();
+  const allItems = [...broadcast.map(n => ({ ...n, isBroadcast: true })), ...personal].slice(0, 50);
 
   workspace.innerHTML = `
   <div class="page-header">

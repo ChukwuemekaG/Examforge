@@ -5,17 +5,22 @@ import { generateId } from '../utils/helpers.js';
 
 export async function renderSchedule() {
   const { userData, workspace } = getState();
-  
-  // Get user schedule items + broadcast schedules
-  let schedItems = userData.schedule || [];
-  let broadcastScheds = [];
+  const schedItems = userData.schedule || [];
+
+  // RENDER IMMEDIATELY with cached schedule
+  renderScheduleList(schedItems, []);
+
+  // FETCH broadcast schedules in background
   try {
-    broadcastScheds = await schedules.getBroadcastSchedules();
-  } catch (e) { console.warn('Could not load broadcast schedules:', e); }
-  
-  // Combine and sort by date
-  const allItems = [...schedItems, ...broadcastScheds.map(s => ({ ...s, isBroadcast: true }))];
-  
+    const broadcastScheds = await schedules.getBroadcastSchedules();
+    renderScheduleList(schedItems, broadcastScheds);
+  } catch (e) { /* use cached */ }
+}
+
+function renderScheduleList(personal, broadcast) {
+  const { workspace } = getState();
+  const allItems = [...personal, ...broadcast.map(s => ({ ...s, isBroadcast: true }))];
+
   if (allItems.length === 0) {
     workspace.innerHTML = '<div class="page-header"><div class="page-title">Schedule</div><div class="page-sub">Your Study Plan</div></div><div class="empty-state"><span class="material-icons-round" style="font-size:48px;color:var(--text-muted);margin-bottom:16px;">event_busy</span><div style="font-weight:700;color:var(--text-muted);">No scheduled items</div></div>';
     return;

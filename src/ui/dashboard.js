@@ -48,12 +48,8 @@ export async function renderDashboard() {
   const streak = stats.streak || 0;
   const highestStreak = stats.highestStreak || 0;
 
-  let nationalStats = { rank: '-', total: '-', percentile: 100 };
-  try { nationalStats = await ranking.getNationalRanking(exaRating); } catch (e) { console.warn('Ranking unavailable:', e); }
-
-  const percentileTag = nationalStats.percentile <= 60
-    ? '<div class="tag tag-green" style="font-size:0.7rem;font-weight:900;padding:2px 8px;">TOP ' + nationalStats.percentile + '%</div>'
-    : '';
+  const nationalStats = { rank: '-', total: '-', percentile: 100 };
+  const percentileTag = '';
 
   const trendIcon = trend.direction === 'up' ? 'trending_up' : trend.direction === 'down' ? 'trending_down' : 'trending_flat';
   const trendColor = trend.direction === 'up' ? '#16a34a' : trend.direction === 'down' ? '#dc2626' : 'var(--text-muted)';
@@ -183,6 +179,26 @@ export async function renderDashboard() {
       <span class="material-icons-round" style="color:var(--text-muted);">chevron_right</span>
     </button>
   </div>`;
+
+  // FETCH ranking in background and update DOM in-place
+  ranking.getNationalRanking(exaRating).then(ns => {
+    const rankEl = workspace.querySelector('.card-accent .stat-value');
+    if (rankEl) rankEl.textContent = '#' + ns.rank;
+    const badgeEl = workspace.querySelector('.card-accent .tag');
+    if (!badgeEl && ns.percentile <= 60) {
+      // Create and insert the percentile tag if it should show
+      const nationalStandingEl = workspace.querySelector('.card-accent .stat-label');
+      if (nationalStandingEl) {
+        const tag = document.createElement('div');
+        tag.className = 'tag tag-green';
+        tag.style.cssText = 'font-size:0.7rem;font-weight:900;padding:2px 8px;';
+        tag.textContent = 'TOP ' + ns.percentile + '%';
+        nationalStandingEl.after(tag);
+      }
+    } else if (badgeEl) {
+      badgeEl.textContent = 'TOP ' + ns.percentile + '%';
+    }
+  }).catch(e => console.warn('Ranking unavailable:', e));
 }
 
 export function updateDashboardUI() {
