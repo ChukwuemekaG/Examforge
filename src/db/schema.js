@@ -288,8 +288,8 @@ CREATE INDEX IF NOT EXISTS idx_event_keys_event ON event_keys(event_id);
 
 // Run all table creation
 export async function initSchema(db) {
+  // First try: send all CREATE statements as a single multi-statement string
   try {
-    // Execute all CREATE statements as a single SQL string
     const allSql = SCHEMA_SQL
       .split(';')
       .map(s => s.trim())
@@ -298,21 +298,47 @@ export async function initSchema(db) {
     
     await db.execute(allSql);
     console.log('[Schema] All tables created successfully');
+    return;
   } catch (e) {
-    console.warn('[Schema] Full schema creation failed:', e.message);
-    // Fallback: create tables one by one
-    const statements = SCHEMA_SQL
+    console.warn('[Schema] Multi-statement failed:', e.message);
+  }
+
+  // Second try: create tables one by one (skip indexes)
+  const statements = SCHEMA_SQL
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && s.toUpperCase().startsWith('CREATE TABLE'));
+  
+  let allSucceeded = true;
+  for (const sql of statements) {
+    try {
+      console.log('[Schema] Executing:', sql.slice(0, 80) + '...');
+      await db.execute(sql + ';');
+    } catch (e2) {
+      console.warn('[Schema] Error creating table:', e2.message);
+      console.warn('[Schema] Failed SQL:', sql.slice(0, 200));
+      allSucceeded = false;
+    }
+  }
+
+  // Third: create indexes (if all tables succeeded)
+  if (allSucceeded) {
+    const indexes = SCHEMA_SQL
       .split(';')
       .map(s => s.trim())
-      .filter(s => s.length > 0 && s.toUpperCase().startsWith('CREATE'));
+      .filter(s => s.length > 0 && s.toUpperCase().startsWith('CREATE INDEX'));
     
-    for (const sql of statements) {
+    for (const sql of indexes) {
       try {
         await db.execute(sql + ';');
       } catch (e2) {
-        console.warn('[Schema] Error creating table:', e2.message);
+        console.warn('[Schema] Error creating index:', e2.message);
       }
     }
+    console.log('[Schema] All tables + indexes created');
+  } else {
+    console.log('[Schema] Some tables failed - skipping index creation');
   }
+  
   console.log('[Schema] Schema initialization complete');
 }
