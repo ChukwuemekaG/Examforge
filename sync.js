@@ -1,34 +1,27 @@
 /**
- * EXAMFORGE — Cache-first Firestore Sync Manager
+ * EXAMFORGE — Turso-based Sync Manager
  *
- * A cache-first, Firestore-updating access layer that provides instant UI
- * by returning cached data while keeping it fresh via background fetches and
- * real-time listeners (onSnapshot) for documents.
+ * A cache-first, Turso-updating access layer that provides instant UI
+ * by returning cached data while keeping it fresh via background fetches.
+ * Uses IndexedDB (LocalCache) for persistent caching and polling for
+ * live updates (since Turso doesn't have real-time listeners).
  *
  * Architecture:
- *   1. Read from cache first → return immediately for instant UI
- *   2. On cache miss → fetch from Firestore in background → cache it → return
- *   3. For documents: set up onSnapshot listener to keep cache perpetually fresh
- *   4. Collections/queries use the same cache-first strategy — IndexedDB is the
- *      persistent source of truth (never expires). Data stays fresh via onSnapshot
- *      listeners (documents) or cache warming (collections).
+ *   1. Read from memory cache first → return immediately for instant UI
+ *   2. On miss → check IndexedDB cache
+ *   3. On miss → fetch from Turso → cache it → return
+ *   4. Subscribe uses polling at configurable intervals
  *   5. Deduplicate concurrent requests for the same path
- *   6. Notify subscribers when data changes
  *
  * Usage:
- *   import { db } from './firebase-config.js';
  *   import { SyncManager } from './sync.js';
  *
- *   const sync = new SyncManager(db);
+ *   const sync = new SyncManager();
  *   const user = await sync.doc('users/abc123');
  *   const posts = await sync.collection('posts');
- *   const results = await sync.query('users/abc123/results', [
- *     where('score', '>=', 50),
- *     orderBy('timestamp', 'desc'),
- *     limit(20)
- *   ]);
+ *   const results = await sync.query('users', [{ field: 'role', op: '=', value: 'student' }]);
  *
- *   // Subscribe to changes
+ *   // Subscribe to changes (polling-based)
  *   sync.subscribe('users/abc123', (data) => { console.log('Updated:', data); });
  *
  *   // Clean up
@@ -36,72 +29,31 @@
  *   sync.destroy();
  */
 
+import { execOne, exec, execute, trackRead } from './src/db/client.js';
 import { LocalCache } from './cache.js';
-
-import {
-  doc,
-  getDoc,
-  getDocs,
-  collection,
-  collectionGroup,
-  query,
-  onSnapshot,
-  where,
-  orderBy,
-  limit,
-} from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
-
-// ─── Global read counter ────────────────────────────────────────────────────
-
-/**
- * Global read counter function for direct Firestore reads.
- * Tracks ALL Firestore reads (including sync.js internal ones) against a shared budget.
- * Returns true if budget is exhausted, false if OK to read.
- */
-window.__efTrackRead = function(path) {
-    if (typeof window.__efReads === 'undefined') window.__efReads = 0;
-    if (typeof window.__efReadBudget === 'undefined') window.__efReadBudget = 10;
-
-    if (window.__efReads >= window.__efReadBudget) {
-        console.warn(`[Firestore] Budget exhausted (${window.__efReads}/${window.__efReadBudget}). Blocked: ${path}`);
-        return true;
-    }
-    window.__efReads++;
-    console.log(`[Firestore] Read ${window.__efReads}/${window.__efReadBudget}: ${path}`);
-    return false;
-};
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-/** @type {number} Default TTL for cached documents (5 minutes) */
-const DEFAULT_DOC_TTL_MS = 5 * 60 * 1000;
+/** @type {number} Default polling interval for subscribe (30 seconds) */
+const DEFAULT_POLL_MS = 30 * 1000;
 
-/** @type {number} Default TTL for cached collections (2 minutes) */
-const DEFAULT_COLLECTION_TTL_MS = 2 * 60 * 1000;
-
-/** @type {number} Default TTL for cached queries (1 minute) */
-const DEFAULT_QUERY_TTL_MS = 1 * 60 * 1000;
+/** @type {number} Default polling interval for liveCollection (15 seconds) */
+const DEFAULT_COLLECTION_POLL_MS = 15 * 1000;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Builds a consistent cache key from a Firestore path and optional constraints.
+ * Builds a consistent cache key from a path and optional constraints.
  *
- * For queries, we serialise the constraints into the key so that different
- * filters produce distinct cache entries.
- *
- * @param {string} path - The Firestore path
- * @param {Array} [constraints=[]] - Query constraints (where, orderBy, limit)
+ * @param {string} path - The document/collection path
+ * @param {Array} [constraints=[]] - Query constraints
  * @returns {string} A unique cache key
  */
 function buildCacheKey(path, constraints = []) {
   if (!constraints || constraints.length === 0) return path;
-  // Serialise constraints into a deterministic suffix
   const serialised = constraints
     .map((c) => {
-      if (c && typeof c === 'object' && c._firestoreQueryConstraint) {
-        // Firestore constraint objects have internal representation;
-        // we convert them to a simple descriptor.
+      if (c && typeof c === 'object') {
         try {
           return JSON.stringify(c);
         } catch {
@@ -114,36 +66,14 @@ function buildCacheKey(path, constraints = []) {
   return `${path}?q=${encodeURIComponent(serialised)}`;
 }
 
-/**
- * Resolves the Firestore data from a snapshot, handling both documents and
- * collection/query result sets.
- *
- * @param {import('firebase/firestore').DocumentSnapshot|import('firebase/firestore').QuerySnapshot} snap
- * @returns {object|null}
- */
-function extractData(snap) {
-  if (typeof snap.data === 'function') {
-    // Document snapshot
-    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
-  }
-  // Query/collection snapshot — return array of docs
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
 // ─── SyncManager ────────────────────────────────────────────────────────────
 
 export class SyncManager {
   /**
-   * @param {import('firebase/firestore').Firestore} db - The Firestore database instance.
+   * Creates a new SyncManager instance.
+   * No database instance required — Turso client handles connections internally.
    */
-  constructor(db) {
-    if (!db) {
-      throw new Error('[SyncManager] A Firestore database instance (db) is required.');
-    }
-
-    /** @type {import('firebase/firestore').Firestore} */
-    this._db = db;
-
+  constructor() {
     /** @type {LocalCache} */
     this._cache = new LocalCache();
 
@@ -162,20 +92,18 @@ export class SyncManager {
     this._pending = new Map();
 
     /**
-     * Active onSnapshot unsubscribers.
-     * Maps cacheKey → unsubscribe function.
-     * Only used for document listeners (collections use liveCollection instead).
-     * @type {Map<string, Function>}
+     * Active polling interval IDs for subscribe().
+     * Maps cacheKey → intervalId
+     * @type {Map<string, number>}
      */
-    this._listeners = new Map();
+    this._pollers = new Map();
 
     /**
-     * Active collection onSnapshot unsubscribers.
-     * Maps path → unsubscribe function.
-     * Set up by liveCollection().
-     * @type {Map<string, Function>}
+     * Active polling interval IDs for liveCollection().
+     * Maps path → intervalId
+     * @type {Map<string, number>}
      */
-    this._collectionListeners = new Map();
+    this._collectionPollers = new Map();
 
     /**
      * Subscriber callbacks for change notifications.
@@ -185,19 +113,17 @@ export class SyncManager {
     this._subscribers = new Map();
 
     /**
-     * Periodic stale-cache sweeper interval ID.
-     * @type {number|null}
+     * Track the latest known data for polling comparison.
+     * Maps cacheKey → JSON-stringified data
+     * @type {Map<string, string>}
      */
-    this._sweeperInterval = null;
-
-    // (Sweeper removed — IndexedDB is now the persistent source of truth)
+    this._snapshots = new Map();
   }
 
   // ─── In-memory session cache ───────────────────────────────────────────────
 
   /**
    * Retrieves data from the in-memory cache.
-   * In-memory cache never expires — data persists for the session lifetime.
    *
    * @param {string} key - The cache key.
    * @returns {*|null} The cached data, or null if missing.
@@ -209,7 +135,6 @@ export class SyncManager {
 
   /**
    * Stores data in the in-memory cache.
-   * Data persists for the session lifetime — never expires.
    *
    * @param {string} key - The cache key.
    * @param {*} data - The data to cache.
@@ -229,47 +154,26 @@ export class SyncManager {
 
   /**
    * Clears all IndexedDB cache entries whose path starts with a given base path
-   * followed by '?', i.e. related query caches like 'mock_exams?q=...'.
+   * followed by '?', i.e. related query caches.
    *
-   * This is called by refresh() to ensure query caches are invalidated when
-   * the underlying collection is refreshed.
-   *
-   * @param {string} path - The base Firestore path (e.g. 'mock_exams').
+   * @param {string} path - The base path (e.g. 'users').
    * @returns {Promise<void>}
    */
   async _clearRelatedQueryCaches(path) {
-    const allEntries = await this._cache.entries();
-    const prefix = path + '?';
-    for (const entry of allEntries) {
-      if (entry.path && entry.path.startsWith(prefix)) {
-        await this._cache.delete(entry.path);
+    try {
+      const allEntries = await this._cache.entries();
+      const prefix = path + '?';
+      for (const entry of allEntries) {
+        if (entry.path && entry.path.startsWith(prefix)) {
+          await this._cache.delete(entry.path);
+        }
       }
+    } catch (err) {
+      console.warn('[SyncManager] Error clearing related query caches:', err);
     }
-  }
-
-  /**
-   * Checks whether the global read budget has been exhausted.
-   * Uses the shared window.__efReads / window.__efReadBudget counters.
-   *
-   * @param {string} path - The Firestore path (used for the error message / log).
-   * @returns {boolean} true if budget is exhausted, false if OK to read.
-   */
-  _checkReadBudget(path) {
-    if (typeof window.__efReads === 'undefined') window.__efReads = 0;
-    if (typeof window.__efReadBudget === 'undefined') window.__efReadBudget = 10;
-
-    if (window.__efReads >= window.__efReadBudget) {
-      console.warn(`[Sync] Read budget exhausted (${window.__efReads}/${window.__efReadBudget}). Cannot fetch "${path}".`);
-      return true;
-    }
-    window.__efReads++;
-    console.log(`[Sync] Read ${window.__efReads}/${window.__efReadBudget}: "${path}"`);
-    return false;
   }
 
   // ─── Private Internals ────────────────────────────────────────────────────
-
-  // (Sweeper removed — IndexedDB is now the persistent source of truth)
 
   /**
    * Notifies all subscribers for a given cache key with the latest data.
@@ -280,6 +184,12 @@ export class SyncManager {
   _notifySubscribers(cacheKey, data) {
     const subs = this._subscribers.get(cacheKey);
     if (subs && subs.size > 0) {
+      const snapshot = JSON.stringify(data);
+      const prev = this._snapshots.get(cacheKey);
+      // Only notify if data actually changed
+      if (prev === snapshot) return;
+      this._snapshots.set(cacheKey, snapshot);
+
       subs.forEach((callback) => {
         try {
           callback(data);
@@ -291,165 +201,198 @@ export class SyncManager {
   }
 
   /**
-   * Fetches a Firestore document, caches it, and notifies subscribers.
+   * Parses a document path like "users/abc123" into [table, id].
+   *
+   * @param {string} path
+   * @returns {[string|null, string|null]}
+   */
+  _parsePath(path) {
+    const parts = (path || '').split('/').filter(Boolean);
+    if (parts.length === 2) return [parts[0], parts[1]];
+    if (parts.length === 1) return [parts[0], null];
+    return [null, null];
+  }
+
+  /**
+   * Extracts the table name from a path.
+   * Handles "users", "users/abc123", "users/abc123/results", etc.
+   *
+   * @param {string} path
+   * @returns {string|null}
+   */
+  _parseTable(path) {
+    const parts = (path || '').split('/').filter(Boolean);
+    if (parts.length === 0) return null;
+    return parts[0];
+  }
+
+  /**
+   * Validates that the table name is safe (alphanumeric + underscores only).
+   *
+   * @param {string} table
+   * @returns {boolean}
+   */
+  _isValidTable(table) {
+    return typeof table === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table);
+  }
+
+  /**
+   * Sanitizes a value for SQL to prevent injection via the LIKE clause etc.
+   * Returns the value as-is for parameterised queries — Turso handles escaping.
+   *
+   * @param {*} value
+   * @returns {*}
+   */
+  _sanitizeValue(value) {
+    return value;
+  }
+
+  /**
+   * Fetches a single document from Turso.
    *
    * @param {string} path - The document path (e.g., 'users/abc123').
    * @returns {Promise<object|null>} The document data, or null if it doesn't exist.
    */
   async _fetchDoc(path) {
-    // Check read budget before making a Firestore call
-    if (this._checkReadBudget(path)) {
-      // Budget exhausted — try IndexedDB cache as fallback
+    const [table, id] = this._parsePath(path);
+    if (!table || !id || !this._isValidTable(table)) return null;
+
+    if (trackRead(path)) {
+      // Budget exhausted — try cache as fallback
       const cached = await this._cache.get(buildCacheKey(path));
       if (cached && cached.data) return cached.data;
       throw new Error(`[Sync] Read budget exhausted for "${path}"`);
     }
 
     const cacheKey = buildCacheKey(path);
-    const docRef = doc(this._db, path);
     try {
-      const snap = await getDoc(docRef);
-      const data = extractData(snap);
-
+      const data = await execOne(`SELECT * FROM ${table} WHERE id = ?`, [id]);
       if (data) {
         await this._cache.set(cacheKey, data, 'doc');
       } else {
-        // Document was deleted — remove from cache
         await this._cache.delete(cacheKey);
       }
-
       this._notifySubscribers(cacheKey, data);
-      return data;
+      return data || null;
     } catch (e) {
-      if (e.code === 'unavailable' || e.code === 'not-found' || e.message?.includes('offline')) {
-        return null;
-      }
-      throw e;
+      console.error(`[SyncManager] Error fetching doc "${path}":`, e);
+      return null;
     }
   }
 
   /**
-   * Fetches a Firestore collection, caches it, and notifies subscribers.
+   * Fetches a collection from Turso.
    *
-   * @param {string} path - The collection path (e.g., 'posts').
+   * @param {string} path - The collection path (e.g., 'users').
    * @returns {Promise<Array<object>>} Array of document data.
    */
   async _fetchCollection(path) {
-    // Check read budget before making a Firestore call
-    if (this._checkReadBudget(path)) {
+    const table = this._parseTable(path);
+    if (!table || !this._isValidTable(table)) return [];
+
+    if (trackRead(path)) {
       const cached = await this._cache.get(buildCacheKey(path));
       if (cached && cached.data) return cached.data;
       throw new Error(`[Sync] Read budget exhausted for "${path}"`);
     }
 
     const cacheKey = buildCacheKey(path);
-    const colRef = collection(this._db, path);
     try {
-      const snap = await getDocs(colRef);
-      const data = extractData(snap);
-
-      await this._cache.set(cacheKey, data, 'collection');
-      this._notifySubscribers(cacheKey, data);
-      return data;
+      const rows = await exec(`SELECT * FROM ${table}`);
+      await this._cache.set(cacheKey, rows, 'collection');
+      this._notifySubscribers(cacheKey, rows);
+      return rows;
     } catch (e) {
-      if (e.code === 'unavailable' || e.message?.includes('offline')) {
-        return null;
-      }
-      throw e;
+      console.error(`[SyncManager] Error fetching collection "${path}":`, e);
+      return [];
     }
   }
 
   /**
-   * Fetches a Firestore query with constraints, caches it, and notifies subscribers.
+   * Fetches a query with constraints from Turso.
    *
    * @param {string} path - The collection path.
-   * @param {Array} constraints - Firestore query constraints.
+   * @param {Array} constraints - Query constraints [{field, op, value}].
    * @returns {Promise<Array<object>>} Array of document data.
    */
   async _fetchQuery(path, constraints) {
-    // Check read budget before making a Firestore call
-    if (this._checkReadBudget(path)) {
+    const table = this._parseTable(path);
+    if (!table || !this._isValidTable(table)) return [];
+
+    if (trackRead(path)) {
       const cached = await this._cache.get(buildCacheKey(path, constraints));
       if (cached && cached.data) return cached.data;
       throw new Error(`[Sync] Read budget exhausted for "${path}"`);
     }
 
     const cacheKey = buildCacheKey(path, constraints);
-    const colRef = collection(this._db, path);
-    const q = query(colRef, ...constraints);
     try {
-      const snap = await getDocs(q);
-      const data = extractData(snap);
+      let sql = `SELECT * FROM ${table}`;
+      let params = [];
 
-      await this._cache.set(cacheKey, data, 'query');
-      this._notifySubscribers(cacheKey, data);
-      return data;
-    } catch (e) {
-      if (e.code === 'unavailable' || e.message?.includes('offline')) {
-        return null;
+      if (constraints && constraints.length > 0) {
+        const whereClauses = [];
+        for (const c of constraints) {
+          if (c.field && c.op && c.value !== undefined) {
+            whereClauses.push(`${c.field} ${c.op} ?`);
+            params.push(c.value);
+          }
+          // Handle special constraints like orderBy
+          if (c.type === 'orderBy' && c.field) {
+            // We handle this after WHERE
+          }
+          if (c.type === 'limit' && c.value !== undefined) {
+            // We handle this at the end
+          }
+        }
+        if (whereClauses.length > 0) {
+          sql += ' WHERE ' + whereClauses.join(' AND ');
+        }
+
+        // Handle orderBy and limit after WHERE
+        let orderByClauses = [];
+        let limitValue = null;
+        for (const c of constraints) {
+          if (c.type === 'orderBy' && c.field) {
+            const dir = c.direction === 'desc' ? 'DESC' : 'ASC';
+            orderByClauses.push(`${c.field} ${dir}`);
+          }
+          if (c.type === 'limit' && c.value !== undefined) {
+            limitValue = parseInt(c.value, 10);
+          }
+        }
+        if (orderByClauses.length > 0) {
+          sql += ' ORDER BY ' + orderByClauses.join(', ');
+        }
+        if (limitValue !== null) {
+          sql += ' LIMIT ?';
+          params.push(limitValue);
+        }
       }
-      throw e;
-    }
-  }
 
-  /**
-   * Fetches a Firestore collectionGroup query, caches it, and notifies subscribers.
-   *
-   * Uses collectionGroup(db, collectionId) instead of collection(db, path) to query
-   * across all subcollections with the given ID. Each result includes a `_refPath`
-   * metadata field so callers can determine the parent document path.
-   *
-   * @param {string} collectionId - The collection ID to search across all subcollections.
-   * @param {Array} constraints - Firestore query constraints.
-   * @returns {Promise<Array<object>>} Array of document data with `_refPath` metadata.
-   */
-  async _fetchCollectionGroup(collectionId, constraints) {
-    // Check read budget before making a Firestore call
-    if (this._checkReadBudget('cg:' + collectionId)) {
-      const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
-      const cached = await this._cache.get(cacheKey);
-      if (cached && cached.data) return cached.data;
-      throw new Error(`[Sync] Read budget exhausted for "cg:${collectionId}"`);
-    }
-
-    const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
-    const colGroupRef = collectionGroup(this._db, collectionId);
-    const q = query(colGroupRef, ...constraints);
-    try {
-      const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({
-        id: d.id,
-        _refPath: d.ref.path,
-        ...d.data()
-      }));
-
-      await this._cache.set(cacheKey, data, 'query');
-      this._notifySubscribers(cacheKey, data);
-      return data;
+      const rows = await exec(sql, params);
+      await this._cache.set(cacheKey, rows, 'query');
+      this._notifySubscribers(cacheKey, rows);
+      return rows;
     } catch (e) {
-      if (e.code === 'unavailable' || e.message?.includes('offline')) {
-        return null;
-      }
-      throw e;
+      console.error(`[SyncManager] Error fetching query "${path}":`, e);
+      return [];
     }
   }
 
   /**
    * Generic fetch with deduplication.
-   * If a fetch for the same cache key is already in-flight, returns its promise.
    *
    * @param {string} cacheKey
    * @param {Function} fetcher - An async function that performs the actual fetch.
    * @returns {Promise<any>}
    */
   async _dedupedFetch(cacheKey, fetcher) {
-    // If there's already a pending request for this key, return it
     if (this._pending.has(cacheKey)) {
       return this._pending.get(cacheKey);
     }
 
     const promise = fetcher().finally(() => {
-      // Clean up the pending entry only if it's still ours
       if (this._pending.get(cacheKey) === promise) {
         this._pending.delete(cacheKey);
       }
@@ -460,55 +403,15 @@ export class SyncManager {
   }
 
   /**
-   * Sets up an onSnapshot listener for a Firestore document.
-   * The listener updates the cache and notifies subscribers on every change.
-   *
-   * @param {string} path - The document path.
-   */
-  _setupDocListener(path) {
-    const cacheKey = buildCacheKey(path);
-
-    // Don't set up duplicate listeners
-    if (this._listeners.has(cacheKey)) return;
-
-    const docRef = doc(this._db, path);
-
-    const unsubscribe = onSnapshot(
-      docRef,
-      async (snap) => {
-        const data = extractData(snap);
-        if (data) {
-          await this._cache.set(cacheKey, data, 'doc');
-          this._setMemCache(cacheKey, data);
-        } else {
-          await this._cache.delete(cacheKey);
-          this._clearMemCache(cacheKey);
-        }
-        this._notifySubscribers(cacheKey, data);
-      },
-      (error) => {
-        console.error(`[SyncManager] onSnapshot error for "${path}":`, error);
-        // Firestore SDK auto-reconnects on transient errors; keep listener
-        if (error.code !== 'unavailable') {
-          this._listeners.delete(cacheKey);
-        }
-      }
-    );
-
-    this._listeners.set(cacheKey, unsubscribe);
-  }
-
-  /**
-   * Logs a warning if a document path (not collection) pattern is unexpected.
+   * Validates a document path.
    *
    * @param {string} path
-   * @returns {boolean} Whether the path looks valid.
+   * @returns {boolean}
    */
   _validateDocPath(path) {
     if (!path || typeof path !== 'string') {
       throw new Error(`[SyncManager] Invalid document path: "${path}"`);
     }
-    // A document path should have an odd number of segments (collection/doc/collection/doc…)
     const segments = path.split('/').filter(Boolean);
     if (segments.length % 2 !== 0) {
       throw new Error(
@@ -521,14 +424,7 @@ export class SyncManager {
   // ─── Public API ───────────────────────────────────────────────────────────
 
   /**
-   * Fetches a Firestore document using a cache-first strategy.
-   *
-   * 1. Returns cached data immediately if available (in-memory first, then IndexedDB).
-   * 2. Otherwise, fetches from Firestore in the background.
-   * 3. Returns the data (from cache or Firestore) via the returned Promise.
-   *
-   * NOTE: This method does NOT set up real-time listeners. If you need live
-   * updates, use `subscribe()` instead.
+   * Fetches a document using a cache-first strategy.
    *
    * @param {string} path - The document path (e.g., 'users/abc123').
    * @returns {Promise<object|null>} The document data, or null if it doesn't exist.
@@ -541,14 +437,14 @@ export class SyncManager {
     const memData = this._getMemCache(cacheKey);
     if (memData !== null) return memData;
 
-    // 2. Check IndexedDB cache (always use if exists — no TTL)
+    // 2. Check IndexedDB cache
     const cached = await this._cache.get(cacheKey);
     if (cached && cached.data) {
       this._setMemCache(cacheKey, cached.data);
       return cached.data;
     }
 
-    // 3. No cache — fetch from Firestore with deduplication
+    // 3. No cache — fetch from Turso with deduplication
     const data = await this._dedupedFetch(cacheKey, () => this._fetchDoc(path));
     this._setMemCache(cacheKey, data);
 
@@ -556,13 +452,9 @@ export class SyncManager {
   }
 
   /**
-   * Fetches a Firestore collection using a cache-first strategy.
+   * Fetches a collection using a cache-first strategy.
    *
-   * Collections use the same cache-first approach as documents.
-   * IndexedDB is the persistent source of truth — cached data never expires.
-   * Data is cached and returned instantly on subsequent calls.
-   *
-   * @param {string} path - The collection path (e.g., 'posts').
+   * @param {string} path - The collection path (e.g., 'users').
    * @returns {Promise<Array<object>>} Array of document data.
    */
   async collection(path) {
@@ -571,18 +463,18 @@ export class SyncManager {
     }
     const cacheKey = buildCacheKey(path);
 
-    // 1. Check in-memory cache first (instant)
+    // 1. Check in-memory cache first
     const memData = this._getMemCache(cacheKey);
     if (memData !== null) return memData;
 
-    // 2. Check IndexedDB cache (always use if exists — no TTL)
+    // 2. Check IndexedDB cache
     const cached = await this._cache.get(cacheKey);
     if (cached && cached.data) {
       this._setMemCache(cacheKey, cached.data);
       return cached.data;
     }
 
-    // 3. No cache — fetch from Firestore
+    // 3. No cache — fetch from Turso
     const data = await this._dedupedFetch(cacheKey, () => this._fetchCollection(path));
     this._setMemCache(cacheKey, data);
     return data;
@@ -599,25 +491,10 @@ export class SyncManager {
   }
 
   /**
-   * Pre-loads data for multiple Firestore paths at session start.
+   * Pre-loads data for multiple paths at session start.
    *
-   * Iterates over the given paths, calling `doc()` for each one. This populates
-   * both the IndexedDB cache and the in-memory cache so that subsequent reads
-   * are served instantly without hitting Firestore.
-   *
-   * Failed preloads (e.g. due to read budget exhaustion or network errors) are
-   * logged as warnings and do NOT halt preloading of remaining paths.
-   *
-   * @param {string[]} paths - Array of Firestore document paths to pre-load.
+   * @param {string[]} paths - Array of document paths to pre-load.
    * @returns {Promise<Object<string, *>>} A map of path → loaded data (null for failures).
-   *
-   * @example
-   *   const data = await sync.preload([
-   *     'users/abc123',
-   *     'settings/app',
-   *     'courses/xyz789'
-   *   ]);
-   *   console.log(data['users/abc123']);
    */
   async preload(paths) {
     if (!Array.isArray(paths)) {
@@ -636,9 +513,9 @@ export class SyncManager {
   }
 
   /**
-   * Returns the number of Firestore reads used so far in this session.
+   * Returns the number of reads used so far in this session.
    *
-   * @returns {number} The number of reads consumed.
+   * @returns {number}
    */
   getReadsUsed() {
     return typeof window.__efReads === 'undefined' ? 0 : window.__efReads;
@@ -647,7 +524,7 @@ export class SyncManager {
   /**
    * Returns the total read budget allocated for this session.
    *
-   * @returns {number} The maximum number of Firestore reads allowed.
+   * @returns {number}
    */
   getReadBudget() {
     return typeof window.__efReadBudget === 'undefined' ? 10 : window.__efReadBudget;
@@ -655,9 +532,6 @@ export class SyncManager {
 
   /**
    * Resets the read budget counter back to zero.
-   *
-   * Call this to allow additional Firestore reads beyond the original budget.
-   * Useful after a session refresh or when the user explicitly requests a sync.
    */
   resetBudget() {
     window.__efReads = 0;
@@ -666,87 +540,17 @@ export class SyncManager {
   }
 
   /**
-   * Fetches a Firestore collection with a real-time onSnapshot listener.
-   *
-   * Returns cached data immediately if available, then sets up an onSnapshot
-   * listener that updates the cache and fires the onChange callback on every
-   * snapshot change.
-   *
-   * @param {string} path - The collection path (e.g., 'unicourses').
-   * @param {Function} [onChange] - Optional callback fired with updated data on every snapshot.
-   * @returns {Promise<Array<object>>} Array of document data.
-   *
-   * @example
-   *   const courses = await sync.liveCollection('unicourses', (data) => {
-   *     console.log('Courses updated:', data);
-   *   });
-   */
-  async liveCollection(path, onChange) {
-    if (!path || typeof path !== 'string') {
-      throw new Error(`[SyncManager] Invalid collection path: "${path}"`);
-    }
-
-    // Return cached data immediately
-    const cached = await this._cache.get(path);
-    if (cached) {
-      // Set up the listener in the background
-      this._setupCollectionListener(path, onChange);
-      return cached.data;
-    }
-
-    // Fetch from Firestore
-    const data = await this._fetchCollection(path);
-
-    // Set up listener
-    this._setupCollectionListener(path, onChange);
-
-    return data;
-  }
-
-  /**
-   * Sets up an onSnapshot listener for a collection path.
-   * The listener updates the cache and fires the onChange callback on every change.
-   * Prevents duplicate listeners for the same path.
-   *
-   * @param {string} path - The collection path.
-   * @param {Function} [onChange] - Optional callback fired with updated data.
-   */
-  _setupCollectionListener(path, onChange) {
-    if (this._collectionListeners.has(path)) return;
-
-    const parts = path.split('/').filter(Boolean);
-    const colRef = collection(this._db, ...parts);
-
-    const unsubscribe = onSnapshot(colRef, async (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      await this._cache.set(path, data, 'collection');
-      this._setMemCache(path, data);
-      this._notifySubscribers(path, data);
-      if (onChange) onChange(data);
-    }, (error) => {
-      console.error(`[SyncManager] onSnapshot error for collection "${path}":`, error);
-      this._collectionListeners.delete(path);
-    });
-
-    this._collectionListeners.set(path, unsubscribe);
-  }
-
-  /**
-   * Fetches a Firestore query with constraints using a cache-first strategy.
-   *
-   * Like collections, queries use the same cache-first approach.
-   * IndexedDB is the persistent source of truth — cached data never expires.
-   * Each unique set of constraints produces its own cache entry.
+   * Fetches a query with constraints using a cache-first strategy.
    *
    * @param {string} path - The collection path to query.
-   * @param {Array} constraints - Firestore query constraints (where, orderBy, limit, etc.).
+   * @param {Array} constraints - Query constraints [{field, op, value}, {type: 'orderBy', field, direction}, {type: 'limit', value}].
    * @returns {Promise<Array<object>>} Array of document data.
    *
    * @example
-   *   const results = await sync.query('users/uid/results', [
-   *     where('score', '>=', 50),
-   *     orderBy('timestamp', 'desc'),
-   *     limit(20)
+   *   const results = await sync.query('users', [
+   *     { field: 'role', op: '=', value: 'student' },
+   *     { type: 'orderBy', field: 'exaRating', direction: 'desc' },
+   *     { type: 'limit', value: 20 }
    *   ]);
    */
   async query(path, constraints = []) {
@@ -758,52 +562,30 @@ export class SyncManager {
     }
     const cacheKey = buildCacheKey(path, constraints);
 
-    // 1. Check in-memory cache first (instant)
+    // 1. Check in-memory cache first
     const memData = this._getMemCache(cacheKey);
     if (memData !== null) return memData;
 
-    // 2. Check IndexedDB cache (always use if exists — no TTL)
+    // 2. Check IndexedDB cache
     const cached = await this._cache.get(cacheKey);
     if (cached && cached.data) {
       this._setMemCache(cacheKey, cached.data);
       return cached.data;
     }
 
-    // 3. No cache — fetch from Firestore
+    // 3. No cache — fetch from Turso
     const data = await this._dedupedFetch(cacheKey, () => this._fetchQuery(path, constraints));
     this._setMemCache(cacheKey, data);
     return data;
   }
 
   /**
-   * Fetches documents from a collection group using a cache-first strategy.
+   * Fetches a collection group query.
+   * Since Turso is SQL-based, this maps to SELECT * FROM table.
    *
-   * Uses `collectionGroup(db, collectionId)` instead of `collection(db, path)` to
-   * query across all subcollections with the given ID. Cache keys are prefixed
-   * with 'cg:' to avoid collisions with regular queries.
-   *
-   * Like other queries, collectionGroup queries use the same cache-first approach.
-   * IndexedDB is the persistent source of truth — cached data never expires.
-   * Each unique combination of collectionId + constraints produces its own cache entry.
-   * Deduplication ensures concurrent requests for the same parameters share
-   * one Firestore fetch.
-   *
-   * Each returned document includes a `_refPath` metadata field containing the
-   * full Firestore document path (e.g., "users/abc123/results/def456"), which
-   * allows callers to determine the parent document or collection.
-   *
-   * @param {string} collectionId - The collection group ID (e.g., 'results').
-   * @param {Array} [constraints=[]] - Firestore query constraints (where, orderBy, limit, etc.).
-   * @returns {Promise<Array<object>>} Array of document data, each with `_refPath`.
-   *
-   * @example
-   *   const results = await sync.collectionGroup('results', [
-   *     where('quizId', '==', quizId)
-   *   ]);
-   *   results.forEach(r => {
-   *     const uid = r._refPath.split('/')[1];
-   *     console.log(r.id, uid, r.score);
-   *   });
+   * @param {string} collectionId - The collection/table name.
+   * @param {Array} [constraints=[]] - Query constraints.
+   * @returns {Promise<Array<object>>} Array of document data.
    */
   async collectionGroup(collectionId, constraints = []) {
     if (!collectionId || typeof collectionId !== 'string') {
@@ -814,31 +596,79 @@ export class SyncManager {
     }
     const cacheKey = 'cg:' + collectionId + ':' + JSON.stringify(constraints);
 
-    // 1. Check in-memory cache first (instant)
+    // 1. Check in-memory cache first
     const memData = this._getMemCache(cacheKey);
     if (memData !== null) return memData;
 
-    // 2. Check IndexedDB cache (always use if exists — no TTL)
+    // 2. Check IndexedDB cache
     const cached = await this._cache.get(cacheKey);
     if (cached && cached.data) {
       this._setMemCache(cacheKey, cached.data);
       return cached.data;
     }
 
-    // 3. No cache — fetch from Firestore
-    const data = await this._dedupedFetch(cacheKey, () => this._fetchCollectionGroup(collectionId, constraints));
-    this._setMemCache(cacheKey, data);
-    return data;
+    // 3. No cache — fetch from Turso
+    const table = collectionId;
+    if (!this._isValidTable(table)) return [];
+
+    if (trackRead('cg:' + collectionId)) {
+      const fallback = await this._cache.get(cacheKey);
+      if (fallback && fallback.data) return fallback.data;
+      throw new Error(`[Sync] Read budget exhausted for "cg:${collectionId}"`);
+    }
+
+    try {
+      let sql = `SELECT * FROM ${table}`;
+      let params = [];
+
+      if (constraints && constraints.length > 0) {
+        const whereClauses = [];
+        const orderByClauses = [];
+        let limitValue = null;
+
+        for (const c of constraints) {
+          if (c.field && c.op && c.value !== undefined) {
+            whereClauses.push(`${c.field} ${c.op} ?`);
+            params.push(c.value);
+          } else if (c.type === 'orderBy' && c.field) {
+            const dir = c.direction === 'desc' ? 'DESC' : 'ASC';
+            orderByClauses.push(`${c.field} ${dir}`);
+          } else if (c.type === 'limit' && c.value !== undefined) {
+            limitValue = parseInt(c.value, 10);
+          }
+        }
+
+        if (whereClauses.length > 0) {
+          sql += ' WHERE ' + whereClauses.join(' AND ');
+        }
+        if (orderByClauses.length > 0) {
+          sql += ' ORDER BY ' + orderByClauses.join(', ');
+        }
+        if (limitValue !== null) {
+          sql += ' LIMIT ?';
+          params.push(limitValue);
+        }
+      }
+
+      const rows = await exec(sql, params);
+      await this._cache.set(cacheKey, rows, 'query');
+      this._setMemCache(cacheKey, rows);
+      return rows;
+    } catch (e) {
+      console.error(`[SyncManager] Error fetching collectionGroup "${collectionId}":`, e);
+      return [];
+    }
   }
 
   /**
-   * Subscribes to data changes for a given path.
+   * Subscribes to data changes for a given path using polling.
    *
-   * When the cached data is updated (via background fetch or onSnapshot),
-   * the callback will be invoked with the latest data.
+   * Instead of Firestore's real-time onSnapshot, this uses a periodic
+   * poll to check for changes and notifies the callback when data changes.
    *
-   * @param {string} path - The Firestore path to subscribe to.
+   * @param {string} path - The path to subscribe to.
    * @param {Function} callback - Called with (data) on every change.
+   * @param {number} [pollMs=30000] - Polling interval in milliseconds.
    * @returns {Promise<void>}
    *
    * @example
@@ -846,7 +676,7 @@ export class SyncManager {
    *     renderProfile(userData);
    *   });
    */
-  async subscribe(path, callback) {
+  async subscribe(path, callback, pollMs = DEFAULT_POLL_MS) {
     if (!path || typeof path !== 'string') {
       throw new Error('[SyncManager] subscribe() requires a valid path');
     }
@@ -861,38 +691,103 @@ export class SyncManager {
       const cached = await this._cache.get(cacheKey);
       if (cached) {
         callback(cached.data);
+        this._snapshots.set(cacheKey, JSON.stringify(cached.data));
       }
     } catch (error) {
       // Non-critical
     }
 
-    // Set up real-time tracking for documents and collections.
-    const segments = path.split('/').filter(Boolean);
-    if (segments.length % 2 === 0) {
-      this._setupDocListener(path);
-    } else {
-      this._setupCollectionListener(path, callback);
-    }
-
-    // Register the callback for future updates.
+    // Register the callback
     if (!this._subscribers.has(cacheKey)) {
       this._subscribers.set(cacheKey, new Set());
     }
     this._subscribers.get(cacheKey).add(callback);
+
+    // Start polling if not already running
+    if (!this._pollers.has(cacheKey)) {
+      const intervalId = setInterval(async () => {
+        try {
+          const segments = path.split('/').filter(Boolean);
+          let data;
+          if (segments.length % 2 === 0) {
+            // Document path
+            data = await this._fetchDoc(path);
+          } else {
+            // Collection path
+            data = await this._fetchCollection(path);
+          }
+          if (data !== undefined) {
+            this._setMemCache(cacheKey, data);
+            this._notifySubscribers(cacheKey, data);
+          }
+        } catch (e) {
+          console.warn(`[SyncManager] Poll error for "${path}":`, e.message);
+        }
+      }, pollMs);
+      this._pollers.set(cacheKey, intervalId);
+    }
+  }
+
+  /**
+   * Sets up a polling-based live collection.
+   *
+   * @param {string} path - The collection path.
+   * @param {Function} [onChange] - Optional callback fired with updated data.
+   * @param {number} [pollMs=15000] - Polling interval in milliseconds.
+   * @returns {Promise<Array<object>>} Array of document data.
+   */
+  async liveCollection(path, onChange, pollMs = DEFAULT_COLLECTION_POLL_MS) {
+    if (!path || typeof path !== 'string') {
+      throw new Error(`[SyncManager] Invalid collection path: "${path}"`);
+    }
+
+    // Return cached data immediately
+    const cached = await this._cache.get(path);
+    if (cached) {
+      // Start polling in the background
+      this._setupCollectionPoller(path, onChange, pollMs);
+      return cached.data;
+    }
+
+    // Fetch from Turso
+    const data = await this._fetchCollection(path);
+
+    // Start polling
+    this._setupCollectionPoller(path, onChange, pollMs);
+
+    return data;
+  }
+
+  /**
+   * Sets up a polling interval for a collection.
+   *
+   * @param {string} path - The collection path.
+   * @param {Function} [onChange] - Optional callback fired with updated data.
+   * @param {number} pollMs - Polling interval in milliseconds.
+   */
+  _setupCollectionPoller(path, onChange, pollMs) {
+    if (this._collectionPollers.has(path)) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const data = await this._fetchCollection(path);
+        if (data) {
+          this._setMemCache(path, data);
+          if (onChange) onChange(data);
+        }
+      } catch (e) {
+        console.warn(`[SyncManager] Collection poll error for "${path}":`, e.message);
+      }
+    }, pollMs);
+    this._collectionPollers.set(path, intervalId);
   }
 
   /**
    * Unsubscribes a callback from change notifications for a given path.
    *
-   * If no callbacks remain for that path, the onSnapshot listener (if any)
-   * is NOT automatically torn down — it stays active to keep the cache fresh.
-   * Call `unsubscribe(path)` without a callback to remove ALL subscribers
-   * and tear down the listener.
-   *
-   * @param {string} path - The Firestore path.
+   * @param {string} path - The path.
    * @param {Function} [callback] - Optional specific callback to remove.
-   *   If omitted, ALL subscribers for this path are removed AND the listener
-   *   is torn down.
+   *   If omitted, ALL subscribers for this path are removed AND the poller is stopped.
    */
   unsubscribe(path, callback) {
     if (!path || typeof path !== 'string') {
@@ -909,27 +804,34 @@ export class SyncManager {
       subs.delete(callback);
       if (subs.size === 0) {
         this._subscribers.delete(cacheKey);
+        this._stopPoller(cacheKey);
       }
     } else {
-      // Remove all subscribers and tear down the listener
+      // Remove all subscribers and stop the poller
       this._subscribers.delete(cacheKey);
-
-      const unsubscribe = this._listeners.get(cacheKey);
-      if (unsubscribe) {
-        unsubscribe();
-        this._listeners.delete(cacheKey);
-      }
+      this._stopPoller(cacheKey);
     }
+  }
+
+  /**
+   * Stops a polling interval for a given cache key.
+   *
+   * @param {string} cacheKey
+   */
+  _stopPoller(cacheKey) {
+    const intervalId = this._pollers.get(cacheKey);
+    if (intervalId) {
+      clearInterval(intervalId);
+      this._pollers.delete(cacheKey);
+    }
+    this._snapshots.delete(cacheKey);
   }
 
   /**
    * Forces a refresh of the cached data for a given path, bypassing the cache.
    *
-   * Fetches the latest data from Firestore, updates the cache, and notifies
-   * subscribers. Works for documents, collections, and queries.
-   *
-   * @param {string} path - The Firestore path to refresh.
-   * @param {Array} [constraints] - Optional query constraints (only needed for query-type paths).
+   * @param {string} path - The path to refresh.
+   * @param {Array} [constraints] - Optional query constraints.
    * @returns {Promise<object|Array<object>|null>} The refreshed data.
    */
   async refresh(path, constraints = []) {
@@ -958,7 +860,7 @@ export class SyncManager {
     const cacheKey = buildCacheKey(path);
     this._clearMemCache(cacheKey);
 
-    // Clear any related query caches from mem cache (e.g. 'mock_exams?q=...')
+    // Clear any related query caches from mem cache
     for (const key of this._memCache.keys()) {
       if (key.startsWith(path + '?')) this._memCache.delete(key);
     }
@@ -974,34 +876,34 @@ export class SyncManager {
   /**
    * Destroys the SyncManager instance.
    *
-   * Tears down all active onSnapshot listeners and clears the subscriber list.
-   * Call this when the app/page is shutting down to prevent memory leaks.
+   * Tears down all active polling intervals and clears subscriber lists.
    */
   destroy() {
-    // Tear down all active listeners
-    this._listeners.forEach((unsubscribe) => {
+    // Stop all document pollers
+    this._pollers.forEach((intervalId) => {
       try {
-        unsubscribe();
+        clearInterval(intervalId);
       } catch (error) {
-        console.warn('[SyncManager] Error tearing down listener:', error);
+        console.warn('[SyncManager] Error clearing poller:', error);
       }
     });
-    this._listeners.clear();
+    this._pollers.clear();
 
-    // Tear down all active collection listeners
-    this._collectionListeners.forEach((unsubscribe) => {
+    // Stop all collection pollers
+    this._collectionPollers.forEach((intervalId) => {
       try {
-        unsubscribe();
+        clearInterval(intervalId);
       } catch (error) {
-        console.warn('[SyncManager] Error tearing down collection listener:', error);
+        console.warn('[SyncManager] Error clearing collection poller:', error);
       }
     });
-    this._collectionListeners.clear();
+    this._collectionPollers.clear();
 
     // Clear all subscribers
     this._subscribers.clear();
-
-    // Reject any pending requests? No — they're user-facing Promises that
-    // should still resolve. We just stop listening for future updates.
+    this._snapshots.clear();
+    this._memCache.clear();
   }
 }
+
+export default SyncManager;

@@ -1,4 +1,4 @@
-import { auth } from './firebase-config.js';
+import { auth, db } from './firebase-config.js';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
@@ -8,6 +8,7 @@ import {
     signInWithPopup,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { doc, getDoc, setDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -90,10 +91,11 @@ formRegister.addEventListener('submit', async (e) => {
     const password = document.getElementById('regPassword').value;
 
     try {
-        const { default: usersModule } = await import('./src/db/users.js');
-        const existingUser = await usersModule.getUsername(username);
+        const userRef = doc(db, "usernames", username);
+        window.__efTrackRead('username check');
+        const userSnap = await getDoc(userRef);
         
-        if (existingUser) {
+        if (userSnap.exists()) {
             toggleLoading(false);
             showFeedback(regFeedback, "SORRY, THAT USERNAME IS ALREADY TAKEN.");
             return;
@@ -105,37 +107,42 @@ formRegister.addEventListener('submit', async (e) => {
         // 1. Update Auth Profile
         await updateProfile(user, { displayName: fullName });
 
-        // 2. Create the MASTER User Record with Provider Info
-        await usersModule.createUser({
-            id: user.uid,
+        // 2. Create the MASTER User Document with Provider Info
+        await setDoc(doc(db, "users", user.uid), {
             email: email,
             displayName: fullName,
             username: username,
-            provider: 'password',
+            provider: 'password', // Email/Password sign-in
             exaRating: 800,
+            streak: 0,
+            highestStreak: 0,
+            createdAt: new Date(),
             role: 'student'
         });
 
         // Increment total user count for national ranking
-        const { default: countersModule } = await import('./src/db/counters.js');
         try {
-            await countersModule.incrementCounter('totalUsers');
+            await setDoc(doc(db, '_stats', 'counters'), {
+                totalUsers: increment(1)
+            }, { merge: true });
         } catch (e) {
             console.warn('Could not update user counter:', e);
         }
 
-        // Write totalUsers to this user's doc for ranking
+        // Write totalUsers to this user's doc for ranking (0 future reads)
         try {
-            const totalUsers = await countersModule.getCounter('totalUsers');
+            window.__efTrackRead('_stats/counters (signup)');
+            const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
+            const totalUsers = counterSnap.data()?.totalUsers || 0;
             if (totalUsers > 0) {
-                await usersModule.updateUserData(user.uid, { totalUsers });
+                await setDoc(doc(db, 'users', user.uid), { totalUsers }, { merge: true });
             }
         } catch (e) {
             console.warn('Could not write totalUsers:', e);
         }
 
         // 3. Map Username for Login
-        await usersModule.createUsername(username, user.uid, email);
+        await setDoc(doc(db, "usernames", username), { uid: user.uid, email: email });
         
         await sendEmailVerification(user, { url: 'https://examforge.com.ng/verify.html', handleCodeInApp: true });
         window.location.href = '/go-verify.html';
@@ -167,11 +174,12 @@ formRegister.addEventListener('submit', async (e) => {
                     if (cachedEmail) {
                         emailToAuth = cachedEmail;
                     } else {
-                        const { default: usersModule } = await import('./src/db/users.js');
-                        const userRecord = await usersModule.getUsername(identifier);
+                        const userRef = doc(db, "usernames", identifier);
+                        window.__efTrackRead('username resolve');
+                        const userSnap = await getDoc(userRef);
 
-                        if (userRecord) {
-                            emailToAuth = userRecord.email;
+                        if (userSnap.exists()) {
+                            emailToAuth = userSnap.data().email;
                             localStorage.setItem('ef_username_' + identifier, emailToAuth);
                         } else {
                             toggleLoading(false);
