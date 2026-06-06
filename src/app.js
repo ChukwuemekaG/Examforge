@@ -60,8 +60,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Check admin role and show admin nav
   if (core.getState().userData?.role === 'admin') {
-    const adminNav = document.getElementById('admin-nav');
-    if (adminNav) adminNav.style.display = 'flex';
+    const navMaster = document.getElementById('nav-master');
+    if (navMaster) navMaster.style.display = '';
+    const navMasterBottom = document.getElementById('nav-master-bottom');
+    if (navMasterBottom) navMasterBottom.style.display = '';
   }
 
   // Initial view
