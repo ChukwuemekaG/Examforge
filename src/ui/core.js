@@ -20,8 +20,13 @@ export function setWorkspace(el) { workspace = el; }
 export function setSync(s) { sync = s; }
 
 // Navigation
-export function navigate(view) {
+export function navigate(view, pushHistory = true) {
   currentView = view;
+  
+  // Push browser history state
+  if (pushHistory) {
+    window.history.pushState({ view }, '', '/app.html#' + view);
+  }
   
   // Update sidebar active state
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
@@ -61,6 +66,19 @@ export function initNavigation(navItems) {
   document.querySelectorAll('.bottom-nav-item').forEach(item => {
     item.addEventListener('click', () => navigate(item.dataset.view));
   });
+  
+  // Handle browser back/forward buttons
+  window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.view) {
+      navigate(e.state.view, false);
+    }
+  });
+  
+  // Initial route from URL hash
+  const hash = window.location.hash.replace('#', '');
+  if (hash) {
+    navigate(hash, false);
+  }
   
   // Swipe navigation for mobile — DISABLED on admin/master page
   let startX = 0, startY = 0;
