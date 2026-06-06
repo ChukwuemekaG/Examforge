@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize Turso schema
   try {
-    await initSchema({ execute, batch });
+    await initSchema({ execute, batch, exec });
   } catch (e) {
     console.warn('[App] Schema init skipped:', e.message);
   }

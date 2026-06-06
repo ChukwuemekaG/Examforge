@@ -4,8 +4,8 @@
 export async function initSchema(db) {
   // Check if tables already exist (skip schema init on subsequent loads)
   try {
-    const result = await db.execute("SELECT COUNT(*) as cnt FROM users");
-    if (result && result.rows && result.rows.length > 0) {
+    const result = await db.exec("SELECT COUNT(*) as cnt FROM users");
+    if (result && result.length > 0) {
       console.log('[Schema] Tables already exist, skipping creation');
       return;
     }

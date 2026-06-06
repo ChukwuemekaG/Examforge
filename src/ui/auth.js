@@ -34,6 +34,33 @@ export async function initAuth() {
               },
               totalUsers: userDoc.total_users || 0
             });
+
+          // Check Firestore for role updates (admin status, etc.)
+          try {
+            const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const { db } = await import("../../firebase-config.js");
+            const fsSnap = await getDoc(doc(db, 'users', user.uid));
+            if (fsSnap.exists()) {
+              const fsData = fsSnap.data();
+              const firestoreRole = fsData.role || 'student';
+              // If Firestore has a different role, update Turso
+              if (firestoreRole !== (userDoc.role || 'student')) {
+                try {
+                  await users.updateUserData(user.uid, { role: firestoreRole });
+                  console.log('[Auth] Updated Turso role to:', firestoreRole);
+                  // Also update local state
+                  const state = (await import('../ui/core.js')).getState();
+                  state.userData.role = firestoreRole;
+                } catch (updErr) {
+                  console.warn('[Auth] Could not update Turso role:', updErr.message);
+                }
+              }
+            }
+          } catch (fsErr) {
+            // Firestore check is best-effort
+            console.warn('[Auth] Could not check Firestore for role:', fsErr.message);
+          }
+
           } else {
             // First time user in Turso — check Firestore for actual role
             let firestoreRole = 'student';
