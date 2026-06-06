@@ -28,6 +28,11 @@ export async function renderMaster() {
     <button class="btn btn-sm ${activeTab === 'subevents' ? 'btn-primary' : 'btn-outline'}" data-tab="subevents" onclick="window._switchMasterTab('subevents')">Sub Events</button>
     <button class="btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-outline'}" data-tab="users" onclick="window._switchMasterTab('users')">Users</button>
   </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+    <button class="btn btn-outline btn-sm" onclick="window._startMigration()" style="font-size:0.65rem;padding:3px 8px;">
+      <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">cloud_download</span> Migrate Data
+    </button>
+  </div>
   <div id="master-tab-content"></div>`;
 
   await renderActiveTab();
@@ -197,5 +202,17 @@ window.printResult = async function(resultId, eventId) {
     alert('Print result: ' + resultId);
   } catch (e) {
     console.error('Print failed:', e);
+  }
+};
+
+window._startMigration = async function() {
+  if (!confirm('This will import all data from Firestore into Turso. Continue?')) return;
+  try {
+    const { runMigration } = await import('../utils/migrate.js');
+    const result = await runMigration((msg) => console.log('[Migration]', msg));
+    alert('Migration complete!\nItems migrated: ' + result.migrated + '\nErrors: ' + result.errors);
+  } catch (e) {
+    alert('Migration failed: ' + e.message);
+    console.error(e);
   }
 };
