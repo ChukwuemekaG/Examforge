@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT DEFAULT 'student',
   total_users INTEGER DEFAULT 0,
   fcm_token TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- User inbox (notifications)
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS user_inbox (
   quiz_url TEXT,
   action_path TEXT,
   is_read INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- User schedule items
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS user_schedule (
   due_time TEXT,
   message TEXT,
   dismissed INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Recent results (embedded in user profile, but also stored here)
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS user_results (
   is_retake INTEGER DEFAULT 0,
   is_mock INTEGER DEFAULT 0,
   corrections TEXT DEFAULT '[]',
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Username mapping
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS courses (
   is_mock INTEGER DEFAULT 0,
   is_correction INTEGER DEFAULT 0,
   topic_count INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Topics (within courses)
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS topics (
   is_mock INTEGER DEFAULT 0,
   is_correction INTEGER DEFAULT 0,
   sort_order INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Questions (within topics)
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS daily_quizzes (
   title TEXT NOT NULL,
   time_limit INTEGER DEFAULT 0,
   max_attempts INTEGER DEFAULT 1,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Daily quiz questions
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS daily_quiz_attempts (
   total INTEGER DEFAULT 0,
   time_taken REAL DEFAULT 0,
   answers TEXT DEFAULT '[]',
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Daily advice
@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS daily_advices (
   title TEXT NOT NULL,
   category TEXT DEFAULT '',
   content TEXT DEFAULT '',
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Subscription events
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS subscription_events (
   available_subjects TEXT DEFAULT '[]',
   max_subjects INTEGER DEFAULT 0,
   results_released INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Event registrations
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS mock_exams (
   title TEXT DEFAULT '',
   time_limit INTEGER DEFAULT 0,
   questions TEXT DEFAULT '[]',
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Mock exam attempts
@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS mock_exam_attempts (
   browser_agent TEXT,
   platform TEXT,
   screen_resolution TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Broadcast notifications (global)
@@ -237,7 +237,7 @@ CREATE TABLE IF NOT EXISTS broadcast_notifications (
   quiz_url TEXT,
   brand_color TEXT DEFAULT '#fe6961',
   brand_icon TEXT DEFAULT 'notifications',
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Broadcast schedules (global)
@@ -253,7 +253,7 @@ CREATE TABLE IF NOT EXISTS broadcast_schedules (
   due_date TEXT,
   due_time TEXT,
   message TEXT DEFAULT '',
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Admin panel state
@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS admin_panel (
   daily_advices TEXT DEFAULT '[]',
   subscription_events TEXT DEFAULT '[]',
   total_student_count INTEGER DEFAULT 0,
-  updated_at TEXT DEFAULT (datetime('now'))
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Counters

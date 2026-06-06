@@ -57,11 +57,10 @@ async function request(sql, params = []) {
   }
 
   const data = await res.json();
-  console.log('[Turso] Response:', JSON.stringify(data).slice(0, 800));
   const execResult = data?.results?.[0];
   
   if (execResult?.type === 'error') {
-    throw new Error(`Turso: ${execResult.response?.error?.message || JSON.stringify(execResult).slice(0, 200)}`);
+    throw new Error(`Turso: ${execResult?.error?.message || JSON.stringify(execResult).slice(0, 200)}`);
   }
   
   const result = execResult?.response?.result;
