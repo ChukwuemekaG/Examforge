@@ -106,7 +106,7 @@ export async function renderDashboard() {
     <div style="font-weight:800;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
       <span class="material-icons-round" style="font-size:1rem;">map</span> Progress Roadmap
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;" data-ef-rank-cards>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;overflow-x:auto;" data-ef-rank-cards>
       ${EXA_TITLES.map(t => renderRankCardHTML(t, exaRating)).join('')}
     </div>
   </div>

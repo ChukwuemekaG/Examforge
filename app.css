@@ -304,7 +304,7 @@ input:checked + .slider:before { transform: translateX(30px); background-color: 
    BOTTOM NAVIGATION (Mobile)
    ============================================================ */
 .bottom-nav {
-    display: none; /* hidden by default */
+    display: flex; /* always visible */
     position: fixed;
     bottom: 0;
     left: 0;

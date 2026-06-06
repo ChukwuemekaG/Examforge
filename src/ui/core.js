@@ -46,7 +46,12 @@ export function initTheme() {
 
 // Sidebar setup
 export function initNavigation(navItems) {
+  // Sidebar nav
   document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => navigate(item.dataset.view));
+  });
+  // Bottom nav
+  document.querySelectorAll('.bottom-nav-item').forEach(item => {
     item.addEventListener('click', () => navigate(item.dataset.view));
   });
   // Swipe navigation for mobile
