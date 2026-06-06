@@ -1,6 +1,6 @@
 // Turso HTTP Database Client — v2/pipeline API
 
-const TURSO_PROXY_URL = 'https://examforge-turso-proxy.godsonchukwuemeka595.workers.dev';
+const TURSO_PROXY_URL = 'https://examforge-turso-proxy.godsonchukwuemeka595.workers.dev/v2/pipeline';
 
 window.__efReads = 0;
 window.__efReadBudget = 10;
@@ -32,14 +32,14 @@ function untype(row) {
 async function request(sql, params = []) {
   const body = {
     requests: [
-      { 
-        type: 'execute', 
-        stmt: { 
-          sql, 
-          args: params.length > 0 
-            ? params.map(v => ({ type: typeof v === 'number' ? 'integer' : 'text', value: v })) 
-            : null 
-        } 
+      {
+        type: 'execute',
+        stmt: {
+          sql,
+          args: params.length > 0
+            ? params.map(v => ({ type: typeof v === 'number' ? 'integer' : 'text', value: String(v) }))
+            : null
+        }
       },
       { type: 'close' }
     ]
