@@ -12,7 +12,7 @@ function renderRankCardHTML(title, exaRating) {
   let cardBg = 'var(--bg-inset)', border = '1px solid var(--border)', opacity = '0.5', icon = title.icon, iconColor = 'var(--text-muted)', textColor = 'var(--text-muted)';
   if (isCurrent) { cardBg = 'var(--brand)'; border = '2px solid var(--brand)'; opacity = '1'; iconColor = '#ffffff'; textColor = '#ffffff'; }
   else if (isPassed) { cardBg = 'var(--bg-card)'; border = '1px solid var(--brand-glow, rgba(254,105,97,0.3))'; opacity = '1'; icon = 'check_circle'; iconColor = 'var(--brand)'; textColor = 'inherit'; }
-  return '<div style="background:' + cardBg + ';border:' + border + ';border-radius:12px;padding:12px 14px;opacity:' + opacity + ';transition:all 0.3s ease;"><div style="display:flex;align-items:center;gap:10px;"><span class="material-icons-round" style="font-size:1.3rem;color:' + iconColor + ';">' + icon + '</span><div><div style="font-weight:700;font-size:0.72rem;color:' + (isCurrent ? '#ffffff' : textColor) + ';">' + title.name + '</div><div style="font-size:0.6rem;font-weight:600;color:' + (isCurrent ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)') + ';">RANK ' + title.roman + '</div></div></div></div>';
+  return '<div style="background:' + cardBg + ';border:' + border + ';border-radius:12px;padding:10px;opacity:' + opacity + ';transition:all 0.3s ease;"><div style="display:flex;align-items:center;gap:8px;"><span class="material-icons-round" style="font-size:1.1rem;color:' + iconColor + ';">' + icon + '</span><div style="min-width:0;flex:1;"><div style="font-weight:700;font-size:0.65rem;color:' + (isCurrent ? '#ffffff' : textColor) + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + title.name + '</div><div style="font-size:0.55rem;font-weight:600;color:' + (isCurrent ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)') + ';">RANK ' + title.roman + '</div></div></div></div>';
 }
 
 function getAccuracyTrend(results) {
@@ -63,7 +63,7 @@ export async function renderDashboard() {
   <style>
     @media (max-width: 768px) {
       .dashboard-title { display: none !important; }
-      .dash-start-btn { width:100% !important; justify-content:center !important; }
+      .dash-start-btn { width:100% !important; justify-content:center !important; flex:1 !important; }
       .dash-welcome { font-size:1.1rem !important; }
     }
   </style>
@@ -73,14 +73,9 @@ export async function renderDashboard() {
         <div class="page-title dashboard-title" style="font-size:1.75rem;font-weight:800;">Dashboard</div>
         <div class="page-sub dash-welcome" style="color:var(--text-muted);font-weight:800;font-size:0.85rem;">Welcome back, ${firstName}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="window.navigate('inbox')" style="position:relative;padding:8px;border-radius:50%;">
-          <span class="material-icons-round" style="font-size:1.5rem;">notifications</span>
-        </button>
-        <button class="btn btn-primary dash-start-btn" onclick="window.navigate('library')" style="display:flex;align-items:center;gap:8px;">
+        <button class="btn btn-primary dash-start-btn" onclick="window.navigate('library')" style="display:flex;align-items:center;gap:8px;flex:1;">
           <span class="material-icons-round">add</span> Start Exam
         </button>
-      </div>
     </div>
   </div>
 
