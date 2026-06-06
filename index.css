@@ -1,7 +1,7 @@
 /* --- Sharp & Pure White Variables --- */
 :root {
     scroll-behavior: smooth;
-    --brand-red: #c22b27;
+    --brand-red: #fe6961;
     --black: #2d2d32;
     --real-black: #000000;
     --real-white: #ffffff;
@@ -10,9 +10,9 @@
     --border-thickness: 3px;
     --sharp-transition: all 0.15s linear;
 
-    --brand:        #c22b27;
-    --brand-hover:  #c22b27;
-    --brand-dim: #FFD6E0;
+    --brand:        #fe6961;
+    --brand-hover:  #fe675a;
+    --brand-dim: #fef0ef;
     --bg: #FFFDF0; /* Retro off-white */
     --surface: #FFFFFF;
     --surface-alt: #F4F4F0;
@@ -41,9 +41,9 @@
     --gray-light: #14181c;
     --real-black: #ffffff;
     --real-white: #000000;
-     --brand: #C0392B;
-    --brand-hover:  #A93226;
-    --brand-dim: #4A0014;
+     --brand: #e5554d;
+    --brand-hover:  #d44a42;
+    --brand-dim: #4a1512;
     --bg: #121212; 
     --surface: #1E1E1E;
     --surface-alt: #2A2A2A;
@@ -203,7 +203,7 @@ button {
     box-shadow: 6px 6px 0px var(--black);
 }
 
-.btn-sharp-solid:hover { background: #e63530; }
+.btn-sharp-solid:hover { background: #e5554d; }
 .btn-sharp-solid:active { transform: translate(6px, 6px); box-shadow: 0px 0px 0px var(--black); }
 
 .sharp-link {
