@@ -41,6 +41,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize auth
   const user = await authModule.initAuth();
   
+  // Hide preloader regardless of auth state
+  const preloader = document.getElementById('app-preloader');
+  if (preloader) preloader.style.display = 'none';
+  
   if (!user) {
     window.location.href = '/login.html';
     return;

@@ -34,6 +34,36 @@ export async function initAuth() {
               },
               totalUsers: userDoc.total_users || 0
             });
+          } else {
+            // First time user in Turso — auto-create from Firebase Auth
+            try {
+              await users.createUser({
+                id: user.uid,
+                email: user.email || '',
+                displayName: user.displayName || '',
+                provider: 'firebase',
+                exaRating: 800,
+                role: 'student'
+              });
+              console.log('[Auth] Created Turso user for:', user.uid);
+              // Set default data
+              setUserData({
+                displayName: user.displayName || '',
+                email: user.email || '',
+                role: 'student',
+                stats: { exaRating: 800, streak: 0, highestStreak: 0, lastExamDate: null },
+                totalUsers: 0
+              });
+            } catch (createErr) {
+              console.warn('[Auth] Could not create Turso user:', createErr);
+              setUserData({
+                displayName: user.displayName || '',
+                email: user.email || '',
+                role: 'student',
+                stats: { exaRating: 800, streak: 0, highestStreak: 0, lastExamDate: null },
+                totalUsers: 0
+              });
+            }
           }
           // Load recent results, inbox, schedule
           const results = await users.getRecentResults(user.uid);
