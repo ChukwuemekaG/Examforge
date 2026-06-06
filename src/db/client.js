@@ -38,7 +38,7 @@ async function request(sql, params = []) {
           sql,
           args: params.length > 0
             ? params.map(v => ({ type: typeof v === 'number' ? 'integer' : 'text', value: String(v) }))
-            : null
+            : []
         }
       },
       { type: 'close' }
