@@ -62,6 +62,9 @@ window._openUserDetail = async function(userId) {
   const state = { view: 'userDetail', userId };
   window.history.pushState(state, '', '/app.html?user=' + userId);
 
+  // Prevent body scrolling while detail is open
+  document.body.style.overflow = 'hidden';
+
   // Listen for back button
   const onPopState = function(e) {
     if (e.state && e.state.view === 'userDetail') return;
@@ -86,7 +89,7 @@ window._openUserDetail = async function(userId) {
     if (!workspace) return;
     
     workspace.innerHTML = `
-    <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;overflow-y:auto;display:flex;flex-direction:column;">
+    <div style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:1000;display:flex;flex-direction:column;">
       <!-- Header with back button -->
       <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
         <button class="btn btn-ghost btn-sm" onclick="window._closeUserDetail()" style="padding:6px;border:none;background:none;cursor:pointer;">
@@ -174,6 +177,9 @@ window._openUserDetail = async function(userId) {
 };
 
 window._closeUserDetail = function() {
+  // Restore body scrolling
+  document.body.style.overflow = '';
+
   // Clean up popstate listener and re-render master
   const ws = document.getElementById('workspace');
   if (ws) ws.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text-muted);">Loading...</div>';

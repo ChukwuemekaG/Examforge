@@ -66,9 +66,14 @@ export async function renderDashboard() {
         <div class="page-title dashboard-title" style="font-size:1.75rem;font-weight:800;">Dashboard</div>
         <div class="page-sub" style="color:var(--text-muted);font-weight:800;font-size:0.85rem;">Welcome back, ${firstName}</div>
       </div>
-      <button class="btn btn-primary" onclick="window.navigate('library')" style="display:flex;align-items:center;gap:8px;">
-        <span class="material-icons-round">add</span> Start Exam
-      </button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="window.navigate('inbox')" style="position:relative;padding:8px;border-radius:50%;">
+          <span class="material-icons-round" style="font-size:1.5rem;">notifications</span>
+        </button>
+        <button class="btn btn-primary" onclick="window.navigate('library')" style="display:flex;align-items:center;gap:8px;">
+          <span class="material-icons-round">add</span> Start Exam
+        </button>
+      </div>
     </div>
   </div>
 

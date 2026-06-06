@@ -22,8 +22,15 @@ export function setSync(s) { sync = s; }
 // Navigation
 export function navigate(view) {
   currentView = view;
+  
   // Update sidebar active state
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+  
+  // Update bottom nav active state
+  document.querySelectorAll('.bottom-nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.view === view);
+  });
+  
   // Trigger render
   const evt = new CustomEvent('viewchange', { detail: { view } });
   document.dispatchEvent(evt);
@@ -54,14 +61,17 @@ export function initNavigation(navItems) {
   document.querySelectorAll('.bottom-nav-item').forEach(item => {
     item.addEventListener('click', () => navigate(item.dataset.view));
   });
-  // Swipe navigation for mobile
+  
+  // Swipe navigation for mobile — DISABLED on admin/master page
   let startX = 0, startY = 0;
   document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, { passive: true });
   document.addEventListener('touchend', e => {
+    if (currentView === 'master') return; // No swipe on admin page
+    
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
     if (Math.abs(dx) > 60 && Math.abs(dy) < 100) {
-      const views = ['dashboard', 'schedule', 'inbox', 'library', 'results', 'subscriptions', 'settings'];
+      const views = ['dashboard', 'library', 'subscriptions', 'schedule', 'results', 'inbox', 'settings'];
       const idx = views.indexOf(currentView);
       if (dx < 0 && idx < views.length - 1) navigate(views[idx + 1]);
       else if (dx > 0 && idx > 0) navigate(views[idx - 1]);
