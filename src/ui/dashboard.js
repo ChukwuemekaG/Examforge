@@ -60,17 +60,24 @@ export async function renderDashboard() {
   const trendLabel = trend.direction === 'up' ? '+' + trend.delta + '%' : trend.direction === 'down' ? '-' + trend.delta + '%' : 'No change';
 
   workspace.innerHTML = `
+  <style>
+    @media (max-width: 768px) {
+      .dashboard-title { display: none !important; }
+      .dash-start-btn { width:100% !important; justify-content:center !important; }
+      .dash-welcome { font-size:1.1rem !important; }
+    }
+  </style>
   <div class="page-header">
     <div class="page-header-row" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
       <div>
         <div class="page-title dashboard-title" style="font-size:1.75rem;font-weight:800;">Dashboard</div>
-        <div class="page-sub" style="color:var(--text-muted);font-weight:800;font-size:0.85rem;">Welcome back, ${firstName}</div>
+        <div class="page-sub dash-welcome" style="color:var(--text-muted);font-weight:800;font-size:0.85rem;">Welcome back, ${firstName}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="btn btn-ghost btn-sm" onclick="window.navigate('inbox')" style="position:relative;padding:8px;border-radius:50%;">
           <span class="material-icons-round" style="font-size:1.5rem;">notifications</span>
         </button>
-        <button class="btn btn-primary" onclick="window.navigate('library')" style="display:flex;align-items:center;gap:8px;">
+        <button class="btn btn-primary dash-start-btn" onclick="window.navigate('library')" style="display:flex;align-items:center;gap:8px;">
           <span class="material-icons-round">add</span> Start Exam
         </button>
       </div>

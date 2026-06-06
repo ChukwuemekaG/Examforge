@@ -96,3 +96,17 @@ export function showToast(message, duration = 3000) {
   document.body.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, duration);
 }
+
+// Fixed notification bell — top-right on all pages
+export function initNotificationBell() {
+  // Remove existing if any
+  const existing = document.getElementById('ef-notif-bell');
+  if (existing) existing.remove();
+  
+  const bell = document.createElement('div');
+  bell.id = 'ef-notif-bell';
+  bell.style.cssText = 'position:fixed;top:12px;right:16px;z-index:100;cursor:pointer;width:40px;height:40px;border-radius:50%;background:var(--bg-card);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
+  bell.innerHTML = '<span class="material-icons-round" style="font-size:1.3rem;color:var(--text);">notifications</span>';
+  bell.onclick = () => navigate('inbox');
+  document.body.appendChild(bell);
+}

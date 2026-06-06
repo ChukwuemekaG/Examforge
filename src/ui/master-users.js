@@ -23,7 +23,7 @@ export async function renderUsersTab(container) {
 
 function renderUserTable(list) {
   if (list.length === 0) return '<div class="empty-state">No users found</div>';
-  return '<div style="max-height:400px;overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;"><table style="width:100%;border-collapse:collapse;min-width:600px;"><thead><tr style="position:sticky;top:0;background:var(--bg-card);z-index:1;">' +
+  return '<div style="max-height:calc(100vh - 280px);overflow-y:auto;overflow-x:auto;border:1px solid var(--border);border-radius:8px;"><table style="width:100%;border-collapse:collapse;min-width:600px;"><thead><tr style="position:sticky;top:0;background:var(--bg-card);z-index:1;">' +
     '<th style="padding:10px 8px;text-align:left;font-size:0.75rem;white-space:nowrap;border-bottom:2px solid var(--border);">Name</th>' +
     '<th style="padding:10px 8px;text-align:left;font-size:0.75rem;white-space:nowrap;border-bottom:2px solid var(--border);">Email</th>' +
     '<th style="padding:10px 8px;text-align:center;font-size:0.75rem;white-space:nowrap;border-bottom:2px solid var(--border);">Rating</th>' +

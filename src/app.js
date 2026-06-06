@@ -50,6 +50,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Add notification bell
+  core.initNotificationBell();
+
   // Preload essential data (0 reads if cached in Turso)
   try {
     await Promise.all([
