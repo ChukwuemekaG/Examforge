@@ -24,23 +24,96 @@ export async function renderMasterEvents(container) {
 }
 
 window._createEvent = async function() {
-  const title = await showPrompt('Event title:');
-  if (!title) return;
-  const subjectsStr = await showPrompt('Subjects (comma-separated):', '') || '';
-  const subjects = subjectsStr.split(',').map(s => s.trim()).filter(Boolean);
+  // Open a modal with full event creation form
+  const overlay = document.createElement('div');
+  overlay.id = 'ef-custom-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  overlay.innerHTML = '<div class="card" style="max-width:650px;width:95%;padding:24px;border-radius:16px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><div style="font-weight:800;font-size:1.2rem;">Create Subscription Event</div><button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'ef-custom-modal\').remove()" style="padding:4px;"><span class="material-icons-round">close</span></button></div>' +
+    '<div style="margin-bottom:12px;"><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Event Title</label><input id="ev-title" placeholder="Enter event title..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '<div style="margin-bottom:12px;"><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Description (optional)</label><textarea id="ev-desc" placeholder="Event description..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.85rem;min-height:60px;resize:vertical;font-family:inherit;"></textarea></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Max Subjects Per Student</label><input id="ev-maxsubjects" type="number" value="4" min="1" max="20" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '<div><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Registration Keys to Generate</label><input id="ev-keycount" type="number" value="10" min="0" max="500" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '</div>' +
+    '<div style="margin-bottom:12px;"><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:6px;">Available Subjects</label>' +
+    '<div id="ev-subjects-area"><div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.85rem;">No subjects added yet.</div></div>' +
+    '<div style="display:flex;gap:6px;margin-top:6px;"><input id="ev-new-subject" placeholder="Add a subject..." style="flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border);font-size:0.85rem;"><button class="btn btn-primary btn-sm" onclick="window._addEventSubject()" style="white-space:nowrap;">Add</button></div></div>' +
+    '<div style="margin-top:20px;display:flex;gap:12px;">' +
+    '<button class="btn btn-primary" onclick="window._saveEvent()" style="flex:1;">Create Event</button>' +
+    '<button class="btn btn-ghost" onclick="document.getElementById(\'ef-custom-modal\').remove()" style="flex:1;">Cancel</button></div></div>';
+  document.body.appendChild(overlay);
+  // Focus on title input
+  setTimeout(() => document.getElementById('ev-title')?.focus(), 100);
+};
+
+// Track subjects being built
+window._evSubjects = [];
+
+window._addEventSubject = function() {
+  const input = document.getElementById('ev-new-subject');
+  const name = input?.value?.trim();
+  if (!name) return;
+  if (window._evSubjects.includes(name)) { showAlert('Subject already added.', 'Duplicate'); return; }
+  
+  window._evSubjects.push(name);
+  input.value = '';
+  input.focus();
+  
+  renderEventSubjects();
+};
+
+function renderEventSubjects() {
+  const area = document.getElementById('ev-subjects-area');
+  if (!area) return;
+  
+  if (window._evSubjects.length === 0) {
+    area.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.85rem;">No subjects added yet.</div>';
+    return;
+  }
+  
+  area.innerHTML = window._evSubjects.map((s, idx) => 
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-inset);border-radius:6px;margin-bottom:4px;border:1px solid var(--border);">' +
+    '<span style="font-weight:600;font-size:0.85rem;">' + s + '</span>' +
+    '<button class="btn btn-ghost btn-sm" onclick="window._removeEventSubject(' + idx + ')" style="padding:2px 6px;color:#dc2626;font-size:0.8rem;">✕</button></div>'
+  ).join('');
+}
+
+window._removeEventSubject = function(idx) {
+  window._evSubjects.splice(idx, 1);
+  renderEventSubjects();
+};
+
+window._saveEvent = async function() {
+  const title = document.getElementById('ev-title')?.value?.trim();
+  if (!title) { showAlert('Please enter an event title.', 'Missing Field'); return; }
+  const description = document.getElementById('ev-desc')?.value?.trim() || '';
+  const maxSubjects = parseInt(document.getElementById('ev-maxsubjects')?.value) || 4;
+  const keyCount = parseInt(document.getElementById('ev-keycount')?.value) || 0;
+  
+  if (window._evSubjects.length === 0) { showAlert('Please add at least one subject.', 'Missing Subjects'); return; }
   
   try {
-    const id = await events.createEvent({ title, availableSubjects: subjects });
-    // Create registration keys
-    const keyCount = parseInt(await showPrompt('Number of registration keys to generate:', '10')) || 10;
+    const id = await events.createEvent({ 
+      title, 
+      description, 
+      availableSubjects: [...window._evSubjects], 
+      maxSubjects 
+    });
+    
+    // Generate registration keys
     for (let i = 0; i < keyCount; i++) {
       const key = 'KEY-' + id.slice(-4).toUpperCase() + '-' + String(i + 1).padStart(3, '0');
       await events.createEventKey(id, key);
     }
-    showAlert('Event created! ID: ' + id);
+    
+    const subjectCount = window._evSubjects.length;
+    document.getElementById('ef-custom-modal').remove();
+    window._evSubjects = [];
+    showAlert('Event created with ' + subjectCount + ' subjects and ' + keyCount + ' keys!', 'Success');
     const container = document.getElementById('master-tab-content');
     if (container) await renderMasterEvents(container);
-  } catch (e) { showAlert('Error: ' + e.message); }
+  } catch (e) { showAlert('Error: ' + e.message, 'Error'); }
 };
 
 window._deleteEvent = async function(id) {
@@ -93,11 +166,31 @@ window._openEventDetails = async function(eventId) {
 };
 
 window._createMockForEvent = async function(eventId, subject) {
-  const timeLimit = parseInt(await showPrompt('Time limit (minutes):', '30')) || 30;
-  const questionCount = parseInt(await showPrompt('Number of questions:', '10')) || 10;
+  const overlay = document.createElement('div');
+  overlay.id = 'ef-custom-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  overlay.innerHTML = '<div class="card" style="max-width:500px;width:95%;padding:24px;border-radius:16px;">' +
+    '<div style="font-weight:800;font-size:1.2rem;margin-bottom:16px;">Create Mock — <span style="color:var(--primary);">' + subject + '</span></div>' +
+    '<div style="margin-bottom:12px;"><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Mock Title</label><input id="mk-title" value="' + subject + ' Mock" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Time Limit (minutes)</label><input id="mk-time" type="number" value="30" min="1" max="300" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '<div><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Number of Questions</label><input id="mk-questions" type="number" value="10" min="1" max="200" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:12px;">' +
+    '<button class="btn btn-primary" onclick="window._saveEventMock(\'' + eventId + '\',\'' + subject + '\')" style="flex:1;">Create Mock</button>' +
+    '<button class="btn btn-ghost" onclick="document.getElementById(\'ef-custom-modal\').remove()" style="flex:1;">Cancel</button></div></div>';
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('mk-title')?.focus(), 100);
+};
+
+window._saveEventMock = async function(eventId, subject) {
+  const title = document.getElementById('mk-title')?.value?.trim();
+  if (!title) { showAlert('Please enter a mock title.', 'Missing Field'); return; }
+  const timeLimit = parseInt(document.getElementById('mk-time')?.value) || 30;
+  const questionCount = parseInt(document.getElementById('mk-questions')?.value) || 10;
   
   try {
-    const mockId = await mocks.createMock({ eventId, subject, title: subject + ' Mock', timeLimit });
+    const mockId = await mocks.createMock({ eventId, subject, title, timeLimit });
     // Create placeholder questions
     const questions = [];
     for (let i = 0; i < questionCount; i++) {
@@ -108,9 +201,11 @@ window._createMockForEvent = async function(eventId, subject) {
       });
     }
     await mocks.updateMockQuestions(mockId, questions);
-    showAlert('Mock created: ' + subject);
+    
+    document.getElementById('ef-custom-modal').remove();
+    showAlert('Mock created: ' + subject + ' (' + questionCount + ' questions)', 'Success');
     await window._openEventDetails(eventId);
-  } catch (e) { showAlert('Error: ' + e.message); }
+  } catch (e) { showAlert('Error: ' + e.message, 'Error'); }
 };
 
 window._broadcastEventMocks = async function(eventId) {

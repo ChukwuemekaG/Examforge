@@ -141,6 +141,15 @@ async function renderActiveTab() {
 async function renderDailyQuizTab(container) {
   let quizList = [];
   try { quizList = await quizzes.getAllQuizzes(); } catch (e) { console.warn(e); }
+  
+  // Load question counts for each quiz
+  const questionCounts = {};
+  for (const q of quizList) {
+    try {
+      const qs = await quizzes.getQuizQuestions(q.id);
+      questionCounts[q.id] = qs.length;
+    } catch { questionCounts[q.id] = 0; }
+  }
 
   container.innerHTML = `
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -148,20 +157,163 @@ async function renderDailyQuizTab(container) {
     <button class="btn btn-primary btn-sm" onclick="window._createDailyQuiz()"><span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">add</span> New Quiz</button>
   </div>
   ${quizList.length === 0 ? '<div class="empty-state">No quizzes yet</div>'
-    : quizList.map(q => `<div class="card" style="padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:700;">${q.title || 'Untitled'}</div><div style="font-size:0.7rem;color:var(--text-muted);">${q.time_limit || 0} min</div></div><button class="btn btn-outline btn-sm" onclick="window._deleteDailyQuiz('${q.id}')">Delete</button></div>`).join('')}
+    : quizList.map(q => {
+      const qCount = questionCounts[q.id] || 0;
+      return `<div class="card" style="padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:700;">${q.title || 'Untitled'}</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);display:flex;gap:12px;margin-top:2px;">
+            <span>⏱ ${q.time_limit || 0} min</span>
+            <span>📝 ${qCount} question${qCount !== 1 ? 's' : ''}</span>
+            <span>🔄 ${q.max_attempts || 1} attempt${(q.max_attempts || 1) !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-outline btn-sm" onclick="window._viewDailyQuiz('${q.id}')">View</button>
+          <button class="btn btn-outline btn-sm" onclick="window._deleteDailyQuiz('${q.id}')">Delete</button>
+        </div>
+      </div>`;
+    }).join('')}
   `;
 }
 
-window._createDailyQuiz = async function() {
-  const title = await showPrompt('Quiz title:');
-  if (!title) return;
-  const timeLimit = parseInt(await showPrompt('Time limit (minutes):', '10')) || 10;
+window._viewDailyQuiz = async function(id) {
   try {
-    const id = await quizzes.createQuiz({ title, timeLimit });
-    showAlert('Quiz created: ' + id);
-    await renderDailyQuizTab(document.getElementById('master-tab-content'));
+    const quiz = await quizzes.getQuiz(id);
+    const questions = await quizzes.getQuizQuestions(id);
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'ef-custom-modal';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+    
+    const questionsHtml = questions.map((q, i) => `
+      <div style="background:var(--bg-inset);border-radius:8px;padding:14px;margin-bottom:8px;border:1px solid var(--border);">
+        <div style="font-weight:700;font-size:0.85rem;margin-bottom:6px;">Q${i + 1}: ${q.question}</div>
+        <div style="font-size:0.8rem;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          ${['A','B','C','D'].map((ltr, oi) => `
+            <div style="padding:4px 8px;border-radius:4px;${q.correct_index === oi ? 'background:#166534;color:#bbf7d0;' : ''}">
+              ${ltr}. ${q['option_' + ltr.toLowerCase()] || ''}
+            </div>
+          `).join('')}
+        </div>
+        ${q.explanation ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">💡 ${q.explanation}</div>` : ''}
+      </div>
+    `).join('');
+
+    overlay.innerHTML = `<div class="card" style="max-width:700px;width:95%;padding:24px;border-radius:16px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div style="font-weight:800;font-size:1.2rem;">${quiz.title || 'Untitled'}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);display:flex;gap:16px;margin-top:4px;">
+            <span>⏱ ${quiz.time_limit || 0} min</span>
+            <span>📝 ${questions.length} question${questions.length !== 1 ? 's' : ''}</span>
+            <span>🔄 Max ${quiz.max_attempts || 1} attempt${(quiz.max_attempts || 1) !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ef-custom-modal').remove()" style="padding:4px;">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      ${questions.length === 0 ? '<div class="empty-state">No questions in this quiz</div>' : questionsHtml}
+      <div style="margin-top:16px;text-align:right;">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('ef-custom-modal').remove()">Close</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
   } catch (e) {
-    showAlert('Error: ' + e.message);
+    showAlert('Error loading quiz: ' + e.message, 'Error');
+  }
+};
+
+window._createDailyQuiz = async function() {
+  // Open a modal with full quiz creation form
+  const overlay = document.createElement('div');
+  overlay.id = 'ef-custom-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  overlay.innerHTML = '<div class="card" style="max-width:700px;width:95%;padding:24px;border-radius:16px;max-height:90vh;overflow-y:auto;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><div style="font-weight:800;font-size:1.2rem;">Create Daily Quiz</div><button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'ef-custom-modal\').remove()" style="padding:4px;"><span class="material-icons-round">close</span></button></div>' +
+    '<div style="margin-bottom:12px;"><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Quiz Title</label><input id="dq-title" placeholder="Enter quiz title..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">' +
+    '<div><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Time Limit (minutes)</label><input id="dq-time" type="number" value="10" min="1" max="180" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '<div><label style="font-weight:700;font-size:0.8rem;display:block;margin-bottom:4px;">Max Attempts</label><input id="dq-attempts" type="number" value="1" min="1" max="10" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);font-size:0.9rem;"></div>' +
+    '</div>' +
+    '<div id="dq-questions-area"><div style="text-align:center;padding:20px;color:var(--text-muted);">No questions yet. Add your first question below.</div></div>' +
+    '<button class="btn btn-outline btn-sm" onclick="window._addDQQuestion()" style="width:100%;margin-bottom:20px;"><span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">add</span> Add Question</button>' +
+    '<div style="display:flex;gap:12px;">' +
+    '<button class="btn btn-primary" onclick="window._saveDailyQuiz()" style="flex:1;">Save Quiz</button>' +
+    '<button class="btn btn-ghost" onclick="document.getElementById(\'ef-custom-modal\').remove()" style="flex:1;">Cancel</button></div></div>';
+  document.body.appendChild(overlay);
+};
+
+// Track questions being built
+window._dqQuestions = [];
+
+window._addDQQuestion = function() {
+  const idx = window._dqQuestions.length;
+  window._dqQuestions.push({ question: '', options: ['', '', '', ''], correctIndex: 0, explanation: '' });
+  
+  const area = document.getElementById('dq-questions-area');
+  if (!area) return;
+  
+  // Remove empty state if present
+  if (area.querySelector('[style*="text-align:center"]')) area.innerHTML = '';
+  
+  const qDiv = document.createElement('div');
+  qDiv.id = 'dq-q-' + idx;
+  qDiv.style.cssText = 'background:var(--bg-inset);border-radius:8px;padding:16px;margin-bottom:12px;border:1px solid var(--border);';
+  qDiv.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:700;font-size:0.85rem;">Q' + (idx + 1) + '</span><button class="btn btn-ghost btn-sm" onclick="window._removeDQQuestion(' + idx + ')" style="padding:2px 6px;color:#dc2626;">✕</button></div>' +
+    '<textarea id="dq-qtext-' + idx + '" placeholder="Enter question..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);font-size:0.85rem;margin-bottom:10px;min-height:60px;resize:vertical;font-family:inherit;"></textarea>' +
+    '<div style="margin-bottom:8px;"><label style="font-weight:600;font-size:0.75rem;">Options</label></div>' +
+    '<div id="dq-opts-' + idx + '">' +
+    [0,1,2,3].map(oi => '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="font-weight:700;font-size:0.8rem;width:20px;">' + String.fromCharCode(65 + oi) + '.</span><input id="dq-opt-' + idx + '-' + oi + '" placeholder="Option ' + String.fromCharCode(65 + oi) + '" style="flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border);font-size:0.8rem;"></div>').join('') +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><label style="font-weight:600;font-size:0.75rem;">Correct Answer:</label><select id="dq-correct-' + idx + '" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);font-size:0.8rem;">' +
+    [0,1,2,3].map(oi => '<option value="' + oi + '">' + String.fromCharCode(65 + oi) + '</option>').join('') +
+    '</select></div>' +
+    '<div style="margin-top:8px;"><label style="font-weight:600;font-size:0.75rem;">Explanation</label><input id="dq-expl-' + idx + '" placeholder="Explanation (optional)" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);font-size:0.8rem;margin-top:4px;"></div>';
+  
+  area.appendChild(qDiv);
+  area.scrollTop = area.scrollHeight;
+};
+
+window._removeDQQuestion = function(idx) {
+  const qDiv = document.getElementById('dq-q-' + idx);
+  if (qDiv) qDiv.remove();
+  window._dqQuestions[idx] = null;
+};
+
+window._saveDailyQuiz = async function() {
+  const title = document.getElementById('dq-title')?.value;
+  if (!title) { showAlert('Please enter a quiz title.', 'Missing Field'); return; }
+  const timeLimit = parseInt(document.getElementById('dq-time')?.value) || 10;
+  const maxAttempts = parseInt(document.getElementById('dq-attempts')?.value) || 1;
+  
+  // Build questions array from DOM
+  const questions = [];
+  window._dqQuestions.forEach((q, idx) => {
+    if (q === null) return;
+    const question = document.getElementById('dq-qtext-' + idx)?.value;
+    if (!question) return;
+    const options = [0,1,2,3].map(oi => document.getElementById('dq-opt-' + idx + '-' + oi)?.value || '');
+    const correctIndex = parseInt(document.getElementById('dq-correct-' + idx)?.value) || 0;
+    const explanation = document.getElementById('dq-expl-' + idx)?.value || '';
+    questions.push({ question, options, correctIndex, explanation });
+  });
+  
+  if (questions.length === 0) { showAlert('Please add at least one question.', 'Missing Questions'); return; }
+  
+  try {
+    const { default: quizzes } = await import('../db/quizzes.js');
+    const id = await quizzes.createQuiz({ title, timeLimit, maxAttempts });
+    await quizzes.setQuizQuestions(id, questions);
+    
+    document.getElementById('ef-custom-modal').remove();
+    window._dqQuestions = [];
+    showAlert('Quiz created with ' + questions.length + ' questions!', 'Success');
+    const content = document.getElementById('master-tab-content');
+    if (content) await renderDailyQuizTab(content);
+  } catch (e) {
+    showAlert('Error: ' + e.message, 'Error');
   }
 };
 
