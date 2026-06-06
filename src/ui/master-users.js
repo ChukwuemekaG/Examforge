@@ -61,7 +61,18 @@ window._openUserDetail = async function(userId) {
   // Push history state for back button support
   const state = { view: 'userDetail', userId };
   window.history.pushState(state, '', '/app.html?user=' + userId);
-  
+
+  // Listen for back button
+  const onPopState = function(e) {
+    if (e.state && e.state.view === 'userDetail') return;
+    window.removeEventListener('popstate', onPopState);
+    // Re-render master tab
+    const ws = document.getElementById('workspace');
+    if (ws) ws.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text-muted);">Loading...</div>';
+    import('./master.js').then(m => m.renderMaster()).catch(() => {});
+  };
+  window.addEventListener('popstate', onPopState);
+
   try {
     const userData = await users.getUser(userId);
     if (!userData) { alert('User not found'); return; }
@@ -88,7 +99,7 @@ window._openUserDetail = async function(userId) {
         <button class="btn btn-primary btn-sm" onclick="window._saveUserDetail('${userId}')">Save</button>
       </div>
       
-      <div style="flex:1;overflow-y:auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;align-content:start;">
+      <div style="flex:1;overflow-y:auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;align-content:start;">
         <!-- Left column: Profile -->
         <div class="card" style="padding:20px;align-self:start;">
           <div style="font-weight:800;font-size:0.85rem;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
@@ -163,15 +174,10 @@ window._openUserDetail = async function(userId) {
 };
 
 window._closeUserDetail = function() {
-  window.history.back();
-  // Fallback: if history.back doesn't work, refresh the master tab
-  setTimeout(() => {
-    const workspace = document.getElementById('workspace');
-    if (workspace && workspace.innerHTML.includes('user-detail')) {
-      // Re-render master tab
-      import('./master.js').then(m => m.renderMaster());
-    }
-  }, 300);
+  // Clean up popstate listener and re-render master
+  const ws = document.getElementById('workspace');
+  if (ws) ws.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text-muted);">Loading...</div>';
+  import('./master.js').then(m => m.renderMaster()).catch(() => {});
 };
 
 window._saveUserDetail = async function(userId) {
