@@ -2,7 +2,7 @@
 
 import * as events from '../db/events.js';
 import * as mocks from '../db/mocks.js';
-import { generateId } from '../utils/helpers.js';
+import { generateId, showPrompt, showConfirmAsync, showAlert } from '../utils/helpers.js';
 
 export async function renderMasterEvents(container) {
   let eventList = [];
@@ -24,27 +24,27 @@ export async function renderMasterEvents(container) {
 }
 
 window._createEvent = async function() {
-  const title = prompt('Event title:');
+  const title = await showPrompt('Event title:');
   if (!title) return;
-  const subjectsStr = prompt('Subjects (comma-separated):', '') || '';
+  const subjectsStr = await showPrompt('Subjects (comma-separated):', '') || '';
   const subjects = subjectsStr.split(',').map(s => s.trim()).filter(Boolean);
   
   try {
     const id = await events.createEvent({ title, availableSubjects: subjects });
     // Create registration keys
-    const keyCount = parseInt(prompt('Number of registration keys to generate:', '10')) || 10;
+    const keyCount = parseInt(await showPrompt('Number of registration keys to generate:', '10')) || 10;
     for (let i = 0; i < keyCount; i++) {
       const key = 'KEY-' + id.slice(-4).toUpperCase() + '-' + String(i + 1).padStart(3, '0');
       await events.createEventKey(id, key);
     }
-    alert('Event created! ID: ' + id);
+    showAlert('Event created! ID: ' + id);
     const container = document.getElementById('master-tab-content');
     if (container) await renderMasterEvents(container);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showAlert('Error: ' + e.message); }
 };
 
 window._deleteEvent = async function(id) {
-  if (!confirm('Delete this event? This will remove all registrations and associated mocks.')) return;
+  if (!await showConfirmAsync('Delete this event? This will remove all registrations and associated mocks.')) return;
   try {
     // Delete associated mocks
     const eventMocks = await mocks.getEventMocks(id);
@@ -53,7 +53,7 @@ window._deleteEvent = async function(id) {
     await events.deleteEvent(id);
     const container = document.getElementById('master-tab-content');
     if (container) await renderMasterEvents(container);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showAlert('Error: ' + e.message); }
 };
 
 window._openEventDetails = async function(eventId) {
@@ -93,8 +93,8 @@ window._openEventDetails = async function(eventId) {
 };
 
 window._createMockForEvent = async function(eventId, subject) {
-  const timeLimit = parseInt(prompt('Time limit (minutes):', '30')) || 30;
-  const questionCount = parseInt(prompt('Number of questions:', '10')) || 10;
+  const timeLimit = parseInt(await showPrompt('Time limit (minutes):', '30')) || 30;
+  const questionCount = parseInt(await showPrompt('Number of questions:', '10')) || 10;
   
   try {
     const mockId = await mocks.createMock({ eventId, subject, title: subject + ' Mock', timeLimit });
@@ -108,15 +108,15 @@ window._createMockForEvent = async function(eventId, subject) {
       });
     }
     await mocks.updateMockQuestions(mockId, questions);
-    alert('Mock created: ' + subject);
+    showAlert('Mock created: ' + subject);
     await window._openEventDetails(eventId);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showAlert('Error: ' + e.message); }
 };
 
 window._broadcastEventMocks = async function(eventId) {
   try {
     const eventMocks = await mocks.getEventMocks(eventId);
-    if (eventMocks.length === 0) { alert('No mocks created for this event.'); return; }
+    if (eventMocks.length === 0) { showAlert('No mocks created for this event.'); return; }
     
     // Add to broadcast schedules
     const { default: schedules } = await import('../db/schedules.js');
@@ -127,18 +127,18 @@ window._broadcastEventMocks = async function(eventId) {
         timeLimit: mock.time_limit
       });
     }
-    alert('Broadcasted ' + eventMocks.length + ' mock(s) to schedules.');
-  } catch (e) { alert('Error: ' + e.message); }
+    showAlert('Broadcasted ' + eventMocks.length + ' mock(s) to schedules.');
+  } catch (e) { showAlert('Error: ' + e.message); }
 };
 
 window._broadcastEventResults = async function(eventId) {
   // Placeholder — will generate result sheets and add to inbox
   try {
     const regs = await events.getRegistrations(eventId);
-    if (regs.length === 0) { alert('No registrations found.'); return; }
+    if (regs.length === 0) { showAlert('No registrations found.'); return; }
     // Mark event as results released
     await events.updateEvent(eventId, { resultsReleased: true });
-    alert('Results broadcasted to ' + regs.length + ' students.');
+    showAlert('Results broadcasted to ' + regs.length + ' students.');
     await window._openEventDetails(eventId);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showAlert('Error: ' + e.message); }
 };

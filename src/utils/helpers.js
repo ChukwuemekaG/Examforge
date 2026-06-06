@@ -114,3 +114,32 @@ export function showConfirm(title, message, onConfirm, onCancel) {
   document.getElementById('btnCancelModal').onclick = () => { overlay.remove(); if (onCancel) onCancel(); };
   document.getElementById('btnConfirmModal').onclick = () => { overlay.remove(); if (onConfirm) onConfirm(); };
 }
+
+// Show prompt modal (returns Promise resolving to value or null)
+export function showPrompt(title, defaultValue = '') {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('ef-custom-modal');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'ef-custom-modal';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px);';
+    overlay.innerHTML = '<div class="card" style="padding:32px;text-align:center;max-width:400px;width:90%;border:4px solid var(--text);background:var(--bg-card);border-radius:16px;animation:popIn 0.3s ease;"><div style="font-weight:900;font-size:1.1rem;color:var(--text);margin-bottom:16px;">' + title + '</div><input id="ef-prompt-input" value="' + (defaultValue || '').replace(/"/g, '"') + '" style="width:100%;padding:12px 16px;border-radius:8px;border:2px solid var(--border);font-size:1rem;margin-bottom:20px;box-sizing:border-box;background:var(--bg-inset);color:var(--text);"><div style="display:flex;gap:12px;justify-content:center;"><button class="btn btn-ghost" id="btnCancelModal" style="flex:1;border:3px solid var(--border);font-weight:900;">CANCEL</button><button class="btn btn-primary" id="btnConfirmModal" style="flex:1;font-weight:900;border:3px solid var(--text);">OK</button></div></div>';
+    document.body.appendChild(overlay);
+    document.getElementById('btnCancelModal').onclick = () => { overlay.remove(); resolve(null); };
+    document.getElementById('btnConfirmModal').onclick = () => { const val = document.getElementById('ef-prompt-input').value; overlay.remove(); resolve(val); };
+    document.getElementById('ef-prompt-input').focus();
+    document.getElementById('ef-prompt-input').onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('btnConfirmModal').click(); };
+  });
+}
+
+// Promisified alert (non-blocking, uses showModal)
+export function showAlert(message, title = 'Notice') {
+  showModal(title, message);
+}
+
+// Promisified confirm (returns Promise<boolean>)
+export function showConfirmAsync(message, title = 'Confirm') {
+  return new Promise((resolve) => {
+    showConfirm(title, message, () => resolve(true), () => resolve(false));
+  });
+}

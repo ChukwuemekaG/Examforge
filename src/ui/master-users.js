@@ -2,6 +2,7 @@
 
 import * as users from '../db/users.js';
 import * as counters from '../db/counters.js';
+import { showAlert, showModal } from '../utils/helpers.js';
 
 export async function renderUsersTab(container) {
   let userList = [];
@@ -78,7 +79,7 @@ window._openUserDetail = async function(userId) {
 
   try {
     const userData = await users.getUser(userId);
-    if (!userData) { alert('User not found'); return; }
+    if (!userData) { showAlert('User not found'); return; }
     
     // Get user's results
     let userResults = [];
@@ -172,7 +173,7 @@ window._openUserDetail = async function(userId) {
       </div>
     </div>`;
   } catch (e) {
-    alert('Error loading user: ' + e.message);
+    showAlert('Error loading user: ' + e.message);
   }
 };
 
@@ -195,9 +196,9 @@ window._saveUserDetail = async function(userId) {
   try {
     await users.updateUserData(userId, { displayName, exaRating, role });
     await users.updateUser(userId, { username });
-    alert('User updated successfully!');
+    showAlert('User updated successfully!');
     window._closeUserDetail();
   } catch (e) {
-    alert('Error saving: ' + e.message);
+    showAlert('Error saving: ' + e.message);
   }
 };

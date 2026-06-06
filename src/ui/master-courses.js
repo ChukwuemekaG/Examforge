@@ -1,6 +1,7 @@
 // Admin: Courses/Topics/Questions CRUD
 
 import * as courses from '../db/courses.js';
+import { showPrompt, showConfirmAsync, showAlert } from '../utils/helpers.js';
 
 let currentCourseId = null;
 let currentTopicId = null;
@@ -22,18 +23,18 @@ export async function renderMasterCourses(container) {
 }
 
 window._createCourse = async function() {
-  const title = prompt('Course title:');
+  const title = await showPrompt('Course title:');
   if (!title) return;
-  const level = prompt('Level (e.g. 100, 200):', '100') || '100';
+  const level = await showPrompt('Level (e.g. 100, 200):', '100') || '100';
   try {
     await courses.createCourse({ title, level });
     const container = document.getElementById('master-tab-content');
     if (container) await renderMasterCourses(container);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { showAlert('Error: ' + e.message); }
 };
 
 window._deleteCourse = async function(id) {
-  if (!confirm('Delete this course?')) return;
+  if (!await showConfirmAsync('Delete this course?')) return;
   try {
     await courses.deleteCourse(id);
     const container = document.getElementById('master-tab-content');
@@ -63,7 +64,7 @@ window._openCourse = async function(courseId) {
 
 window._createTopic = async function() {
   if (!currentCourseId) return;
-  const title = prompt('Topic title:');
+  const title = await showPrompt('Topic title:');
   if (!title) return;
   try {
     await courses.createTopic({ courseId: currentCourseId, title });
@@ -72,7 +73,7 @@ window._createTopic = async function() {
 };
 
 window._deleteTopic = async function(topicId) {
-  if (!confirm('Delete this topic and all its questions?')) return;
+  if (!await showConfirmAsync('Delete this topic and all its questions?')) return;
   try {
     await courses.deleteTopic(topicId);
     await window._openCourse(currentCourseId);
@@ -100,14 +101,14 @@ window._openTopic = async function(topicId) {
 
 window._addQuestion = async function() {
   if (!currentTopicId || !currentCourseId) return;
-  const qText = prompt('Question:');
+  const qText = await showPrompt('Question:');
   if (!qText) return;
-  const optA = prompt('Option A:') || '';
-  const optB = prompt('Option B:') || '';
-  const optC = prompt('Option C:') || '';
-  const optD = prompt('Option D:') || '';
-  const correctIdx = parseInt(prompt('Correct answer index (0-3):', '0')) || 0;
-  const explanation = prompt('Explanation (optional):') || '';
+  const optA = await showPrompt('Option A:') || '';
+  const optB = await showPrompt('Option B:') || '';
+  const optC = await showPrompt('Option C:') || '';
+  const optD = await showPrompt('Option D:') || '';
+  const correctIdx = parseInt(await showPrompt('Correct answer index (0-3):', '0')) || 0;
+  const explanation = await showPrompt('Explanation (optional):') || '';
   
   try {
     await courses.createQuestion({
@@ -120,7 +121,7 @@ window._addQuestion = async function() {
 };
 
 window._deleteQuestion = async function(questionId) {
-  if (!confirm('Delete this question?')) return;
+  if (!await showConfirmAsync('Delete this question?')) return;
   try {
     await courses.deleteQuestion(questionId);
     await window._openTopic(currentTopicId);

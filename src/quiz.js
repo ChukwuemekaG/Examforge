@@ -12,6 +12,7 @@ import { initQuiz, examState } from './quiz/init.js';
 import { startTimer, stopTimer, formatTime, goToQuestion, answerQuestion, calculateResults, shuffleQuestions } from './quiz/engine.js';
 import { showResults, calculateExaChange } from './quiz/results.js';
 import { gradeFromScore } from './utils/constants.js';
+import { showConfirmAsync, showAlert } from './utils/helpers.js';
 
 let currentUser = null;
 
@@ -77,7 +78,7 @@ function renderQuizUI() {
   if (examState.timeRemaining > 0) {
     startTimer(
       (remaining) => { document.getElementById('quiz-timer').textContent = formatTime(remaining); },
-      () => { alert('Time is up!'); window._submitQuiz(); }
+      () => { showAlert('Time is up!', 'Time Up'); window._submitQuiz(); }
     );
   }
 }
@@ -125,7 +126,7 @@ window._answer = function(optionIndex) {
 
 window._submitQuiz = async function() {
   const unanswered = examState.answers.filter(a => a === null).length;
-  if (unanswered > 0 && !confirm(unanswered + ' question(s) unanswered. Submit anyway?')) return;
+  if (unanswered > 0 && !await showConfirmAsync(unanswered + ' question(s) unanswered. Submit anyway?')) return;
 
   stopTimer();
   const results = calculateResults();

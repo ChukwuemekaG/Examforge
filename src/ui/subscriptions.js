@@ -1,5 +1,6 @@
 import { getState } from './core.js';
 import * as events from '../db/events.js';
+import { showConfirmAsync, showAlert, showModal } from '../utils/helpers.js';
 
 export async function renderSubscriptions() {
   const { workspace } = getState();
@@ -27,27 +28,27 @@ window._openEventRegistration = async function(eventId) {
   const { userData } = getState();
   try {
     const ev = await events.getEvent(eventId);
-    if (!ev) { alert('Event not found.'); return; }
+    if (!ev) { showAlert('Event not found.'); return; }
     const subjects = JSON.parse(ev.available_subjects || '[]');
     // Check if already registered
     const reg = await events.getStudentRegistration(eventId, userData.uid);
     if (reg) {
-      alert('You are already registered for this event.\nSubjects: ' + JSON.parse(reg.subjects || '[]').join(', '));
+      showAlert('You are already registered for this event.\nSubjects: ' + JSON.parse(reg.subjects || '[]').join(', '));
       return;
     }
     // Show registration prompt
     const msg = 'Event: ' + ev.title + '\nSubjects: ' + subjects.join(', ') + '\n\nRegister for this event?';
-    if (confirm(msg)) {
+    if (await showConfirmAsync(msg)) {
       await events.registerStudent(eventId, {
         uid: userData.uid,
         displayName: userData.displayName,
         email: userData.email,
         subjects: subjects
       });
-      alert('Successfully registered!');
+      showAlert('Successfully registered!');
     }
   } catch (e) {
     console.error('Registration failed:', e);
-    alert('Registration failed: ' + e.message);
+    showAlert('Registration failed: ' + e.message);
   }
 };

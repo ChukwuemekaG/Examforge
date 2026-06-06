@@ -8,7 +8,7 @@ import * as quizzes from '../db/quizzes.js';
 import * as advices from '../db/advices.js';
 import * as events from '../db/events.js';
 import * as counters from '../db/counters.js';
-import { showConfirm } from '../utils/helpers.js';
+import { showConfirm, showPrompt, showConfirmAsync, showAlert } from '../utils/helpers.js';
 import { renderUsersTab } from './master-users.js';
 
 let activeTab = 'courses';
@@ -47,10 +47,10 @@ window._syncMyData = async function() {
     const { db } = await import("../../firebase-config.js");
     const { getState } = await import('./core.js');
     const user = getState().currentUser;
-    if (!user) { alert('Not logged in.'); return; }
+    if (!user) { showAlert('Not logged in.'); return; }
     
     const snap = await getDoc(doc(db, 'users', user.uid));
-    if (!snap.exists()) { alert('No Firestore data found for your account.'); return; }
+    if (!snap.exists()) { showAlert('No Firestore data found for your account.'); return; }
     
     const u = snap.data();
     const usersModule = await import('../db/users.js');
@@ -87,9 +87,9 @@ window._syncMyData = async function() {
       }
     }
     
-    alert('Your data synced! Reload the page to see changes.');
+    showAlert('Your data synced! Reload the page to see changes.');
   } catch (e) {
-    alert('Sync failed: ' + e.message);
+    showAlert('Sync failed: ' + e.message);
     console.error(e);
   }
 };
@@ -153,25 +153,25 @@ async function renderDailyQuizTab(container) {
 }
 
 window._createDailyQuiz = async function() {
-  const title = prompt('Quiz title:');
+  const title = await showPrompt('Quiz title:');
   if (!title) return;
-  const timeLimit = parseInt(prompt('Time limit (minutes):', '10')) || 10;
+  const timeLimit = parseInt(await showPrompt('Time limit (minutes):', '10')) || 10;
   try {
     const id = await quizzes.createQuiz({ title, timeLimit });
-    alert('Quiz created: ' + id);
+    showAlert('Quiz created: ' + id);
     await renderDailyQuizTab(document.getElementById('master-tab-content'));
   } catch (e) {
-    alert('Error: ' + e.message);
+    showAlert('Error: ' + e.message);
   }
 };
 
 window._deleteDailyQuiz = async function(id) {
-  if (!confirm('Delete this quiz?')) return;
+  if (!await showConfirmAsync('Delete this quiz?')) return;
   try {
     await quizzes.deleteQuiz(id);
     await renderDailyQuizTab(document.getElementById('master-tab-content'));
   } catch (e) {
-    alert('Error: ' + e.message);
+    showAlert('Error: ' + e.message);
   }
 };
 
@@ -192,20 +192,20 @@ async function renderDailyAdviceTab(container) {
 }
 
 window._createDailyAdvice = async function() {
-  const title = prompt('Advice title:');
+  const title = await showPrompt('Advice title:');
   if (!title) return;
-  const category = prompt('Category:', 'General') || 'General';
-  const content = prompt('Content:');
+  const category = await showPrompt('Category:', 'General') || 'General';
+  const content = await showPrompt('Content:');
   try {
     await advices.createAdvice({ title, category, content });
     await renderDailyAdviceTab(document.getElementById('master-tab-content'));
   } catch (e) {
-    alert('Error: ' + e.message);
+    showAlert('Error: ' + e.message);
   }
 };
 
 window._deleteDailyAdvice = async function(id) {
-  if (!confirm('Delete this advice?')) return;
+  if (!await showConfirmAsync('Delete this advice?')) return;
   try {
     await advices.deleteAdvice(id);
     await renderDailyAdviceTab(document.getElementById('master-tab-content'));
@@ -217,35 +217,35 @@ window._deleteDailyAdvice = async function(id) {
 // ─── Broadcast / Utility functions ───
 
 window._clearAllNotifications = async function() {
-  if (!confirm('Clear all broadcast notifications?')) return;
+  if (!await showConfirmAsync('Clear all broadcast notifications?')) return;
   try {
     const { default: notifications } = await import('../db/notifications.js');
     await notifications.clearBroadcastNotifications();
-    alert('Broadcast notifications cleared.');
+    showAlert('Broadcast notifications cleared.');
   } catch (e) {
-    alert('Failed: ' + e.message);
+    showAlert('Failed: ' + e.message);
   }
 };
 
 window._clearAllSchedules = async function() {
-  if (!confirm('Clear all broadcast schedules?')) return;
+  if (!await showConfirmAsync('Clear all broadcast schedules?')) return;
   try {
     const { default: schedules } = await import('../db/schedules.js');
     await schedules.clearBroadcastSchedules();
-    alert('Broadcast schedules cleared.');
+    showAlert('Broadcast schedules cleared.');
   } catch (e) {
-    alert('Failed: ' + e.message);
+    showAlert('Failed: ' + e.message);
   }
 };
 
 window._backfillUserCounter = async function() {
-  if (!confirm('Count all users and update counter?')) return;
+  if (!await showConfirmAsync('Count all users and update counter?')) return;
   try {
     const total = await counters.getUserCount();
     await counters.setCounter('totalUsers', total);
-    alert('Counter backfilled: ' + total + ' users');
+    showAlert('Counter backfilled: ' + total + ' users');
   } catch (e) {
-    alert('Failed: ' + e.message);
+    showAlert('Failed: ' + e.message);
   }
 };
 
@@ -255,20 +255,20 @@ window.printResult = async function(resultId, eventId) {
     const { default: results } = await import('../db/results.js');
     const { printResultSheet } = await import('../utils/pdf.js');
     // Result fetching will be implemented when results module is complete
-    alert('Print result: ' + resultId);
+    showAlert('Print result: ' + resultId);
   } catch (e) {
     console.error('Print failed:', e);
   }
 };
 
 window._startMigration = async function() {
-  if (!confirm('This will import all data from Firestore into Turso. Continue?')) return;
+  if (!await showConfirmAsync('This will import all data from Firestore into Turso. Continue?')) return;
   try {
     const { runMigration } = await import('../utils/migrate.js');
     const result = await runMigration((msg) => console.log('[Migration]', msg));
-    alert('Migration complete!\nItems migrated: ' + result.migrated + '\nErrors: ' + result.errors);
+    showAlert('Migration complete!\nItems migrated: ' + result.migrated + '\nErrors: ' + result.errors);
   } catch (e) {
-    alert('Migration failed: ' + e.message);
+    showAlert('Migration failed: ' + e.message);
     console.error(e);
   }
 };

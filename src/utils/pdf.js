@@ -1,5 +1,7 @@
 // PDF generation for result sheets — delegates to printResultSheet
 
+import { showAlert } from './helpers.js';
+
 let cssCache = null;
 
 export function getResultSheetCSS() {
@@ -68,12 +70,12 @@ export function printResultSheet(html) {
     const blob = new Blob([fullDoc], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const win = window.open(url, '_blank');
-    if (!win) alert('Please allow popups to download the PDF.');
+    if (!win) showAlert('Please allow popups to download the PDF.');
     setTimeout(() => URL.revokeObjectURL(url), 120000);
   } catch (e) {
     const win = window.open('', '_blank');
     if (win) { win.document.write(fullDoc); win.document.close(); }
-    else alert('Please allow popups to download the PDF.');
+    else showAlert('Please allow popups to download the PDF.');
   }
 }
 
