@@ -2,6 +2,18 @@
 // Hardcoded CREATE TABLE statements — no parsing needed
 
 export async function initSchema(db) {
+  // Check if tables already exist (skip schema init on subsequent loads)
+  try {
+    const result = await db.execute("SELECT COUNT(*) as cnt FROM users");
+    if (result && result.rows && result.rows.length > 0) {
+      console.log('[Schema] Tables already exist, skipping creation');
+      return;
+    }
+  } catch (e) {
+    // Table doesn't exist, proceed with creation
+    console.log('[Schema] Tables not found, creating...');
+  }
+
   // Essential tables with hardcoded SQL — no parsing needed
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (

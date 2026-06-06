@@ -35,7 +35,20 @@ export async function initAuth() {
               totalUsers: userDoc.total_users || 0
             });
           } else {
-            // First time user in Turso — auto-create from Firebase Auth
+            // First time user in Turso — check Firestore for actual role
+            let firestoreRole = 'student';
+            try {
+              const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+              const { db } = await import("../../firebase-config.js");
+              const fsSnap = await getDoc(doc(db, 'users', user.uid));
+              if (fsSnap.exists()) {
+                const fsData = fsSnap.data();
+                firestoreRole = fsData.role || 'student';
+              }
+            } catch (fsErr) {
+              console.warn('[Auth] Could not check Firestore for role:', fsErr.message);
+            }
+
             try {
               await users.createUser({
                 id: user.uid,
@@ -43,7 +56,7 @@ export async function initAuth() {
                 displayName: user.displayName || '',
                 provider: 'firebase',
                 exaRating: 800,
-                role: 'student'
+                role: firestoreRole
               });
               console.log('[Auth] Created Turso user for:', user.uid);
               // Set default data
