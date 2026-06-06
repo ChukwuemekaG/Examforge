@@ -32,11 +32,67 @@ export async function renderMaster() {
     <button class="btn btn-outline btn-sm" onclick="window._startMigration()" style="font-size:0.65rem;padding:3px 8px;">
       <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">cloud_download</span> Migrate Data
     </button>
+    <button class="btn btn-outline btn-sm" onclick="window._syncMyData()" style="font-size:0.65rem;padding:3px 8px;">
+      <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">sync</span> Sync My Data
+    </button>
   </div>
   <div id="master-tab-content"></div>`;
 
   await renderActiveTab();
 }
+
+window._syncMyData = async function() {
+  try {
+    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+    const { db } = await import("../../firebase-config.js");
+    const { getState } = await import('./core.js');
+    const user = getState().currentUser;
+    if (!user) { alert('Not logged in.'); return; }
+    
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if (!snap.exists()) { alert('No Firestore data found for your account.'); return; }
+    
+    const u = snap.data();
+    const usersModule = await import('../db/users.js');
+    
+    // Update profile
+    await usersModule.updateUserData(user.uid, {
+      exaRating: u.exaRating ?? 800,
+      displayName: u.displayName || '',
+      username: u.username || '',
+      streak: u.streak || 0,
+      highestStreak: u.highestStreak || 0,
+      lastExamDate: u.lastExamDate || null,
+      role: u.role || 'student'
+    });
+    
+    // Migrate results
+    if (u.recentResults && Array.isArray(u.recentResults)) {
+      for (const r of u.recentResults) {
+        await usersModule.addResult(user.uid, r);
+      }
+    }
+    
+    // Migrate schedule
+    if (u.schedule && Array.isArray(u.schedule)) {
+      for (const s of u.schedule) {
+        await usersModule.addScheduleItem(user.uid, s);
+      }
+    }
+    
+    // Migrate inbox
+    if (u.inbox && Array.isArray(u.inbox)) {
+      for (const item of u.inbox) {
+        await usersModule.addInboxItem(user.uid, item);
+      }
+    }
+    
+    alert('Your data synced! Reload the page to see changes.');
+  } catch (e) {
+    alert('Sync failed: ' + e.message);
+    console.error(e);
+  }
+};
 
 window._switchMasterTab = async function(tab) {
   activeTab = tab;

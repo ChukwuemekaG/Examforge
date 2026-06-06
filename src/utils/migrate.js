@@ -40,20 +40,32 @@ export async function runMigration(onProgress) {
     for (const d of snap.docs) {
       const u = d.data();
       try {
-        // Check if already migrated
+        // Check if already in Turso — UPDATE instead of skip
         const existing = await users.getUser(d.id);
-        if (existing) { migrated++; continue; }
         
-        await users.createUser({
-          id: d.id, email: u.email || '', displayName: u.displayName || '',
-          username: u.username || '', provider: u.provider || 'firebase',
-          exaRating: u.exaRating || 800, role: u.role || 'student'
-        });
-        if (u.streak || u.highestStreak || u.lastExamDate) {
+        if (existing) {
+          // Update existing user with Firestore data
           await users.updateUserData(d.id, {
-            streak: u.streak || 0, highestStreak: u.highestStreak || 0,
+            exaRating: u.exaRating ?? 800,
+            displayName: u.displayName || '',
+            username: u.username || '',
+            streak: u.streak || 0,
+            highestStreak: u.highestStreak || 0,
             lastExamDate: u.lastExamDate || null
           });
+        } else {
+          // Create new user
+          await users.createUser({
+            id: d.id, email: u.email || '', displayName: u.displayName || '',
+            username: u.username || '', provider: u.provider || 'firebase',
+            exaRating: u.exaRating || 800, role: u.role || 'student'
+          });
+          if (u.streak || u.highestStreak || u.lastExamDate) {
+            await users.updateUserData(d.id, {
+              streak: u.streak || 0, highestStreak: u.highestStreak || 0,
+              lastExamDate: u.lastExamDate || null
+            });
+          }
         }
         migrated++;
         
