@@ -264,7 +264,9 @@ export class SyncManager {
    * @returns {Promise<object|null>} The document data, or null if it doesn't exist.
    */
   async _fetchDoc(path) {
-    const [table, id] = this._parsePath(path);
+    const segments = this._parsePath(path);
+    const table = this._parseTable(path);
+    const id = segments[1] || null;
     if (!table || !id || !this._isValidTable(table)) return null;
 
     if (trackRead(path)) {
