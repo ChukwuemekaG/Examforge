@@ -44,6 +44,15 @@ export async function setQuizQuestions(quizId, questions) {
   }
 }
 
+export async function createQuizQuestion(quizId, q) {
+  const opts = q.options || ['', '', '', ''];
+  return execute(
+    `INSERT INTO daily_quiz_questions (quiz_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [quizId, q.question || '', opts[0] || '', opts[1] || '', opts[2] || '', opts[3] || '', q.correctIndex ?? 0, q.explanation || '', q.sortOrder ?? 0]
+  );
+}
+
 // Quiz attempts
 export async function getQuizAttempts(quizId) {
   trackRead('daily_quiz_attempts/' + quizId);

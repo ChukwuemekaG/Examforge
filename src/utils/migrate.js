@@ -121,15 +121,14 @@ export async function runMigration(onProgress) {
         const existingCourse = await courses.getCourse(d.id);
         if (existingCourse) {
           skipped++;
-          continue;
+        } else {
+          await courses.createCourse({
+            id: d.id, title: c.title || '', level: c.level || '',
+            totalTimeLimit: c.totalTimeLimit || 0, isStrict: !!c.isStrict,
+            isMock: !!c.isMock, isCorrection: !!c.isCorrection
+          });
+          migrated++;
         }
-
-        await courses.createCourse({
-          id: d.id, title: c.title || '', level: c.level || '',
-          totalTimeLimit: c.totalTimeLimit || 0, isStrict: !!c.isStrict,
-          isMock: !!c.isMock, isCorrection: !!c.isCorrection
-        });
-        migrated++;
 
         // Get topics subcollection
         const topicSnap = await getDocs(collection(db, 'unicourses', d.id, 'topics'));
@@ -191,32 +190,34 @@ export async function runMigration(onProgress) {
         const existingQuiz = await quizzes.getQuiz(d.id);
         if (existingQuiz) {
           skipped++;
-          continue;
+        } else {
+          await quizzes.createQuiz({
+            id: d.id, title: q.title || '', timeLimit: q.timeLimit || 0,
+            maxAttempts: q.maxAttempts || 1
+          });
+          migrated++;
         }
-
-        await quizzes.createQuiz({
-          id: d.id, title: q.title || '', timeLimit: q.timeLimit || 0,
-          maxAttempts: q.maxAttempts || 1
-        });
-        migrated++;
 
         // Migrate questions — skip duplicates by matching text
         const existingQuestions = await quizzes.getQuizQuestions(d.id) || [];
         const allQuestions = q.questions || [];
         if (allQuestions.length > 0) {
           const existingTexts = existingQuestions.map(eq => (eq.question || '').trim());
-          let newCount = 0;
-          for (const fq of allQuestions) {
-            if (existingTexts.includes((fq.question || '').trim())) {
+          for (let qi = 0; qi < allQuestions.length; qi++) {
+            const fq = allQuestions[qi];
+            const questionText = (fq.question || '').trim();
+            if (existingTexts.includes(questionText)) {
               skipped++;
             } else {
-              newCount++;
+              await quizzes.createQuizQuestion(d.id, {
+                question: fq.question || '',
+                options: fq.options || ['','','',''],
+                correctIndex: fq.correctIndex ?? 0,
+                explanation: fq.explanation || '',
+                sortOrder: qi
+              });
+              migrated++;
             }
-          }
-          // Only write if there are new questions to add
-          if (newCount > 0) {
-            await quizzes.setQuizQuestions(d.id, allQuestions);
-            migrated += newCount;
           }
         }
 
@@ -279,16 +280,15 @@ export async function runMigration(onProgress) {
         const existingEvent = await events.getEvent(d.id);
         if (existingEvent) {
           skipped++;
-          continue;
+        } else {
+          await events.createEvent({
+            id: d.id, title: ev.title || '', description: ev.description || '',
+            availableSubjects: ev.availableSubjects || [],
+            maxSubjects: ev.maxSubjects || 0,
+            resultsReleased: !!ev.resultsReleased
+          });
+          migrated++;
         }
-
-        await events.createEvent({
-          id: d.id, title: ev.title || '', description: ev.description || '',
-          availableSubjects: ev.availableSubjects || [],
-          maxSubjects: ev.maxSubjects || 0,
-          resultsReleased: !!ev.resultsReleased
-        });
-        migrated++;
 
         // Migrate registrations from _data/registrations
         try {
@@ -349,17 +349,16 @@ export async function runMigration(onProgress) {
         const existingMock = await mocks.getMock(d.id);
         if (existingMock) {
           skipped++;
-          continue;
+        } else {
+          await mocks.createMock({
+            id: d.id, eventId: m.eventId || '', subject: m.subject || '',
+            title: m.title || '', timeLimit: m.timeLimit || 0
+          });
+          if (m.questions) {
+            await mocks.updateMockQuestions(d.id, m.questions);
+          }
+          migrated++;
         }
-
-        await mocks.createMock({
-          id: d.id, eventId: m.eventId || '', subject: m.subject || '',
-          title: m.title || '', timeLimit: m.timeLimit || 0
-        });
-        if (m.questions) {
-          await mocks.updateMockQuestions(d.id, m.questions);
-        }
-        migrated++;
 
         // Migrate attempts subcollection — skip duplicates by uid
         try {
