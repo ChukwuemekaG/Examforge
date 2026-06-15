@@ -1,7 +1,6 @@
-// Turso HTTP Database Client — v2/pipeline API (direct connection)
+// Turso HTTP Database Client — v2/pipeline API (via proxy)
 
-const TURSO_URL = 'https://examforge-chukwuemekagodson.aws-us-east-2.turso.io';
-const TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicm93IiwiaWF0IjoxNzI1MTM1Njk1LCJpZCI6Ijg4YmM5NTQwLWU5NjktMTFlYy04YjJhLTAzNzFhZGNlOTU4YiJ9.wRgSw8ZzRGHK-WQ9uZ55HMclMSWZgQ8gz7_4ISjePA60Zk6qW6Y7RE-4Zx4EzQB3XbFFEDQYOsy6qo9VfPYzDg';
+const TURSO_PROXY_URL = '/v2/pipeline';
 
 window.__efReads = 0;
 window.__efReadBudget = 10;
@@ -46,12 +45,9 @@ async function request(sql, params = []) {
     ]
   };
 
-  const res = await fetch(`${TURSO_URL}/v2/pipeline`, {
+  const res = await fetch(TURSO_PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${TURSO_TOKEN}`
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
 

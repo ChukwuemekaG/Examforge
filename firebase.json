@@ -23,6 +23,10 @@
       {
         "source": "/quiz?*",
         "destination": "/quiz.html"
+      },
+      {
+        "source": "/v2/pipeline",
+        "function": "tursoProxy"
       }
     ],
     "cleanUrls": true
