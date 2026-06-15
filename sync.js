@@ -73,7 +73,8 @@ export class SyncManager {
    * Creates a new SyncManager instance.
    * No database instance required — Turso client handles connections internally.
    */
-  constructor() {
+  constructor(db) {
+    this.db = db; // kept for backward compat, not used
     /** @type {LocalCache} */
     this._cache = new LocalCache();
 
@@ -553,30 +554,42 @@ export class SyncManager {
    *     { type: 'limit', value: 20 }
    *   ]);
    */
-  async query(path, constraints = []) {
-    if (!path || typeof path !== 'string') {
-      throw new Error(`[SyncManager] Invalid query path: "${path}"`);
-    }
-    if (!Array.isArray(constraints)) {
-      throw new Error('[SyncManager] Query constraints must be an array');
-    }
-    const cacheKey = buildCacheKey(path, constraints);
-
-    // 1. Check in-memory cache first
-    const memData = this._getMemCache(cacheKey);
-    if (memData !== null) return memData;
-
-    // 2. Check IndexedDB cache
+  async query(path, constraints) {
+    const cacheKey = path + '_' + JSON.stringify(constraints);
     const cached = await this._cache.get(cacheKey);
-    if (cached && cached.data) {
-      this._setMemCache(cacheKey, cached.data);
-      return cached.data;
+    if (cached) return cached.data;
+    
+    const table = this._parseTable(path);
+    if (!table) return [];
+    
+    let sql = `SELECT * FROM ${table}`;
+    let params = [];
+    
+    // Handle constraints array (Firestore-style or raw)
+    if (constraints && constraints.length > 0) {
+      // Check if first element has .field property (Firestore QConstraint)
+      const first = constraints[0];
+      if (first && typeof first === 'object' && first.field !== undefined) {
+        const whereClauses = [];
+        constraints.forEach(c => {
+          if (c.field && c.op) {
+            const op = c.op === '==' ? '=' : c.op;
+            whereClauses.push(`${c.field} ${op} ?`);
+            params.push(c.value);
+          }
+        });
+        if (whereClauses.length > 0) sql += ' WHERE ' + whereClauses.join(' AND ');
+      }
     }
-
-    // 3. No cache — fetch from Turso
-    const data = await this._dedupedFetch(cacheKey, () => this._fetchQuery(path, constraints));
-    this._setMemCache(cacheKey, data);
-    return data;
+    
+    // Handle orderBy, limit passed separately or as extra args
+    // (Firestore constraints may include orderBy/limit)
+    // For now, just order by created_at DESC as default
+    sql += ' ORDER BY created_at DESC LIMIT 50';
+    
+    const rows = await exec(sql, params);
+    await this._cache.set(cacheKey, rows);
+    return rows;
   }
 
   /**

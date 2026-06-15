@@ -418,7 +418,7 @@ window._startMigration = async function() {
   try {
     const { runMigration } = await import('../utils/migrate.js');
     const result = await runMigration((msg) => console.log('[Migration]', msg));
-    showAlert('Migration complete!\nItems migrated: ' + result.migrated + '\nErrors: ' + result.errors);
+    showAlert('Migration complete!\n✅ Migrated: ' + result.migrated + '\n⏭️ Skipped: ' + result.skipped + '\n❌ Errors: ' + result.errors);
   } catch (e) {
     showAlert('Migration failed: ' + e.message);
     console.error(e);
