@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: examforge-turso-proxy
+    env: node
+    buildCommand: ""
+    startCommand: node turso-proxy.js
+    plan: free

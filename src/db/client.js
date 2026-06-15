@@ -1,6 +1,6 @@
 // Turso HTTP Database Client — v2/pipeline API (via proxy)
 
-const TURSO_PROXY_URL = 'https://examforge-turso-proxy.godsonchukwuemeka595.workers.dev/v2/pipeline';
+const TURSO_PROXY_URL = window.__TURSO_PROXY_URL || 'https://examforge-turso-proxy.godsonchukwuemeka595.workers.dev/v2/pipeline';
 
 window.__efReads = 0;
 window.__efReadBudget = 10;
