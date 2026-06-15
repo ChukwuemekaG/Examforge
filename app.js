@@ -6331,7 +6331,7 @@ window.adminPromptNotification = function(userId) {
             broadcastScheds = schedDoc.items || [];
             
             // Filter out dismissed broadcast schedule items
-            const dismissedScheds = userRaw.dismissedScheds || [];
+            const dismissedScheds = userDoc.dismissedScheds || [];
             if (dismissedScheds.length) {
                 broadcastScheds = broadcastScheds.filter(s => !dismissedScheds.includes(s.id || s._id));
             }
