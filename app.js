@@ -17,6 +17,11 @@ import { SyncManager } from './sync.js';
 let sync = null;
 let localCache = null;
 
+// Firebase read tracking (no-op since we're migrating away from Firebase)
+window.__efTrackRead = function(label) {
+  // No-op — previously used to track Firebase read quota
+};
+
 function getResultSheetCSS() {
     return `
         @page { margin: 10mm; size: A4 portrait; }
@@ -469,17 +474,30 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ─── Backfill totalUsers counter for national ranking ───
-    window._backfillUserCounter = async function() {
-        if (!confirm('This will count all users and write totalUsers to _stats/counters. Continue?')) return;
+    window._backfillUserCounter = async function(silent) {
+        if (!silent && !confirm('This will count all users and write totalUsers to _stats/counters. Continue?')) return;
         try {
             window.__efTrackRead('users count (backfill)');
             const snap = await getCountFromServer(collection(db, 'users'));
             const total = snap.data().count;
             await setDoc(doc(db, '_stats', 'counters'), { totalUsers: total }, { merge: true });
-            alert(`✅ Counter backfilled! Total users: ${total}\n\nUsers will get totalUsers on their next dashboard load.`);
+            if (!silent) alert(`✅ Counter backfilled! Total users: ${total}\n\nUsers will get totalUsers on their next dashboard load.`);
         } catch (e) {
-            alert('❌ Error: ' + e.message);
+            if (!silent) alert('❌ Error: ' + e.message);
             console.error('Backfill error:', e);
+        }
+    };
+
+    // ─── Migrate Firebase data to Turso ───
+    window._startMigration = async function() {
+        if (!confirm('This will import all data from Firestore into Turso. Continue?')) return;
+        try {
+            const { runMigration } = await import('./src/utils/migrate.js');
+            const result = await runMigration((msg) => console.log('[Migration]', msg));
+            alert(`Migration complete!\n✅ Migrated: ${result.migrated}\n⏭️ Skipped: ${result.skipped}\n❌ Errors: ${result.errors}`);
+        } catch (e) {
+            alert('Migration failed: ' + e.message);
+            console.error(e);
         }
     };
 
@@ -1659,18 +1677,14 @@ async function renderMaster() {
                     <div class="page-title">Master Control</div>
                     <div class="page-sub">Platform administration — users, courses, topics &amp; questions</div>
                 </div>
-                <button class="btn btn-outline btn-sm" onclick="window._syncExistingData().then(r => { if(r) window.showEFModal('Sync Complete', 'Existing data has been synced to _admin_panel/data. All users now have live access.', 'OK'); else window.showEFModal('Sync Failed', 'Check console for details.', 'OK'); })" title="Sync existing data once">
-                    <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;margin-right:4px;">sync</span>
-                    Sync Data
+                <button class="btn btn-outline btn-sm" onclick="window._startMigration()" style="font-size:0.65rem;padding:3px 8px;">
+                    <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">cloud_download</span> Migrate Data
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="window._clearAllNotifications()" style="font-size:0.65rem;padding:3px 8px;">
                     <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">notifications_off</span> Clear Notifications
                 </button>
                 <button class="btn btn-outline btn-sm" onclick="window._clearAllSchedules()" style="font-size:0.65rem;padding:3px 8px;">
                     <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">event_busy</span> Clear Schedule
-                </button>
-                <button class="btn btn-outline btn-sm" onclick="window._backfillUserCounter()">
-                    <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;margin-right:4px;">people</span> Backfill User Counter
                 </button>
             </div>
         </div>
@@ -1884,6 +1898,12 @@ function mcRenderUsersTab() {
             }
         });
     }
+
+    // Auto-sync admin data on load (no need for manual button)
+    window._syncExistingData().catch(e => console.warn('Auto-sync failed:', e));
+    
+    // Auto-backfill user counter on load
+    window._backfillUserCounter(true).catch(e => console.warn('Auto-backfill failed:', e));
 }
 
 function mcRenderUserGrid(users) {
