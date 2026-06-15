@@ -1751,11 +1751,15 @@ function mcRenderTabContent() {
 async function mcLoadStats() {
     try {
         const el = id => document.getElementById(id);
-        // User count removed to eliminate getCountFromServer reads
+        // Get user count from Turso
+        const { getUserCount } = await import('./src/db/counters.js');
+        const count = await getUserCount();
+        if (el('mc-s-users')) el('mc-s-users').textContent = count || '-';
+    } catch (e) { 
+        console.error('Failed to load stats:', e);
+        const el = id => document.getElementById(id);
         if (el('mc-s-users')) el('mc-s-users').textContent = '-';
-
-        
-    } catch (e) { console.error(e); }
+    }
 }
 
 // ── USERS TAB ─────────────────────────────────────────────────
