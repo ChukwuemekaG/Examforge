@@ -40,6 +40,14 @@ const DEFAULT_POLL_MS = 30 * 1000;
 /** @type {number} Default polling interval for liveCollection (15 seconds) */
 const DEFAULT_COLLECTION_POLL_MS = 15 * 1000;
 
+/** @type {Object<string, string>} Map Firestore-style path prefixes to actual Turso table names */
+const TABLE_MAP = {
+  '_notifications': 'broadcast_notifications',
+  '_schedules': 'broadcast_schedules',
+  '_admin_panel': 'admin_panel',
+  '_stats': 'counters'
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -224,7 +232,8 @@ export class SyncManager {
   _parseTable(path) {
     const parts = (path || '').split('/').filter(Boolean);
     if (parts.length === 0) return null;
-    return parts[0];
+    const raw = parts[0];
+    return TABLE_MAP[raw] || raw;
   }
 
   /**
@@ -588,7 +597,7 @@ export class SyncManager {
     sql += ' ORDER BY created_at DESC LIMIT 50';
     
     const rows = await exec(sql, params);
-    await this._cache.set(cacheKey, rows);
+    await this._cache.set(cacheKey, rows, 'query');
     return rows;
   }
 
