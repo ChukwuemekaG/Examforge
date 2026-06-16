@@ -1825,7 +1825,6 @@ function mcRenderUsersTab() {
             
             if (val.length === 0) {
                 suggestionsBox.style.display = 'none';
-                renderFilteredUsers();
                 return;
             }
             
@@ -1840,7 +1839,6 @@ function mcRenderUsersTab() {
             
             if (matches.length === 0) {
                 suggestionsBox.style.display = 'none';
-                renderFilteredUsers();
                 return;
             }
             
@@ -1875,8 +1873,14 @@ function mcRenderUsersTab() {
                 el.addEventListener('mouseleave', () => el.style.background = '');
             });
             
-            // Still update the grid as they type
-            renderFilteredUsers();
+        });
+        
+        // Enter key triggers filtering
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                suggestionsBox.style.display = 'none';
+                renderFilteredUsers();
+            }
         });
         
         // Close suggestions on blur
