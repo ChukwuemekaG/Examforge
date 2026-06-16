@@ -113,3 +113,4 @@ export async function batch(statements) {
 
 // Expose for non-module code (monolithic app.js)
 window.__executeTurso = execute;
+window.__execTurso = exec;
