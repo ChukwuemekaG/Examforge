@@ -81,3 +81,6 @@ export async function getEventKeys(eventId) {
 export async function createEventKey(eventId, key) {
   return execute('INSERT INTO event_keys (id, event_id) VALUES (?, ?)', [key, eventId]);
 }
+
+// Expose for non-module code (monolithic app.js)
+window.__deleteTursoEvent = deleteEvent;

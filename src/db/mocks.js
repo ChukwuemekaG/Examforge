@@ -43,3 +43,6 @@ export async function saveMockAttempt(mockId, attempt) {
     [mockId, attempt.uid, attempt.displayName || '', attempt.email || '', attempt.score || 0, attempt.correct || 0, attempt.total || 0, attempt.timeTaken || 0, JSON.stringify(attempt.answers || []), attempt.browserAgent || '', attempt.platform || '', attempt.screenResolution || '']
   );
 }
+
+// Expose for non-module code (monolithic app.js)
+window.__deleteTursoMock = deleteMock;

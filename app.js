@@ -7639,17 +7639,25 @@ window.mcDeleteSubEvent = function(eventId, title) {
         "DELETE",
         async () => {
             try {
-                // Delete from Turso
-                const eventsModule = await import('./src/db/events.js');
-                await eventsModule.deleteEvent(eventId);
+                // Delete from Turso (use window reference for speed, fallback to dynamic import)
+                if (typeof window.__deleteTursoEvent === 'function') {
+                    await window.__deleteTursoEvent(eventId);
+                } else {
+                    const eventsModule = await import('./src/db/events.js');
+                    await eventsModule.deleteEvent(eventId);
+                }
 
                 // Also delete associated mock exams from Turso
                 try {
-                    const mocksModule = await import('./src/db/mocks.js');
                     const eventMocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
                     if (eventMocks && eventMocks.length > 0) {
                         for (const mock of eventMocks) {
-                            await mocksModule.deleteMock(mock.id);
+                            if (typeof window.__deleteTursoMock === 'function') {
+                                await window.__deleteTursoMock(mock.id);
+                            } else {
+                                const mocksModule = await import('./src/db/mocks.js');
+                                await mocksModule.deleteMock(mock.id);
+                            }
                         }
                     }
                 } catch(e) {
