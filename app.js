@@ -1827,9 +1827,14 @@ function mcRenderUsersTab() {
     // ── Load ALL users on mount ────────────────────────────
     async function loadAllUsers() {
         try {
-            // Load all users via SyncManager (Turso) and map snake_case to camelCase
-            const allUserDocs = await sync.collection('users') || [];
-            allUsers = allUserDocs.map(u => ({
+            // Load fresh data from Turso directly (bypass sync cache)
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const userRows = await window.__execTurso(
+                'SELECT id, email, display_name, username, provider, exa_rating, streak, highest_streak, last_exam_date, role FROM users ORDER BY display_name ASC'
+            ) || [];
+            allUsers = userRows.map(u => ({
                 id: u.id,
                 displayName: u.display_name || u.displayName || '',
                 username: u.username || '',
