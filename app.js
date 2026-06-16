@@ -766,17 +766,23 @@ function setupAdminListeners() {
 }
     async function getNationalRanking(userRating) {
         try {
-            // 1 read: count users ranked above current user's rating
-            window.__efTrackRead('ranking count');
-            const higherSnap = await getCountFromServer(
-                query(collection(db, 'users'), where('exaRating', '>', userRating))
-            );
-            const higherCount = higherSnap.data().count;
+            // Ensure Turso client is loaded
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
 
-            // 0 reads: totalUsers comes from user's own doc (already loaded for dashboard)
-            const totalUsers = (userData && userData.totalUsers) 
-                ? userData.totalUsers 
-                : higherCount + 1;
+            // Count users with higher EXA rating via Turso
+            const higherRows = await window.__execTurso(
+                'SELECT COUNT(*) as count FROM users WHERE exa_rating > ?',
+                [userRating]
+            );
+            const higherCount = parseInt(higherRows?.[0]?.count || 0);
+
+            // Get total user count from Turso
+            const totalRows = await window.__execTurso(
+                'SELECT COUNT(*) as total FROM users'
+            );
+            const totalUsers = parseInt(totalRows?.[0]?.total || 0);
 
             const exactRank = higherCount + 1;
             const displayTotal = Math.max(totalUsers, exactRank);
