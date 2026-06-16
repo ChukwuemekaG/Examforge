@@ -7657,36 +7657,20 @@ window.mcSaveSubEvent = async function() {
     });
 
     try {
-        const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const eventRef = await addDoc(collection(db, 'subscription_events'), {
+        // Save to Turso only (auto-generates ID)
+        const eventsModule = await import('./src/db/events.js');
+        const eventId = await eventsModule.createEvent({
             title,
             description: desc,
             availableSubjects,
             maxSubjects: maxSubs,
-            resultsReleased: false,
-            durationDays: 30,
-            createdAt: serverTimestamp()
+            resultsReleased: false
         });
 
-        // Update _admin_panel/data for live card appearance
+        // Update in-memory cache for immediate UI
         const section = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents] : [];
-        section.unshift({ id: eventRef.id, title, description: desc, availableSubjects, maxSubjects: maxSubs, createdAt: new Date().toISOString() });
+        section.unshift({ id: eventId, title, description: desc, availableSubjects, maxSubjects: maxSubs, createdAt: new Date().toISOString() });
         window._updateAdminSection('subscriptionEvents', section).catch(() => {});
-
-        // Also save to Turso
-        try {
-            const eventsModule = await import('./src/db/events.js');
-            await eventsModule.createEvent({
-                id: eventRef.id,
-                title,
-                description: desc,
-                availableSubjects,
-                maxSubjects: maxSubs,
-                resultsReleased: false
-            });
-        } catch(e) {
-            console.warn('Could not save event to Turso:', e);
-        }
 
         document.getElementById('ef-subevent-modal')?.remove();
         window.showEFModal("Event Created", "Subscription event created successfully.", "OK", null, true);
@@ -7704,36 +7688,11 @@ window.mcDeleteSubEvent = function(eventId, title) {
         "DELETE",
         async () => {
             try {
-                await deleteDoc(doc(db, 'subscription_events', eventId));
+                // Delete from Turso
+                const eventsModule = await import('./src/db/events.js');
+                await eventsModule.deleteEvent(eventId);
 
-                // Also delete from Turso
-                try {
-                    const eventsModule = await import('./src/db/events.js');
-                    await eventsModule.deleteEvent(eventId);
-                } catch(e) {
-                    console.warn('Could not delete event from Turso:', e);
-                }
-
-                // Also delete associated mock exams
-                try {
-                    const eventMocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
-                    if (eventMocks && eventMocks.length > 0) {
-                        const batch = writeBatch(db);
-                        for (const mock of eventMocks) {
-                            // Delete attempts subcollection first
-                            const attempts = await sync.collection('mock_exams/' + mock.id + '/attempts');
-                            if (attempts && attempts.length > 0) {
-                                attempts.forEach(a => batch.delete(doc(db, 'mock_exams', mock.id, 'attempts', a.id)));
-                            }
-                            batch.delete(doc(db, 'mock_exams', mock.id));
-                        }
-                        await batch.commit();
-                    }
-                } catch(e) {
-                    console.warn('Could not delete associated mocks:', e);
-                }
-
-                // Delete associated mocks from Turso too
+                // Also delete associated mock exams from Turso
                 try {
                     const mocksModule = await import('./src/db/mocks.js');
                     const eventMocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
@@ -7743,7 +7702,7 @@ window.mcDeleteSubEvent = function(eventId, title) {
                         }
                     }
                 } catch(e) {
-                    console.warn('Could not delete associated mocks from Turso:', e);
+                    console.warn('Could not delete associated mocks:', e);
                 }
 
                 // Update admin panel data to remove the deleted event
