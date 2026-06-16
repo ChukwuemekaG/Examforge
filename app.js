@@ -268,7 +268,22 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) {}
             try {
                 const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [uid]);
-                recentResults = resultRows || [];
+                recentResults = (resultRows || []).map(r => ({
+                    id: r.id,
+                    quizId: r.quiz_id || '',
+                    course: r.course || 'Exam',
+                    date: r.created_at || '',
+                    score: r.score || 0,
+                    total: r.total || 100,
+                    grade: r.grade || 'F',
+                    correct: r.correct || 0,
+                    totalQuestions: r.total_questions || 0,
+                    timeTaken: r.time_taken || 0,
+                    exaChange: r.exa_change || 0,
+                    isRetake: r.is_retake === 1,
+                    isMock: r.is_mock === 1,
+                    corrections: typeof r.corrections === 'string' ? JSON.parse(r.corrections || '[]') : (r.corrections || [])
+                }));
             } catch(e) {}
         }
 
@@ -951,7 +966,22 @@ function setupAdminListeners() {
                     if (typeof window.__execTurso === 'function') {
                         try {
                             const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [user.uid]);
-                            userData.recentResults = resultRows || [];
+                            userData.recentResults = (resultRows || []).map(r => ({
+                                id: r.id,
+                                quizId: r.quiz_id || '',
+                                course: r.course || 'Exam',
+                                date: r.created_at || '',
+                                score: r.score || 0,
+                                total: r.total || 100,
+                                grade: r.grade || 'F',
+                                correct: r.correct || 0,
+                                totalQuestions: r.total_questions || 0,
+                                timeTaken: r.time_taken || 0,
+                                exaChange: r.exa_change || 0,
+                                isRetake: r.is_retake === 1,
+                                isMock: r.is_mock === 1,
+                                corrections: typeof r.corrections === 'string' ? JSON.parse(r.corrections || '[]') : (r.corrections || [])
+                            }));
                         } catch(e) {
                             userData.recentResults = [];
                         }
@@ -5467,7 +5497,22 @@ window.adminPromptNotification = function(userId) {
                 if (typeof window.__execTurso === 'function') {
                     try {
                         const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [auth.currentUser.uid]);
-                        userData.recentResults = resultRows || [];
+                        userData.recentResults = (resultRows || []).map(r => ({
+                            id: r.id,
+                            quizId: r.quiz_id || '',
+                            course: r.course || 'Exam',
+                            date: r.created_at || '',
+                            score: r.score || 0,
+                            total: r.total || 100,
+                            grade: r.grade || 'F',
+                            correct: r.correct || 0,
+                            totalQuestions: r.total_questions || 0,
+                            timeTaken: r.time_taken || 0,
+                            exaChange: r.exa_change || 0,
+                            isRetake: r.is_retake === 1,
+                            isMock: r.is_mock === 1,
+                            corrections: typeof r.corrections === 'string' ? JSON.parse(r.corrections || '[]') : (r.corrections || [])
+                        }));
                     } catch(e) {
                         userData.recentResults = [];
                     }

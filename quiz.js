@@ -1252,6 +1252,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
 
+                // Also save to Turso (mock path)
+                try {
+                    if (typeof window.__executeTurso === 'function') {
+                        const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+                        const mockCourseList = examState.subjects?.map(s => s.title).join(', ') || 'Mock Exam';
+                        const mockGrade2 = finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F';
+                        await window.__executeTurso(
+                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, is_mock, created_at)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [resultId, currentUser.uid, examState.quizId || '', mockCourseList, finalScore, 100, mockGrade2, correct, total, examState.timeTaken || 0, 1, new Date().toISOString()]
+                        );
+                        // Update user streak in Turso for mocks too
+                        await window.__executeTurso(
+                            `UPDATE users SET streak = ?, highest_streak = ?, last_exam_date = ? WHERE id = ?`,
+                            [streakUpdate.streak, streakUpdate.highestStreak, streakUpdate.lastExamDate || null, currentUser.uid]
+                        );
+                    }
+                } catch(e) {
+                    console.warn('Turso mock save failed:', e);
+                }
+
             } else {
                 // Build new result object (embedded in user doc — no separate results collection write)
                 const newResult = {
@@ -1312,6 +1333,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     recentResults: recentResults,
                 };
                 await setDoc(userRef, { ...updatePayload, rank: "Unranked" }, { merge: true });
+
+                // Also save to Turso (non-mock path)
+                try {
+                    if (typeof window.__executeTurso === 'function') {
+                        const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+                        await window.__executeTurso(
+                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, corrections, created_at)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [resultId, currentUser.uid, examState.quizId || '', courseTitle, finalScore, 100, grade, correct, total, examState.timeTaken || 0, exaChange || 0, isRetake ? 1 : 0, JSON.stringify(corrections || []), new Date().toISOString()]
+                        );
+                        // Update user's EXA rating and streak in Turso
+                        await window.__executeTurso(
+                            `UPDATE users SET exa_rating = ?, streak = ?, highest_streak = ?, last_exam_date = ? WHERE id = ?`,
+                            [newExa, streakUpdate.streak, streakUpdate.highestStreak, streakUpdate.lastExamDate || null, currentUser.uid]
+                        );
+                    }
+                } catch(e) {
+                    console.warn('Turso save failed:', e);
+                }
 
                 // Store latest EXA for instant dashboard update on next app load
                 try { localStorage.setItem('ef_last_exa', JSON.stringify({ exaRating: newExa, timestamp: Date.now() })); } catch(e) {}
