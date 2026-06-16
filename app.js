@@ -7667,13 +7667,14 @@ window.mcSaveSubEvent = async function() {
             resultsReleased: false
         });
 
-        // Update in-memory cache for immediate UI
-        const section = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents] : [];
-        section.unshift({ id: eventId, title, description: desc, availableSubjects, maxSubjects: maxSubs, createdAt: new Date().toISOString() });
-        window._updateAdminSection('subscriptionEvents', section).catch(() => {});
+        // Update local cache directly (no Firestore)
+        if (window._liveData) {
+            if (!window._liveData.subscriptionEvents) window._liveData.subscriptionEvents = [];
+            window._liveData.subscriptionEvents.unshift({ id: eventId, title, description: desc, availableSubjects, maxSubjects: maxSubs, createdAt: new Date().toISOString() });
+        }
 
         document.getElementById('ef-subevent-modal')?.remove();
-        window.showEFModal("Event Created", "Subscription event created successfully.", "OK", null, true);
+        window.showEFModal("Event Created", "Mock event created successfully.", "OK", null, true);
         window.mcLoadSubEvents();
     } catch (e) {
         console.error(e);
@@ -7705,11 +7706,11 @@ window.mcDeleteSubEvent = function(eventId, title) {
                     console.warn('Could not delete associated mocks:', e);
                 }
 
-                // Update admin panel data to remove the deleted event
-                const eventSection = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents] : [];
-                const filtered = eventSection.filter(e => e.id !== eventId);
-                window._updateAdminSection('subscriptionEvents', filtered).catch(() => {});
-                
+                // Update local cache directly (no Firestore)
+                if (window._liveData && window._liveData.subscriptionEvents) {
+                    window._liveData.subscriptionEvents = window._liveData.subscriptionEvents.filter(e => e.id !== eventId);
+                }
+
                 window.mcLoadSubEvents();
             } catch (e) {
                 console.error(e);
