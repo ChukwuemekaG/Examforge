@@ -7638,38 +7638,69 @@ window.mcDeleteSubEvent = function(eventId, title) {
         `Are you sure you want to permanently delete "${title}"? This cannot be undone.`,
         "DELETE",
         async () => {
+            console.log('[DELETE] Starting delete for:', eventId, title);
             try {
-                // Wait for Turso client to be available
+                // Step 1: Check executeTurso
+                console.log('[DELETE] Step 1: Checking __executeTurso');
                 if (typeof window.__executeTurso !== 'function') {
+                    console.log('[DELETE] __executeTurso not found, importing client.js');
                     await import('./src/db/client.js');
+                    console.log('[DELETE] Import complete, __executeTurso =', typeof window.__executeTurso);
+                } else {
+                    console.log('[DELETE] __executeTurso IS available');
                 }
+                
+                // Step 2: Delete from subscription_events
+                console.log('[DELETE] Step 2: Deleting from subscription_events WHERE id =', eventId);
+                const result1 = await window.__executeTurso('DELETE FROM subscription_events WHERE id = ?', [eventId]);
+                console.log('[DELETE] Result 1:', JSON.stringify(result1));
+                
+                // Step 3: Delete from event_keys
+                console.log('[DELETE] Step 3: Deleting from event_keys WHERE event_id =', eventId);
+                const result2 = await window.__executeTurso('DELETE FROM event_keys WHERE event_id = ?', [eventId]);
+                console.log('[DELETE] Result 2:', JSON.stringify(result2));
+                
+                // Step 4: Delete from event_registrations
+                console.log('[DELETE] Step 4: Deleting from event_registrations WHERE event_id =', eventId);
+                const result3 = await window.__executeTurso('DELETE FROM event_registrations WHERE event_id = ?', [eventId]);
+                console.log('[DELETE] Result 3:', JSON.stringify(result3));
 
-                // Direct SQL delete (no module dependency)
-                await window.__executeTurso('DELETE FROM subscription_events WHERE id = ?', [eventId]);
-                await window.__executeTurso('DELETE FROM event_keys WHERE event_id = ?', [eventId]);
-                await window.__executeTurso('DELETE FROM event_registrations WHERE event_id = ?', [eventId]);
-
-                // Also delete associated mock exams
+                // Step 5: Delete associated mocks
+                console.log('[DELETE] Step 5: Checking for associated mocks');
                 try {
                     const eventMocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
+                    console.log('[DELETE] Associated mocks found:', eventMocks?.length || 0);
                     if (eventMocks && eventMocks.length > 0) {
                         for (const mock of eventMocks) {
+                            console.log('[DELETE] Deleting mock:', mock.id);
                             await window.__executeTurso('DELETE FROM mock_exam_attempts WHERE mock_id = ?', [mock.id]);
                             await window.__executeTurso('DELETE FROM mock_exams WHERE id = ?', [mock.id]);
                         }
                     }
                 } catch(e) {
-                    console.warn('Could not delete associated mocks:', e);
+                    console.warn('[DELETE] Mock deletion error:', e);
                 }
 
-                // Update local cache directly
+                // Step 6: Update local cache
+                console.log('[DELETE] Step 6: Updating local cache');
+                console.log('[DELETE] _liveData before filter:', window._liveData?.subscriptionEvents?.length || 0, 'events');
                 if (window._liveData && window._liveData.subscriptionEvents) {
-                    window._liveData.subscriptionEvents = window._liveData.subscriptionEvents.filter(e => e.id !== eventId);
+                    const beforeCount = window._liveData.subscriptionEvents.length;
+                    window._liveData.subscriptionEvents = window._liveData.subscriptionEvents.filter(e => {
+                        const match = e.id === eventId;
+                        if (match) console.log('[DELETE] Filtering out event:', e.id, e.title);
+                        return !match;
+                    });
+                    console.log('[DELETE] Filtered:', beforeCount, '→', window._liveData.subscriptionEvents.length, 'events');
                 }
-
+                
+                // Step 7: Refresh UI
+                console.log('[DELETE] Step 7: Refreshing UI');
                 window.mcLoadSubEvents();
+                console.log('[DELETE] Done');
             } catch (e) {
-                console.error(e);
+                console.error('[DELETE] ERROR:', e);
+                console.error('[DELETE] Error stack:', e.stack);
                 window.showEFModal("Delete Failed", e.message, "OK", null, true);
             }
         }
