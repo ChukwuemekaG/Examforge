@@ -1140,7 +1140,7 @@ function setupAdminListeners() {
         if (user.displayName) {
             const parts = user.displayName.trim().split(' ');
             initials = parts.length > 1
-                ? (parts[0][0] + parts[1][0]).toUpperCase()
+                ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
                 : parts[0].substring(0, 2).toUpperCase();
         }
         if (profileBtn) profileBtn.textContent = initials;
@@ -1724,7 +1724,9 @@ function mcRenderUsersTab() {
         <div class="mc-section-hdr">
             <span class="mc-section-title">Student Registry</span>
             <div style="position:relative;max-width:320px;width:100%;">
-                <input class="mc-search" id="mc-user-search" placeholder="Search by name, username or email…" style="width:100%;" autocomplete="off">
+                <!-- Hidden dummy input to confuse browser autofill -->
+                <input type="text" style="display:none;" aria-hidden="true">
+                <input class="mc-search" id="mc-user-search" placeholder="Search by name, username or email…" style="width:100%;" autocomplete="off" spellcheck="false">
                 <div id="mc-user-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:2px solid var(--border);border-radius:8px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.15);"></div>
             </div>
         </div>
@@ -1743,11 +1745,20 @@ function mcRenderUsersTab() {
     // ── Load ALL users on mount ────────────────────────────
     async function loadAllUsers() {
         try {
-            // Use Firebase getDocs to fetch all users
-            const q = query(collection(db, 'users'), orderBy('displayName'), limit(200));
-            window.__efTrackRead('admin load all users');
-            const snap = await getDocs(q);
-            allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Load all users via SyncManager (Turso) and map snake_case to camelCase
+            const allUserDocs = await sync.collection('users') || [];
+            allUsers = allUserDocs.map(u => ({
+                id: u.id,
+                displayName: u.display_name || u.displayName || '',
+                username: u.username || '',
+                email: u.email || '',
+                role: u.role || 'student',
+                exaRating: u.exa_rating ?? u.exaRating ?? 800,
+                streak: u.streak ?? 0,
+                highestStreak: u.highest_streak ?? 0,
+                lastExamDate: u.last_exam_date || u.lastExamDate || null,
+                provider: u.provider || ''
+            }));
             renderFilteredUsers();
         } catch (err) {
             console.error('Failed to load users:', err);
@@ -1766,14 +1777,21 @@ function mcRenderUsersTab() {
         const searchInput = document.getElementById('mc-user-search');
         const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-        // Smart filter: match by name, email, or username (case-insensitive, partial)
-        let filtered = q
-            ? allUsers.filter(u =>
-                (u.displayName||'').toLowerCase().includes(q) ||
-                (u.username||'').toLowerCase().includes(q) ||
-                (u.email||'').toLowerCase().includes(q)
-              )
-            : allUsers;
+        // Smart filter: match by name, email, username, ID, role, or name without spaces (case-insensitive, partial)
+        let filtered = q ? allUsers.filter(u => {
+            const name = (u.displayName||'').toLowerCase();
+            const username = (u.username||'').toLowerCase();
+            const email = (u.email||'').toLowerCase();
+            const id = (u.id||'').toLowerCase();
+            const nameNoSpace = name.replace(/\s+/g, '');
+            
+            return name.includes(q) || 
+                   username.includes(q) || 
+                   email.includes(q) || 
+                   id.includes(q) ||
+                   nameNoSpace.includes(q) ||  // "godsonchukwuemeka" matches "godson chukwuemeka"
+                   (u.role||'').toLowerCase() === q;  // exact role match "admin" etc.
+        }) : allUsers;
         
         // If a specific user was selected from suggestions, put them first
         if (selectedUserId) {
@@ -1830,11 +1848,19 @@ function mcRenderUsersTab() {
             
             // Build suggestions (top 8 matches)
             const matches = allUsers
-                .filter(u =>
-                    (u.displayName||'').toLowerCase().includes(val) ||
-                    (u.username||'').toLowerCase().includes(val) ||
-                    (u.email||'').toLowerCase().includes(val)
-                )
+                .filter(u => {
+                    const name = (u.displayName||'').toLowerCase();
+                    const username = (u.username||'').toLowerCase();
+                    const email = (u.email||'').toLowerCase();
+                    const id = (u.id||'').toLowerCase();
+                    const nameNoSpace = name.replace(/\s+/g, '');
+                    return name.includes(val) || 
+                           username.includes(val) || 
+                           email.includes(val) || 
+                           id.includes(val) ||
+                           nameNoSpace.includes(val) ||
+                           (u.role||'').toLowerCase() === val;
+                })
                 .slice(0, 8);
             
             if (matches.length === 0) {
@@ -3642,7 +3668,23 @@ window.mcViewTopicResults = async function(courseId, topicId) {
             </div>
         </div>`;
     document.body.appendChild(overlay);
-    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    overlay.onclick = e => { 
+        if (e.target === overlay) {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            overlay.remove(); 
+        }
+    };
+    // Backup: also close on Escape key
+    const escHandler = (e) => {
+        if (e.key === 'Escape' && document.getElementById('admin-user-panel')) {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            overlay.remove();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
 
     try {
         // collectionGroup query across all users' results subcollections
@@ -3797,7 +3839,23 @@ window.mcOpenCreateCourseModal = function() {
         </div>
     `;
     document.body.appendChild(overlay);
-    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    overlay.onclick = e => { 
+        if (e.target === overlay) {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            overlay.remove(); 
+        }
+    };
+    // Backup: also close on Escape key
+    const escHandler = (e) => {
+        if (e.key === 'Escape' && document.getElementById('admin-user-panel')) {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            overlay.remove();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
     document.getElementById('mc-save-course-btn').onclick = async () => {
         const id = document.getElementById('mc-new-course-id').value.toLowerCase().trim().replace(/\s+/g,'-');
         const title = document.getElementById('mc-new-course-title').value.trim();
@@ -4565,7 +4623,23 @@ window.openAdminUserModal = async function(uid) {
         </div>`;
 
     document.body.appendChild(overlay);
-    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    overlay.onclick = e => { 
+        if (e.target === overlay) {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            overlay.remove(); 
+        }
+    };
+    // Backup: also close on Escape key
+    const escHandler = (e) => {
+        if (e.key === 'Escape' && document.getElementById('admin-user-panel')) {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            overlay.remove();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
 
     try {
         const userData_full = await window._getUserData(uid);
@@ -4580,7 +4654,8 @@ window.openAdminUserModal = async function(uid) {
 
         const u       = userData;
         const name    = u.displayName || u.username || u.email?.split('@')[0] || 'Unknown';
-        const initials= name.trim().split(' ').filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase()||'??';
+        const parts   = name.trim().split(' ');
+        const initials= parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : name.substring(0, 2).toUpperCase();
 
         // Compute analytics
         const totalExams = results.length;
