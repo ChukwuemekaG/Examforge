@@ -517,19 +517,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window._broadcastNotification = async function(notification) {
-        const { getDoc, doc: fDoc, setDoc } = await import(
-            "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+        const id = 'notif_' + Date.now().toString(36);
+        await window.__execTurso(
+            `INSERT INTO broadcast_notifications (id, type, title, message, quiz_url, brand_color, brand_icon)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, notification.type || 'broadcast', notification.title, notification.message || '', notification.quizUrl || null, notification.brandColor || '#fe6961', notification.brandIcon || 'notifications']
         );
-        window.__efTrackRead('_notifications/latest');
-        const existing = await getDoc(fDoc(db, '_notifications', 'latest'));
-        const items = existing.exists() ? (existing.data().items || []) : [];
-        items.unshift({
-            ...notification,
-            id: 'notif_' + Date.now().toString(36),
-            timestamp: new Date().toISOString()
-        });
-        if (items.length > 50) items.length = 50;
-        await setDoc(fDoc(db, '_notifications', 'latest'), { items });
     };
 
     window._broadcastSchedule = async function(scheduleItem) {
@@ -551,7 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window._clearAllNotifications = async function() {
         if (!confirm('Clear all broadcast notifications for all students?')) return;
         try {
-            await setDoc(doc(db, '_notifications', 'latest'), { items: [] });
+            await window.__execTurso('DELETE FROM broadcast_notifications');
             window.showEFModal("Done", "All broadcast notifications cleared.", "OK", null, true);
         } catch(e) {
             console.error('Clear notifications failed:', e);
@@ -562,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window._clearAllSchedules = async function() {
         if (!confirm('Clear all broadcast schedule items for all students?')) return;
         try {
-            await setDoc(doc(db, '_schedules', 'latest'), { items: [] });
+            await window.__execTurso('DELETE FROM broadcast_schedules');
             window.showEFModal("Done", "All broadcast schedule items cleared.", "OK", null, true);
         } catch(e) {
             console.error('Clear schedule failed:', e);
