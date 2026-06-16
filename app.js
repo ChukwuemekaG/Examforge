@@ -7639,32 +7639,30 @@ window.mcDeleteSubEvent = function(eventId, title) {
         "DELETE",
         async () => {
             try {
-                // Delete from Turso (use window reference for speed, fallback to dynamic import)
-                if (typeof window.__deleteTursoEvent === 'function') {
-                    await window.__deleteTursoEvent(eventId);
-                } else {
-                    const eventsModule = await import('./src/db/events.js');
-                    await eventsModule.deleteEvent(eventId);
+                // Wait for Turso client to be available
+                if (typeof window.__executeTurso !== 'function') {
+                    await import('./src/db/client.js');
                 }
 
-                // Also delete associated mock exams from Turso
+                // Direct SQL delete (no module dependency)
+                await window.__executeTurso('DELETE FROM subscription_events WHERE id = ?', [eventId]);
+                await window.__executeTurso('DELETE FROM event_keys WHERE event_id = ?', [eventId]);
+                await window.__executeTurso('DELETE FROM event_registrations WHERE event_id = ?', [eventId]);
+
+                // Also delete associated mock exams
                 try {
                     const eventMocks = await sync.query('mock_exams', [where('eventId', '==', eventId)]);
                     if (eventMocks && eventMocks.length > 0) {
                         for (const mock of eventMocks) {
-                            if (typeof window.__deleteTursoMock === 'function') {
-                                await window.__deleteTursoMock(mock.id);
-                            } else {
-                                const mocksModule = await import('./src/db/mocks.js');
-                                await mocksModule.deleteMock(mock.id);
-                            }
+                            await window.__executeTurso('DELETE FROM mock_exam_attempts WHERE mock_id = ?', [mock.id]);
+                            await window.__executeTurso('DELETE FROM mock_exams WHERE id = ?', [mock.id]);
                         }
                     }
                 } catch(e) {
                     console.warn('Could not delete associated mocks:', e);
                 }
 
-                // Update local cache directly (no Firestore)
+                // Update local cache directly
                 if (window._liveData && window._liveData.subscriptionEvents) {
                     window._liveData.subscriptionEvents = window._liveData.subscriptionEvents.filter(e => e.id !== eventId);
                 }

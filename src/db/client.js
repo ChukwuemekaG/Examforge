@@ -110,3 +110,6 @@ export async function batch(statements) {
   }
   return results;
 }
+
+// Expose for non-module code (monolithic app.js)
+window.__executeTurso = execute;
