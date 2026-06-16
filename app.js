@@ -988,6 +988,31 @@ function setupAdminListeners() {
                     } else {
                         userData.recentResults = [];
                     }
+                    // Firestore fallback for old results (pre-Turso)
+                    if (!userData.recentResults || userData.recentResults.length === 0) {
+                        try {
+                            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                            const fsSnap = await getDoc(fDoc(db, 'users', user.uid));
+                            if (fsSnap.exists()) {
+                                const fsData = fsSnap.data();
+                                if (fsData.recentResults && fsData.recentResults.length > 0) {
+                                    userData.recentResults = fsData.recentResults;
+                                }
+                                // Also get exa rating from Firestore if Turso had default
+                                if (fsData.exaRating && (userData.stats.exaRating === 800 || !userData.stats.exaRating)) {
+                                    userData.stats.exaRating = fsData.exaRating;
+                                }
+                                if (fsData.streak && !userData.stats.streak) {
+                                    userData.stats.streak = fsData.streak;
+                                }
+                                if (fsData.highestStreak && !userData.stats.highestStreak) {
+                                    userData.stats.highestStreak = fsData.highestStreak;
+                                }
+                            }
+                        } catch(fsErr) {
+                            console.warn('Firestore fallback for results failed:', fsErr);
+                        }
+                    }
                     // Show admin nav if user is admin
                     const masterNav = document.getElementById('nav-master');
                     if (masterNav) {
@@ -5518,6 +5543,31 @@ window.adminPromptNotification = function(userId) {
                     }
                 } else {
                     userData.recentResults = [];
+                }
+                // Firestore fallback for old results (pre-Turso)
+                if (!userData.recentResults || userData.recentResults.length === 0) {
+                    try {
+                        const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                        const fsSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
+                        if (fsSnap.exists()) {
+                            const fsData = fsSnap.data();
+                            if (fsData.recentResults && fsData.recentResults.length > 0) {
+                                userData.recentResults = fsData.recentResults;
+                            }
+                            // Also get exa rating from Firestore if Turso had default
+                            if (fsData.exaRating && (userData.stats.exaRating === 800 || !userData.stats.exaRating)) {
+                                userData.stats.exaRating = fsData.exaRating;
+                            }
+                            if (fsData.streak && !userData.stats.streak) {
+                                userData.stats.streak = fsData.streak;
+                            }
+                            if (fsData.highestStreak && !userData.stats.highestStreak) {
+                                userData.stats.highestStreak = fsData.highestStreak;
+                            }
+                        }
+                    } catch(fsErr) {
+                        console.warn('Firestore fallback for results failed:', fsErr);
+                    }
                 }
             }
             // Override with latest exam result from localStorage (covers quiz → dashboard flow)
