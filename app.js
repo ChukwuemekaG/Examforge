@@ -699,10 +699,17 @@ function setupAdminListeners() {
         if (!courseId || !courseTitle) return alert("Please fill all fields.");
 
         try {
-            await setDoc(doc(db, "unicourses", courseId), {
-                title: courseTitle,
-                createdAt: new Date()
-            });
+            if (typeof window.__execTurso !== 'function') {
+                throw new Error('Turso client not available');
+            }
+            await window.__execTurso(
+                'INSERT INTO courses (id, title, level, total_time_limit, is_strict, is_mock, is_correction, topic_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [courseId, courseTitle, '100L', 0, 0, 0, 1, 0]
+            );
+            // Refresh live data
+            if (window._liveData && window._liveData.courses) {
+                window._liveData.courses.push({ id: courseId, title: courseTitle, level: '100L', topicCount: 0 });
+            }
             alert(`Course ${courseId} added!`);
             loadCourseBrowser(); 
         } catch (e) {
@@ -3955,8 +3962,17 @@ window.mcOpenCreateCourseModal = function() {
         const level = document.getElementById('mc-new-course-level').value;
         if (!id || !title) return alert('Please fill all fields.');
         try {
-            await setDoc(doc(db,'unicourses',id), { title, level, createdAt: new Date() });
-            // Meta app updates removed — course tracking via local JSON only
+            if (typeof window.__execTurso !== 'function') {
+                throw new Error('Turso client not available');
+            }
+            await window.__execTurso(
+                'INSERT INTO courses (id, title, level, total_time_limit, is_strict, is_mock, is_correction, topic_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [id, title, level, 0, 0, 0, 1, 0]
+            );
+            // Refresh live data
+            if (window._liveData && window._liveData.courses) {
+                window._liveData.courses.push({ id, title, level, topicCount: 0 });
+            }
             overlay.remove();
             mcRenderCoursesTab();
             mcLoadStats();
