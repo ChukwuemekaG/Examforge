@@ -6649,8 +6649,8 @@ window.adminPromptNotification = function(userId) {
 
 
     async function renderResults() {
-        // Load results directly from Turso (bypass cached userData)
-        let displayResults = (userData.recentResults || []).slice(0, 50);
+        // Start with empty results — fetch fresh data from Turso every time
+        let displayResults = [];
 
         // Try fresh Turso query
         try {
@@ -6692,11 +6692,15 @@ window.adminPromptNotification = function(userId) {
                 })).filter(r => r.score > 0);
                 // Update userData for other tabs
                 userData.recentResults = displayResults;
+            } else {
+                // Ensure clean state when no results exist
+                userData.recentResults = [];
             }
         } catch(e) {
             console.warn('Direct Turso query failed:', e);
         }
 
+        // Compute analytics from userData.recentResults (updated above via Turso query)
         const analytics = getAnalytics();
 
         // Internal helper to derive average letter grade
