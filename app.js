@@ -361,39 +361,44 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window._setupLiveDataListener = async function() {
         if (window._liveListener) return;
-        
-        window.__efTrackRead('_admin_panel/data (onSnapshot)');
-        window._liveListener = onSnapshot(
-            doc(db, '_admin_panel', 'data'),
-            (snap) => {
-                if (snap.exists()) {
-                    window._liveData = snap.data();
-                } else {
-                    window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
+        window._liveListener = true;
+
+        // Initialize empty live data
+        window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
+
+        // Load data from Turso
+        try {
+            const coursesList = await sync.collection('unicourses') || [];
+            window._liveData.courses = coursesList.map(c => ({ id: c.id, title: c.title || c.id, level: c.level || '' }));
+
+            const eventsList = await sync.query('subscription_events', []) || [];
+            window._liveData.subscriptionEvents = eventsList.map(e => ({ id: e.id, title: e.title || '', createdAt: e.created_at || null }));
+
+            const quizzesList = await sync.collection('daily_quizzes') || [];
+            window._liveData.dailyQuizzes = quizzesList.map(q => ({ id: q.id, title: q.title || '' }));
+
+            const advicesList = await sync.collection('daily_advices') || [];
+            window._liveData.dailyAdvices = advicesList.map(a => ({ id: a.id, title: a.title || '' }));
+        } catch(e) {
+            console.warn('Failed to load live data from Turso:', e);
+        }
+
+        // Re-render current view
+        setTimeout(() => {
+            if (!window._liveRendering) {
+                window._liveRendering = true;
+                try {
+                    if (currentView === 'mocks') renderMocks();
+                    else if (currentView === 'library') renderLibrary();
+                    else if (currentView === 'master') mcRenderTabContent();
+                    else if (currentView === 'dashboard') window.updateDashboardUI();
+                    else if (currentView === 'inbox') renderInbox();
+                    else if (currentView === 'schedule') renderSchedule();
+                } finally {
+                    window._liveRendering = false;
                 }
-                // Re-render current view on next tick
-                setTimeout(() => {
-                    if (!window._liveRendering) {
-                        window._liveRendering = true;
-                        try {
-                            if (currentView === 'mocks') renderMocks();
-                            else if (currentView === 'library') renderLibrary();
-                            else if (currentView === 'master') mcRenderTabContent();
-                            else if (currentView === 'dashboard') window.updateDashboardUI();
-                            else if (currentView === 'inbox') renderInbox();
-                            else if (currentView === 'schedule') renderSchedule();
-                        } finally {
-                            window._liveRendering = false;
-                        }
-                    }
-                }, 0);
-            },
-            (error) => {
-                console.error('Live data listener error:', error);
-                window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
-                // No retry — page refresh will reconnect if needed
             }
-        );
+        }, 0);
     };
 
     /**
@@ -401,16 +406,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * Only called the first time an admin opens a tab after deploy.
      */
     window._ensureAdminSection = async function(section) {
-        if (!window._liveData) { // Force initial load via sync fetch fallback
-            window.__efTrackRead('_admin_panel/data');
-            try {
-                const snap = await getDoc(doc(db, '_admin_panel', 'data'));
-                window._liveData = snap.exists() ? snap.data() : { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
-            } catch(e) {
-                window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
-            }
+        if (!window._liveData) {
+            window._liveData = { courses: [], dailyQuizzes: [], dailyAdvices: [], subscriptionEvents: [], broadcastNotifications: [], broadcastSchedules: [] };
         }
-        if (window._liveData && window._liveData[section] && window._liveData[section].length > 0) return;
+        if (window._liveData[section] && window._liveData[section].length > 0) return;
 
         let data = [];
         try {
@@ -428,9 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data = docs.map(d => ({ id: d.id, title: d.title || '', createdAt: d.createdAt || null }));
             }
 
-            // Write back to _admin_panel/data (field-level merge)
-            await setDoc(doc(db, '_admin_panel', 'data'), { [section]: data }, { merge: true });
-            // Update local cache
+            // Update local cache only (no Firestore write)
             if (window._liveData) window._liveData[section] = data;
         } catch(e) {
             console.error('Failed to populate admin section:', e);
@@ -441,36 +438,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * Updates a section of _admin_panel/data after a write operation.
      */
     window._updateAdminSection = async function(section, data) {
-        await setDoc(doc(db, '_admin_panel', 'data'), { [section]: data }, { merge: true });
+        // Update in-memory cache only (no Firestore)
         if (window._liveData) window._liveData[section] = data;
-    };
-
-    /**
-     * One-time sync of existing Firestore data into _admin_panel/data.
-     * Admin triggers this once after deploy. After this, all updates are real-time.
-     */
-    window._syncExistingData = async function() {
-        try {
-            const [courses, quizzes, advices, events, usersArr] = await Promise.all([
-                sync.collection('unicourses').catch(() => []),
-                sync.collection('daily_quizzes').catch(() => []),
-                sync.collection('daily_advices').catch(() => []),
-                sync.collection('subscription_events').catch(() => []),
-                sync.collection('users').catch(() => [])
-            ]);
-
-            await setDoc(doc(db, '_admin_panel', 'data'), {
-                courses: courses.map(c => ({ id: c.id, title: c.title || c.id, level: c.level || '', topicCount: c.topicCount || 0 })),
-                dailyQuizzes: quizzes.map(q => ({ id: q.id, title: q.title || '', createdAt: q.createdAt || null })),
-                dailyAdvices: advices.map(a => ({ id: a.id, title: a.title || '', category: a.category || '', createdAt: a.createdAt || null })),
-                subscriptionEvents: events.map(e => ({ id: e.id, title: e.title || '', description: e.description || '', availableSubjects: e.availableSubjects || [], maxSubjects: e.maxSubjects || 10, createdAt: e.createdAt || null })),
-                totalStudentCount: usersArr.length
-            });
-            return true;
-        } catch(e) {
-            console.error('Sync failed:', e);
-            return false;
-        }
     };
 
     // ─── Backfill totalUsers counter for national ranking ───
@@ -485,19 +454,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             if (!silent) alert('❌ Error: ' + e.message);
             console.error('Backfill error:', e);
-        }
-    };
-
-    // ─── Migrate Firebase data to Turso ───
-    window._startMigration = async function() {
-        if (!confirm('This will import all data from Firestore into Turso. Continue?')) return;
-        try {
-            const { runMigration } = await import('./src/utils/migrate.js');
-            const result = await runMigration((msg) => console.log('[Migration]', msg));
-            alert(`Migration complete!\n✅ Migrated: ${result.migrated}\n⏭️ Skipped: ${result.skipped}\n❌ Errors: ${result.errors}`);
-        } catch (e) {
-            alert('Migration failed: ' + e.message);
-            console.error(e);
         }
     };
 
@@ -1677,9 +1633,6 @@ async function renderMaster() {
                     <div class="page-title">Master Control</div>
                     <div class="page-sub">Platform administration — users, courses, topics &amp; questions</div>
                 </div>
-                <button class="btn btn-outline btn-sm" onclick="window._startMigration()" style="font-size:0.65rem;padding:3px 8px;">
-                    <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">cloud_download</span> Migrate Data
-                </button>
                 <button class="btn btn-outline btn-sm" onclick="window._clearAllNotifications()" style="font-size:0.65rem;padding:3px 8px;">
                     <span class="material-icons-round" style="font-size:0.8rem;vertical-align:middle;">notifications_off</span> Clear Notifications
                 </button>
@@ -1903,9 +1856,6 @@ function mcRenderUsersTab() {
         });
     }
 
-    // Auto-sync admin data on load (no need for manual button)
-    window._syncExistingData().catch(e => console.warn('Auto-sync failed:', e));
-    
     // Auto-backfill user counter on load
     window._backfillUserCounter(true).catch(e => console.warn('Auto-backfill failed:', e));
 }
