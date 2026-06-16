@@ -1726,65 +1726,35 @@ function mcRenderUsersTab() {
             <input class="mc-search" id="mc-user-search" placeholder="Search by name, username or email…" style="max-width:320px;width:100%;">
         </div>
         <div id="mc-user-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
-            <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
-                Type a name, username or email above to search for students.
+            <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
+                <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.5rem;vertical-align:middle;margin-right:6px;">autorenew</span> Loading users…
             </div>
         </div>
         <div id="mc-user-load-more-container" style="text-align:center;margin-top:20px;margin-bottom:20px;"></div>
     `;
 
-    let searchTimeout = null;
-    let lastSearchTerm = '';
-    let lastSearchResults = [];
+    let allUsers = [];
     let displayLimit = 50;
 
-    async function searchUsers(searchTerm) {
-        const grid = document.getElementById('mc-user-grid');
-        if (!grid) return;
-
-        if (!searchTerm || searchTerm.length < 2) {
-            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
-                Type at least 2 characters to search for students.
-            </div>`;
-            document.getElementById('mc-user-load-more-container').innerHTML = '';
-            return;
-        }
-
-        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
-            <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.5rem;vertical-align:middle;margin-right:6px;">autorenew</span> Searching…
-        </div>`;
-
+    // ── Load ALL users on mount ────────────────────────────
+    async function loadAllUsers() {
         try {
-            const { collection, query, where, getDocs, limit, or } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const usersRef = collection(db, 'users');
-
-            // Use or query for prefix matching on displayName, username, and email
-            const q = query(
-                usersRef,
-                or(
-                    where('displayName', '>=', searchTerm),
-                    where('displayName', '<=', searchTerm + '\uf8ff'),
-                    where('username', '>=', searchTerm),
-                    where('username', '<=', searchTerm + '\uf8ff'),
-                    where('email', '>=', searchTerm),
-                    where('email', '<=', searchTerm + '\uf8ff')
-                ),
-                limit(10)
-            );
-            window.__efTrackRead('admin user search');
+            // Use Firebase getDocs to fetch all users
+            const q = query(collection(db, 'users'), orderBy('displayName'), limit(200));
+            window.__efTrackRead('admin load all users');
             const snap = await getDocs(q);
-            const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            lastSearchTerm = searchTerm;
-            lastSearchResults = results;
-            displayLimit = 50;
+            allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             renderFilteredUsers();
         } catch (err) {
-            console.error("Search error:", err);
-            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--brand);">Search failed. Try again.</div>`;
+            console.error('Failed to load users:', err);
+            const grid = document.getElementById('mc-user-grid');
+            if (grid) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--brand);">Failed to load users. Try again.</div>';
+            }
         }
     }
 
+    // ── Client-side filter & render ─────────────────────────
     function renderFilteredUsers() {
         const grid = document.getElementById('mc-user-grid');
         if (!grid) return;
@@ -1792,18 +1762,20 @@ function mcRenderUsersTab() {
         const searchInput = document.getElementById('mc-user-search');
         const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-        // Client-side filter on already-fetched results
-        const filtered = q ? lastSearchResults.filter(u =>
-            (u.displayName||'').toLowerCase().includes(q) ||
-            (u.username||'').toLowerCase().includes(q) ||
-            (u.email||'').toLowerCase().includes(q)
-        ) : lastSearchResults;
+        // Smart filter: match by name, email, or username (case-insensitive, partial)
+        const filtered = q
+            ? allUsers.filter(u =>
+                (u.displayName||'').toLowerCase().includes(q) ||
+                (u.username||'').toLowerCase().includes(q) ||
+                (u.email||'').toLowerCase().includes(q)
+              )
+            : allUsers;
 
         const sliced = filtered.slice(0, displayLimit);
 
         if (sliced.length === 0) {
             grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
-                No students match "${q}".
+                ${q ? `No students match "${q}".` : 'No users found.'}
             </div>`;
             document.getElementById('mc-user-load-more-container').innerHTML = '';
             return;
@@ -1830,31 +1802,16 @@ function mcRenderUsersTab() {
         }
     }
 
-    // Expose search function globally for Enter key handler
-    window.mcSearchUsers = searchUsers;
-
-    // Search input handler — search on Enter only
+    // ── Real-time search on input ───────────────────────────
     const searchInput = document.getElementById('mc-user-search');
     if (searchInput) {
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const term = e.target.value.trim();
-                if (term.length >= 2) {
-                    window.mcSearchUsers(term);
-                } else {
-                    lastSearchResults = [];
-                    lastSearchTerm = '';
-                    const grid = document.getElementById('mc-user-grid');
-                    if (grid) {
-                        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);font-size:0.85rem;">
-                            Type at least 2 characters to search for students.
-                        </div>`;
-                    }
-                    document.getElementById('mc-user-load-more-container').innerHTML = '';
-                }
-            }
+        searchInput.addEventListener('input', (e) => {
+            renderFilteredUsers();
         });
     }
+
+    // ── Kick off loading ────────────────────────────────────
+    loadAllUsers();
 
     // Auto-backfill user counter on load
     window._backfillUserCounter(true).catch(e => console.warn('Auto-backfill failed:', e));
@@ -1870,6 +1827,7 @@ function mcRenderUserGrid(users) {
     grid.innerHTML = users.map(u => {
         const name = u.displayName || u.username || u.email?.split('@')[0] || 'Unknown';
         const handle = u.username || '—';
+        const exaRating = u.exaRating ?? 800;
         const parts = name.trim().split(' ');
         const initials = parts.length > 1 ? (parts[0][0]+parts[parts.length-1][0]).toUpperCase() : name.substring(0,2).toUpperCase();
         const isAdmin = u.role === 'admin';
@@ -1885,6 +1843,9 @@ function mcRenderUserGrid(users) {
                     ${isGoogle ? '🌐' : '✉️'} @${handle}
                 </div>
                 <div style="font-size:0.65rem;color:var(--text-muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${u.email||''}</div>
+                <div style="font-size:0.7rem;font-weight:700;color:var(--brand);margin-top:3px;">
+                    EXA: ${exaRating}
+                </div>
             </div>
             <span class="material-icons-round" style="font-size:1rem;color:var(--text-muted);flex-shrink:0;">chevron_right</span>
         </div>`;
@@ -7662,14 +7623,6 @@ window.mcDeleteSubEvent = function(eventId, title) {
                 await window.__executeTurso('DELETE FROM event_keys WHERE event_id = ?', [eventId]);
                 await window.__executeTurso('DELETE FROM event_registrations WHERE event_id = ?', [eventId]);
                 
-                // Also delete from Firestore (event was originally created there)
-                try {
-                    console.log('[DELETE] Also deleting from Firestore');
-                    const { deleteDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                    await deleteDoc(fDoc(db, 'subscription_events', eventId));
-                } catch(fsErr) {
-                    console.warn('[DELETE] Firestore delete (optional):', fsErr.message);
-                }
 
                 // Delete associated mocks from Turso
                 try {
