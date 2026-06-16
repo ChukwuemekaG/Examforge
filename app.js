@@ -9665,10 +9665,6 @@ window.mcBroadcastEventResults = async function(eventId) {
                 });
             }
             
-            // Load registration data from Turso event_registrations
-            const regRows = await window.__execTurso('SELECT * FROM event_registrations WHERE event_id = ?', [eventId]) || [];
-            const students = regRows.map(r => ({ uid: r.uid, subjects: typeof r.subjects === 'string' ? JSON.parse(r.subjects || '[]') : (r.subjects || []) }));
-            
             // Build a map of uid → registered subjects
             const uidToRegisteredSubjects = {};
             for (const s of students) {
