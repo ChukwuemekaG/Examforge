@@ -351,7 +351,10 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window._syncCourseQuestions = async function(courseId) {
         try {
-            const topics = await sync.collection('unicourses/' + courseId + '/topics');
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const topics = await window.__execTurso('SELECT * FROM topics WHERE course_id = ? ORDER BY sort_order ASC', [courseId]);
             if (!topics || !topics.length) {
                 // No topics — clear course-level fields
                 await updateDoc(doc(db, 'unicourses', courseId), {
@@ -418,7 +421,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Load data from Turso
         try {
-            const coursesList = await sync.collection('unicourses') || [];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const coursesList = await window.__execTurso('SELECT id, title, level, topic_count FROM courses ORDER BY title ASC') || [];
             window._liveData.courses = coursesList.map(c => ({ id: c.id, title: c.title || c.id, level: c.level || '' }));
 
             const eventsList = await sync.query('subscription_events', []) || [];
@@ -464,8 +470,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let data = [];
         try {
             if (section === 'courses') {
-                const docs = await sync.collection('unicourses');
-                data = docs.map(d => ({ id: d.id, title: d.title || d.id, level: d.level || '', topicCount: d.topicCount || 0 }));
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                const docs = await window.__execTurso('SELECT id, title, level, topic_count FROM courses ORDER BY title ASC') || [];
+                data = docs.map(d => ({ id: d.id, title: d.title || d.id, level: d.level || '', topicCount: d.topic_count || 0 }));
             } else if (section === 'dailyQuizzes') {
                 const docs = await sync.query('daily_quizzes', [orderBy('createdAt', 'desc')]);
                 data = docs.map(d => ({ id: d.id, title: d.title || '', createdAt: d.createdAt || null }));
@@ -657,22 +666,27 @@ window.updateDashboardUI = function() {
             coursesListDiv.appendChild(courseDiv);
 
             // Fetch Topics for this specific course
-            const topics = await sync.collection('unicourses/' + courseId + '/topics') || [];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const topicsRows = await window.__execTurso('SELECT * FROM topics WHERE course_id = ? ORDER BY sort_order ASC', [courseId]) || [];
             const topicsList = document.getElementById(`topics-${courseId}`);
             topicsList.innerHTML = ""; // Clear loading text
 
-            if (!topics.length) {
+            if (!topicsRows.length) {
                 topicsList.innerHTML = "<li>No topics added yet.</li>";
             } else {
-                topics.forEach((topicData) => {
+                for (const topicData of topicsRows) {
+                    const qCnt = await window.__execTurso('SELECT COUNT(*) as cnt FROM questions WHERE topic_id = ?', [topicData.id]) || [];
+                    const qCount = qCnt[0]?.cnt || 0;
                     const li = document.createElement("li");
                     li.innerHTML = `
                         <strong>${topicData.id.replace('-', ' ').toUpperCase()}</strong> 
-                        - ${topicData.questions ? topicData.questions.length : 0} Questions 
+                        - ${qCount} Questions 
                         <button onclick="startQuiz('${courseId}', '${topicData.id}')">Start Quiz</button>
                     `;
                     topicsList.appendChild(li);
-                });
+                }
             }
         }
     } catch (error) {
@@ -2142,7 +2156,10 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const topics = await sync.collection('unicourses/' + courseId + '/topics') || [];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const topics = await window.__execTurso('SELECT * FROM topics WHERE course_id = ? ORDER BY sort_order ASC', [courseId]) || [];
             topics.sort((a,b)=>a.id.localeCompare(b.id));
             const grid = document.getElementById('mc-topic-grid');
             if (!grid) return;
@@ -2150,8 +2167,12 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
                 grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">No topics yet. Create one!</div>';
                 return;
             }
+            // Fetch question counts for all topics in one query
+            const qCountRows = await window.__execTurso('SELECT topic_id, COUNT(*) as cnt FROM questions WHERE course_id = ? GROUP BY topic_id', [courseId]) || [];
+            const qCountMap = {};
+            for (const row of qCountRows) qCountMap[row.topic_id] = row.cnt;
             grid.innerHTML = topics.map(t => {
-                const qCount = (t.questions||[]).length;
+                const qCount = qCountMap[t.id] || 0;
                 const mins = t.timeLimit || 0;
                 const badges = [
                     t.isStrict ? `<span style="background:rgba(220,38,38,0.1);color:#dc2626;border:1px solid #dc2626;border-radius:3px;font-size:0.55rem;font-weight:900;padding:1px 5px;text-transform:uppercase;">Strict</span>` : '',
@@ -2222,8 +2243,18 @@ async function mcRenderCoursesTab(courseId = null, topicId = null) {
             </div>
         `;
         try {
-            const tData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId) || {};
-            const questions = tData.questions || [];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const tData = await window.__execTurso('SELECT * FROM topics WHERE id = ?', [topicId]) || {};
+            const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
+            const questions = qRows.map(r => ({
+                id: r.id,
+                question: r.question,
+                options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
+                correctIndex: r.correct_index,
+                explanation: r.explanation || ''
+            }));
             const list = document.getElementById('mc-question-list');
             if (!list) return;
 
@@ -4091,8 +4122,18 @@ window.mcOpenCreateQuestionModal = function(courseId, topicId) {
         const newQ = { id: Date.now(), question, options, correctIndex, explanation };
         try {
             // Read current questions from sync cache (0 reads if cached), append, write back
-            const topicData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
-            const updatedQuestions = [...(topicData?.questions || []), newQ];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
+            const existingQs = qRows.map(r => ({
+                id: r.id,
+                question: r.question,
+                options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
+                correctIndex: r.correct_index,
+                explanation: r.explanation || ''
+            }));
+            const updatedQuestions = [...existingQs, newQ];
             await setDoc(doc(db, 'unicourses', courseId, 'topics', topicId),
                 { questions: updatedQuestions },
                 { merge: true });
@@ -4144,7 +4185,10 @@ window.mcOpenEditTopicModal = async function(courseId, topicId) {
     // Fetch current values first
     let data = {};
     try {
-        data = await sync.doc('unicourses/' + courseId + '/topics/' + topicId) || {};
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        data = await window.__execTurso('SELECT * FROM topics WHERE id = ?', [topicId]) || {};
     } catch(e) { alert('Could not load topic: ' + e.message); return; }
 
     const overlay = document.createElement('div');
@@ -4197,8 +4241,17 @@ window.mcOpenEditTopicModal = async function(courseId, topicId) {
 window.mcOpenEditQuestionModal = async function(courseId, topicId, questionIndex) {
     let questions = [];
     try {
-        const subData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
-        if (subData) questions = subData.questions || [];
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
+        questions = qRows.map(r => ({
+            id: r.id,
+            question: r.question,
+            options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
+            correctIndex: r.correct_index,
+            explanation: r.explanation || ''
+        }));
     } catch(e) { alert('Could not load questions: ' + e.message); return; }
 
     const q = questions[questionIndex];
@@ -4259,8 +4312,17 @@ window.mcOpenEditQuestionModal = async function(courseId, topicId, questionIndex
         try {
             // Read latest questions array, splice the edited one in, write back
             const tRef = doc(db,'unicourses',courseId,'topics',topicId);
-            const latest = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
-            const qs = [...((latest && latest.questions) || [])];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
+            const qs = qRows.map(r => ({
+                id: r.id,
+                question: r.question,
+                options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
+                correctIndex: r.correct_index,
+                explanation: r.explanation || ''
+            }));
             qs[questionIndex] = { ...qs[questionIndex], question, options, correctIndex, explanation };
             await updateDoc(tRef, { questions: qs });
                 // Sync course doc with all questions
@@ -4601,8 +4663,17 @@ window.mcOpenBulkImportModal = function(courseId, topicId) {
 
         try {
             // Fetch existing questions, append new ones (avoid arrayUnion limit issues)
-            const tData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
-            const existing = tData ? (tData.questions || []) : [];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
+            const existing = qRows.map(r => ({
+                id: r.id,
+                question: r.question,
+                options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
+                correctIndex: r.correct_index,
+                explanation: r.explanation || ''
+            }));
 
             // Give each question a stable unique id
             const stamped = parsedQuestions.map(q => ({
@@ -5253,9 +5324,17 @@ window.udtDeleteUser = async function(uid) {
 
 window.mcDeleteQuestion = async function(courseId, topicId, questionIndex) {
     try {
-        const tData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
-        if (!tData) return;
-        const questions = [...(tData.questions || [])];
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
+        const questions = qRows.map(r => ({
+            id: r.id,
+            question: r.question,
+            options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
+            correctIndex: r.correct_index,
+            explanation: r.explanation || ''
+        }));
         questions.splice(questionIndex, 1);
         await updateDoc(doc(db,'unicourses',courseId,'topics',topicId), { questions });
         // Sync course doc with all questions
@@ -5267,9 +5346,17 @@ window.mcDeleteQuestion = async function(courseId, topicId, questionIndex) {
 
 window.mcDeleteAllQuestions = async function(courseId, topicId) {
     try {
-        const tData = await sync.doc('unicourses/' + courseId + '/topics/' + topicId);
-        if (!tData) return;
-        const questions = tData.questions || [];
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
+        const questions = qRows.map(r => ({
+            id: r.id,
+            question: r.question,
+            options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
+            correctIndex: r.correct_index,
+            explanation: r.explanation || ''
+        }));
         if (!questions.length) {
             window.showEFModal("Delete Questions", "There are no questions in this quiz to delete.", "OKAY", null, true);
             return;
@@ -6210,7 +6297,10 @@ window.adminPromptNotification = function(userId) {
         libCourseCache = (window._liveData && window._liveData.courses) || [];
         // Student fallback: read directly if live data empty
         if (!libCourseCache.length) {
-            const directCourses = await sync.query('unicourses', [limit(3)]) || [];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const directCourses = await window.__execTurso('SELECT id, title, level, topic_count FROM courses ORDER BY title ASC LIMIT 3') || [];
             libCourseCache = directCourses.sort((a, b) => {
                 const lvA = parseInt(a.level) || 0;
                 const lvB = parseInt(b.level) || 0;
@@ -6394,7 +6484,10 @@ window.adminPromptNotification = function(userId) {
         if (!grid) return;
 
         try {
-            const topics = await sync.collection('unicourses/' + courseId + '/topics') || [];
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const topics = await window.__execTurso('SELECT * FROM topics WHERE course_id = ? ORDER BY sort_order ASC', [courseId]) || [];
             
             if (!topics.length) {
                 grid.innerHTML = `
