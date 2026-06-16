@@ -1259,9 +1259,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         const mockCourseList = examState.subjects?.map(s => s.title).join(', ') || 'Mock Exam';
                         const mockGrade2 = finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F';
                         await window.__executeTurso(
-                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, is_mock, created_at)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                            [resultId, currentUser.uid, examState.quizId || '', mockCourseList, finalScore, 100, mockGrade2, correct, total, examState.timeTaken || 0, 1, new Date().toISOString()]
+                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, is_mock, corrections, created_at)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [resultId, currentUser.uid, examState.quizId || '', mockCourseList, finalScore, 100, mockGrade2, correct, total, examState.timeTaken || 0, 0, 0, 1, JSON.stringify([]), new Date().toISOString()]
                         );
                         // Update user streak in Turso for mocks too
                         await window.__executeTurso(
@@ -1339,9 +1339,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof window.__executeTurso === 'function') {
                         const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
                         await window.__executeTurso(
-                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, corrections, created_at)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                            [resultId, currentUser.uid, examState.quizId || '', courseTitle, finalScore, 100, grade, correct, total, examState.timeTaken || 0, exaChange || 0, isRetake ? 1 : 0, JSON.stringify(corrections || []), new Date().toISOString()]
+                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, is_mock, corrections, created_at)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [resultId, currentUser.uid, examState.quizId || '', courseTitle, finalScore, 100, grade, correct, total, examState.timeTaken || 0, exaChange || 0, isRetake ? 1 : 0, 0, JSON.stringify(corrections || []), new Date().toISOString()]
                         );
                         // Update user's EXA rating and streak in Turso
                         await window.__executeTurso(

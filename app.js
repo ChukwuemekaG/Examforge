@@ -268,10 +268,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) {}
             try {
                 const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [uid]);
-                recentResults = (resultRows || []).map(r => ({
+                recentResults = (resultRows || [])
+                    .filter(r => r.score > 0 || (r.course && r.course !== 'Exam' && r.course !== ''))
+                    .map(r => ({
                     id: r.id,
                     quizId: r.quiz_id || '',
-                    course: r.course || 'Exam',
+                    course: r.course || '',
                     date: r.created_at || '',
                     score: r.score || 0,
                     total: r.total || 100,
@@ -288,10 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return { profile, schedule, inbox, recentResults };
-    };
-
-    /**
-     * Adds a schedule item to the user's embedded schedule array.
      * Reads current doc, appends, writes back.
      */
     window._addScheduleItem = async function(uid, item) {
@@ -966,10 +964,12 @@ function setupAdminListeners() {
                     if (typeof window.__execTurso === 'function') {
                         try {
                             const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [user.uid]);
-                            userData.recentResults = (resultRows || []).map(r => ({
+                            userData.recentResults = (resultRows || [])
+                                .filter(r => r.score > 0 || (r.course && r.course !== 'Exam' && r.course !== ''))
+                                .map(r => ({
                                 id: r.id,
                                 quizId: r.quiz_id || '',
-                                course: r.course || 'Exam',
+                                course: r.course || '',
                                 date: r.created_at || '',
                                 score: r.score || 0,
                                 total: r.total || 100,
@@ -985,9 +985,6 @@ function setupAdminListeners() {
                         } catch(e) {
                             userData.recentResults = [];
                         }
-                    } else {
-                        userData.recentResults = [];
-                    }
                     // Show admin nav if user is admin
                     const masterNav = document.getElementById('nav-master');
                     if (masterNav) {
@@ -5497,10 +5494,12 @@ window.adminPromptNotification = function(userId) {
                 if (typeof window.__execTurso === 'function') {
                     try {
                         const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [auth.currentUser.uid]);
-                        userData.recentResults = (resultRows || []).map(r => ({
+                        userData.recentResults = (resultRows || [])
+                            .filter(r => r.score > 0 || (r.course && r.course !== 'Exam' && r.course !== ''))
+                            .map(r => ({
                             id: r.id,
                             quizId: r.quiz_id || '',
-                            course: r.course || 'Exam',
+                            course: r.course || '',
                             date: r.created_at || '',
                             score: r.score || 0,
                             total: r.total || 100,
@@ -5516,9 +5515,6 @@ window.adminPromptNotification = function(userId) {
                     } catch(e) {
                         userData.recentResults = [];
                     }
-                } else {
-                    userData.recentResults = [];
-                }
             }
             // Override with latest exam result from localStorage (covers quiz → dashboard flow)
             try {
