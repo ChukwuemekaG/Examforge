@@ -535,10 +535,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window._backfillUserCounter = async function(silent) {
         if (!silent && !confirm('This will count all users and write totalUsers to _stats/counters. Continue?')) return;
         try {
-            window.__efTrackRead('users count (backfill)');
-            const snap = await getCountFromServer(collection(db, 'users'));
-            const total = snap.data().count;
-            await setDoc(doc(db, '_stats', 'counters'), { totalUsers: total }, { merge: true });
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const totalRows = await window.__execTurso('SELECT COUNT(*) as count FROM users');
+            const total = parseInt(totalRows?.[0]?.count || 0);
+            await window.__execTurso(
+                `INSERT INTO user_counters (id, total_users) VALUES ('global', ?) ON CONFLICT(id) DO UPDATE SET total_users = ?`,
+                [total, total]
+            );
             if (!silent) alert(`✅ Counter backfilled! Total users: ${total}\n\nUsers will get totalUsers on their next dashboard load.`);
         } catch (e) {
             if (!silent) alert('❌ Error: ' + e.message);
@@ -556,19 +561,28 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window._broadcastSchedule = async function(scheduleItem) {
-        const { getDoc, doc: fDoc, setDoc } = await import(
-            "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const id = 'sched_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+        await window.__execTurso(
+            `INSERT INTO broadcast_schedules (id, type, title, course, quiz_url, time_limit, message, due_date, due_time, mock_id, event_id, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                id,
+                scheduleItem.type || 'exam',
+                scheduleItem.title || '',
+                scheduleItem.course || '',
+                scheduleItem.quizUrl || '',
+                scheduleItem.timeLimit || null,
+                scheduleItem.message || '',
+                scheduleItem.dueDate || null,
+                scheduleItem.dueTime || null,
+                scheduleItem.mockId || null,
+                scheduleItem.eventId || null,
+                new Date().toISOString()
+            ]
         );
-        window.__efTrackRead('_schedules/latest');
-        const existing = await getDoc(fDoc(db, '_schedules', 'latest'));
-        const items = existing.exists() ? (existing.data().items || []) : [];
-        items.push({
-            ...scheduleItem,
-            id: 'sched_' + Date.now().toString(36),
-            timestamp: new Date().toISOString()
-        });
-        if (items.length > 50) items.length = 50;
-        await setDoc(fDoc(db, '_schedules', 'latest'), { items });
     };
 
     window._clearAllNotifications = async function() {
@@ -1077,36 +1091,44 @@ function setupAdminListeners() {
 
                 if (!userDataFromSync) {
                     const uniqueUsername = await generateUniqueUsername(user.email, user.displayName);
-                    await setDoc(userDocRef, {
-                        email: user.email.toLowerCase(),
-                        displayName: user.displayName || uniqueUsername,
-                        username: uniqueUsername,
-                        provider: provider,
-                        exaRating: 800,
-                        streak: 0,
-                        highestStreak: 0,
-                        schedule: [],
-                        inbox: [],
-                        createdAt: serverTimestamp(),
-                        role: 'student'
-                    });
+                    // Create user in Turso instead of Firestore
+                    if (typeof window.__execTurso !== 'function') {
+                        await import('./src/db/client.js');
+                    }
+                    await window.__execTurso(
+                        `INSERT INTO users (id, email, display_name, username, provider, exa_rating, streak, highest_streak, role, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [user.uid, user.email.toLowerCase(), user.displayName || uniqueUsername, uniqueUsername, provider, 800, 0, 0, 'student', new Date().toISOString()]
+                    );
 
-                    // Increment total user count for national ranking
+                    // Increment total user count for national ranking via Turso
                     try {
-                        await setDoc(doc(db, '_stats', 'counters'), {
-                            totalUsers: increment(1)
-                        }, { merge: true });
+                        if (typeof window.__execTurso !== 'function') {
+                            await import('./src/db/client.js');
+                        }
+                        await window.__execTurso(
+                            `UPDATE user_counters SET total_users = total_users + 1 WHERE id = 'global'`
+                        );
+                        // Ensure row exists
+                        await window.__execTurso(
+                            `INSERT INTO user_counters (id, total_users) SELECT 'global', 1 WHERE NOT EXISTS (SELECT 1 FROM user_counters WHERE id = 'global')`
+                        );
                     } catch (e) {
                         console.warn('Could not update user counter:', e);
                     }
 
                     // Write totalUsers to this user's doc for ranking (0 future reads)
                     try {
-                        window.__efTrackRead('_stats/counters (new user)');
-                        const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
-                        const totalUsers = counterSnap.data()?.totalUsers || 0;
+                        if (typeof window.__execTurso !== 'function') {
+                            await import('./src/db/client.js');
+                        }
+                        const totalRows = await window.__execTurso('SELECT total_users FROM user_counters WHERE id = ?', ['global']);
+                        const totalUsers = parseInt(totalRows?.[0]?.total_users || 0);
                         if (totalUsers > 0) {
-                            await setDoc(userDocRef, { totalUsers }, { merge: true });
+                            await window.__execTurso(
+                                'UPDATE users SET total_users = ? WHERE id = ?',
+                                [totalUsers, user.uid]
+                            );
                         }
                     } catch (e) {
                         console.warn('Could not write totalUsers:', e);
@@ -1175,8 +1197,19 @@ function setupAdminListeners() {
                                     corrections: r.corrections || [],
                                     isMock: r.isMock || false
                                 }));
-                                // Write migrated results to user doc (1 write, one-time cost)
-                                await setDoc(doc(db, 'users', user.uid), { recentResults: migrated }, { merge: true });
+                                // Write migrated results to Turso user_results table (1 write, one-time cost)
+                                if (typeof window.__execTurso !== 'function') {
+                                    await import('./src/db/client.js');
+                                }
+                                for (const r of migrated) {
+                                    try {
+                                        await window.__execTurso(
+                                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, is_mock, corrections, created_at)
+                                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                            [r.id, user.uid, r.quizId, r.course, r.score, r.total, r.grade, r.correct, r.totalQuestions, r.timeTaken, r.exaChange, r.isRetake ? 1 : 0, r.isMock ? 1 : 0, JSON.stringify(r.corrections || []), r.date || new Date().toISOString()]
+                                        );
+                                    } catch(e) { /* skip duplicates */ }
+                                }
                                 // Update local state
                                 userData.recentResults = migrated;
                                 // Refresh UI
@@ -1197,11 +1230,16 @@ function setupAdminListeners() {
                 if (!userData.totalUsers) {
                     (async () => {
                         try {
-                            window.__efTrackRead('_stats/counters (init)');
-                            const counterSnap = await getDoc(doc(db, '_stats', 'counters'));
-                            const total = counterSnap.data()?.totalUsers || 0;
+                            if (typeof window.__execTurso !== 'function') {
+                                await import('./src/db/client.js');
+                            }
+                            const totalRows = await window.__execTurso('SELECT total_users FROM user_counters WHERE id = ?', ['global']);
+                            const total = parseInt(totalRows?.[0]?.total_users || 0);
                             if (total > 0) {
-                                await setDoc(doc(db, 'users', user.uid), { totalUsers: total }, { merge: true });
+                                await window.__execTurso(
+                                    'UPDATE users SET total_users = ? WHERE id = ?',
+                                    [total, user.uid]
+                                );
                                 userData.totalUsers = total;
                                 if (typeof updateDashboardUI === 'function') updateDashboardUI();
                             }
@@ -1239,27 +1277,30 @@ function setupAdminListeners() {
                 if (initialBottomNav) initialBottomNav.style.display = 'none';
                 const initialNotifFloat = document.getElementById('ef-notif-floating');
                 if (initialNotifFloat) initialNotifFloat.style.display = 'none';
-                // ── onSnapshot on user doc for real-time updates (uses real-time read units) ──
-                if (window._userDocListener) window._userDocListener();
-                window.__efTrackRead('users/'+user.uid+' (onSnapshot)');
-                window._userDocListener = onSnapshot(doc(db, 'users', user.uid), (snap) => {
-                    if (snap.exists()) {
-                        const data = snap.data();
-                        // Update in-memory user data
-                        userData.stats = {
-                            exaRating: data.exaRating ?? userData.stats.exaRating,
-                            streak: data.streak ?? userData.stats.streak,
-                            highestStreak: data.highestStreak ?? userData.stats.highestStreak,
-                            role: data.role || userData.stats.role
-                        };
-                        userData.recentResults = data.recentResults || userData.recentResults;
-                        userData.schedule = data.schedule || userData.schedule;
-                        userData.inbox = data.inbox || userData.inbox;
-                        
-                        // Update UI if dashboard is visible
-                        if (currentView === 'dashboard') window.updateDashboardUI();
-                    }
-                });
+                // ── onSnapshot replaced with periodic Turso polling ──
+                if (window._userDocListener) {
+                    clearInterval(window._userDocListener);
+                    window._userDocListener = null;
+                }
+                window._userDocListener = setInterval(async () => {
+                    try {
+                        if (typeof window.__execTurso !== 'function') return;
+                        const rows = await window.__execTurso('SELECT * FROM users WHERE id = ?', [user.uid]);
+                        if (rows && rows.length > 0) {
+                            const data = rows[0];
+                            // Update in-memory user data
+                            userData.stats = {
+                                exaRating: data.exa_rating ?? userData.stats.exaRating,
+                                streak: data.streak ?? userData.stats.streak,
+                                highestStreak: data.highest_streak ?? userData.stats.highestStreak,
+                                role: data.role || userData.stats.role
+                            };
+                            
+                            // Update UI if dashboard is visible
+                            if (currentView === 'dashboard') window.updateDashboardUI();
+                        }
+                    } catch(e) { /* polling error - ignore */ }
+                }, 30000); // Poll every 30 seconds
                 // Admin collections are loaded on demand when the admin tab is opened
                 // ─── Push Notification Setup ─────────────────────────
                 if ('Notification' in window) {
@@ -3659,18 +3700,15 @@ window.mcBroadcastDailyQuiz = async function(dqid, subCount) {
             broadcastId
         }).catch(() => {});
         
-        // Log broadcast
-        await addDoc(collection(db, 'daily_quiz_broadcasts'), {
-            broadcastId,
-            title: q.title,
-            quizUrl: quizUrl,
-            message: customMessage,
-            dueDate: `${year}-${month}-${day}`,
-            dueTime: '23:59',
-            recipientCount: 0,
-            sentBy: auth.currentUser?.uid || 'admin',
-            timestamp: new Date()
-        });
+        // Log broadcast via Turso
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso(
+            `INSERT INTO daily_quiz_broadcasts (broadcast_id, title, quiz_url, message, due_date, due_time, recipient_count, sent_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [broadcastId, q.title, quizUrl, customMessage, `${year}-${month}-${day}`, '23:59', 0, auth.currentUser?.uid || 'admin', new Date().toISOString()]
+        );
         
         btn.innerHTML = `<span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">check_circle</span> BROADCAST SUCCESSFUL!`;
         btn.style.background = '#16a34a';
@@ -3739,12 +3777,22 @@ window.mcOpenEditDailyQuizModal = async function(dqid) {
             if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'SAVING…'; }
             
             try {
-                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                await updateDoc(doc(db, 'daily_quizzes', dqid), {
-                    title,
-                    questions: window.currentBuilderQuestions,
-                    timeLimit: time
-                });
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                await window.__execTurso(
+                    `UPDATE daily_quizzes SET title = ?, time_limit = ? WHERE id = ?`,
+                    [title, time, dqid]
+                );
+                // Delete existing questions and re-insert
+                await window.__execTurso('DELETE FROM daily_quiz_questions WHERE quiz_id = ?', [dqid]);
+                for (let i = 0; i < window.currentBuilderQuestions.length; i++) {
+                    const q = window.currentBuilderQuestions[i];
+                    await window.__execTurso(
+                        `INSERT INTO daily_quiz_questions (quiz_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [dqid, q.question || '', q.options?.[0] || '', q.options?.[1] || '', q.options?.[2] || '', q.options?.[3] || '', q.correctIndex ?? 0, q.explanation || '', i]
+                    );
+                }
                 
                 document.getElementById('ef-dq-builder-modal')?.remove();
                 window.showEFModal("Updated", "Daily quiz updated successfully!", "OK", null, true);
@@ -5166,7 +5214,10 @@ window.udtDelSched = async function(itemId) {
     if (!confirm('Delete this schedule item?')) return;
     const { uid } = ADM.state;
     try {
-        await deleteDoc(doc(db, `users/${uid}/schedule`, itemId));
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso('DELETE FROM user_schedule WHERE id = ? AND user_id = ?', [itemId, uid]);
         ADM.state.schedItems = ADM.state.schedItems.filter(s => s._id !== itemId);
         const ct = document.getElementById('aup-tab-sched');
         if (ct) ct.textContent = `(${ADM.state.schedItems.length})`;
@@ -5177,7 +5228,10 @@ window.udtDelSched = async function(itemId) {
 window.udtDelNotif = async function(notifId) {
     const { uid } = ADM.state;
     try {
-        await deleteDoc(doc(db, `users/${uid}/notifications`, notifId));
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso('DELETE FROM user_inbox WHERE id = ? AND user_id = ?', [notifId, uid]);
         ADM.state.notifItems = ADM.state.notifItems.filter(n => n._id !== notifId);
         const ct = document.getElementById('aup-tab-notif');
         if (ct) ct.textContent = `(${ADM.state.notifItems.length})`;
@@ -5349,8 +5403,16 @@ window.udtAddNotification = function() {
         const btn = document.getElementById('uan-save');
         btn.disabled = true; btn.textContent = 'Sending…';
         try {
-            const ref = await addDoc(collection(db, `users/${uid}/notifications`), notif);
-            ADM.state.notifItems.unshift({ _id: ref.id, ...notif });
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const notifId = 'notif_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+            await window.__execTurso(
+                `INSERT INTO user_inbox (id, user_id, type, title, message, quiz_url, is_read, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [notifId, uid, type, title, message, quizUrl || '', 0, new Date().toISOString()]
+            );
+            ADM.state.notifItems.unshift({ _id: notifId, type, title, message, quizUrl, timestamp: new Date() });
             const ct = document.getElementById('aup-tab-notif');
             if (ct) ct.textContent = `(${ADM.state.notifItems.length})`;
             ov.remove();
@@ -5364,7 +5426,13 @@ window.udtDeleteUser = async function(uid) {
     if (!confirm('⚠️ Permanently delete this user\'s Firestore record? This cannot be undone.')) return;
     if (!confirm('Final confirmation — delete this user?')) return;
     try {
-        await deleteDoc(doc(db, 'users', uid));
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso('DELETE FROM users WHERE id = ?', [uid]);
+        await window.__execTurso('DELETE FROM user_results WHERE user_id = ?', [uid]);
+        await window.__execTurso('DELETE FROM user_schedule WHERE user_id = ?', [uid]);
+        await window.__execTurso('DELETE FROM user_inbox WHERE user_id = ?', [uid]);
         document.querySelector('.mc-modal-overlay')?.remove();
         mcRenderUsersTab();
     } catch(e) { alert('Delete failed: ' + e.message); }
@@ -5634,12 +5702,15 @@ window.adminPromptNotification = function(userId) {
         }
 
         try {
-            await addDoc(collection(db, `users/${userId}/notifications`), {
-                title: title,
-                message: message,
-                type: "broadcast", 
-                timestamp: serverTimestamp()
-            });
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const notifId = 'notif_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+            await window.__execTurso(
+                `INSERT INTO user_inbox (id, user_id, type, title, message, is_read, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [notifId, userId, 'broadcast', title, message, 0, new Date().toISOString()]
+            );
             overlay.remove();
             window.showEFModal("Delivered", "The alert has been successfully pushed to the user's inbox.", "OKAY", null, true);
         } catch(err) {
@@ -5727,12 +5798,17 @@ window.adminPromptNotification = function(userId) {
                     return ms !== null && ms < now;
                 });
                 if (expired.length) {
-                    const { writeBatch, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                    const batch = writeBatch(db);
-                    expired.forEach(s => {
-                        if (s.id) batch.delete(doc(db, `users/${auth.currentUser.uid}/schedule`, s.id));
-                    });
-                    batch.commit().catch(() => {});
+                    if (typeof window.__execTurso !== 'function') {
+                        await import('./src/db/client.js');
+                    }
+                    const ids = expired.map(s => s.id).filter(Boolean);
+                    if (ids.length) {
+                        const placeholders = ids.map(() => '?').join(',');
+                        await window.__execTurso(
+                            `DELETE FROM user_schedule WHERE user_id = ? AND id IN (${placeholders})`,
+                            [auth.currentUser.uid, ...ids]
+                        );
+                    }
                 }
                 userData.schedule = active.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
             }
@@ -6148,19 +6224,20 @@ window.adminPromptNotification = function(userId) {
             errorEl.style.display = 'none';
 
             try {
-                const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                window.__efTrackRead('event key');
-                const keyDoc = await getDoc(doc(db, 'subscription_events', eventId, 'keys', key));
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                const keyRows = await window.__execTurso('SELECT * FROM event_keys WHERE id = ? AND event_id = ?', [key, eventId]);
 
-                if (!keyDoc.exists()) {
+                if (!keyRows || keyRows.length === 0) {
                     errorEl.textContent = 'Invalid key. This key was not found.';
                     errorEl.style.display = 'block';
                     btn.disabled = false; btn.textContent = 'VALIDATE KEY';
                     return;
                 }
 
-                const keyData = keyDoc.data();
-                if (keyData.used === true) {
+                const keyData = keyRows[0];
+                if (keyData.used === 1) {
                     errorEl.textContent = 'This key has already been used. Please use a different key.';
                     errorEl.style.display = 'block';
                     btn.disabled = false; btn.textContent = 'VALIDATE KEY';
@@ -7205,21 +7282,40 @@ window.adminPromptNotification = function(userId) {
 
         // Cache-first one-time fetch (no real-time listener = zero continuous reads)
         const path = 'users/' + auth.currentUser.uid + '/notifications';
-        // Read user data raw (bypasses SyncManager cache) for fresh inbox data
-        const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        window.__efTrackRead('users/' + auth.currentUser.uid + ' (inbox)');
-        const userSnap = await getDoc(fDoc(db, 'users', auth.currentUser.uid));
-        const userRaw = userSnap.exists() ? userSnap.data() : {};
-        const dismissedBroadcast = userRaw.dismissedBroadcast || [];
-        let notifications = userRaw.inbox || [];
+        // Read user inbox from Turso
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const inboxRows = await window.__execTurso('SELECT * FROM user_inbox WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [auth.currentUser.uid]) || [];
+        let notifications = inboxRows.map(n => ({
+            id: n.id,
+            title: n.title || '',
+            message: n.message || '',
+            type: n.type || 'broadcast',
+            quizUrl: n.quiz_url || '',
+            resultId: n.result_id || '',
+            eventId: n.event_id || '',
+            timestamp: n.created_at || 'Just now',
+            actionLabel: n.type === 'daily_quiz' ? 'Start Quiz' : 'View',
+            dueDate: n.due_date || '',
+            dueTime: n.due_time || ''
+        }));
+        const dismissedBroadcast = [];
         
-        // Load broadcast notifications directly
+        // Load broadcast notifications from Turso
         let broadcastItems = [];
         try {
-            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            window.__efTrackRead('_notifications/latest (inbox)');
-            const snap = await getDoc(fDoc(db, '_notifications', 'latest'));
-            if (snap.exists()) broadcastItems = snap.data().items || [];
+            const broadcastRows = await window.__execTurso('SELECT * FROM broadcast_notifications ORDER BY created_at DESC LIMIT 20') || [];
+            broadcastItems = broadcastRows.map(n => ({
+                id: n.id,
+                type: n.type || 'broadcast',
+                title: n.title || '',
+                message: n.message || '',
+                quizUrl: n.quiz_url || '',
+                brandColor: n.brand_color || '#fe6961',
+                brandIcon: n.brand_icon || 'notifications',
+                timestamp: n.created_at || 'Just now'
+            }));
         } catch(e) { console.error('Broadcast read failed:', e); }
         
         // Filter out all broadcast notifications with a quizUrl (exam-related — only schedule items)
@@ -7243,13 +7339,18 @@ window.adminPromptNotification = function(userId) {
             return ms !== null && ms < now;
         });
         if (expired.length) {
-            const b = writeBatch(db);
-            expired.forEach(n => {
-                const ref = doc(db, path, n.id);
-                b.delete(ref);
-            });
-            b.commit().catch(console.error);
-            // Remove expired from local array for display
+            // Auto-delete expired via Turso instead of Firestore batch
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const ids = expired.filter(n => n.id).map(n => n.id);
+            if (ids.length > 0) {
+                const placeholders = ids.map(() => '?').join(',');
+                await window.__execTurso(
+                    `DELETE FROM user_inbox WHERE user_id = ? AND id IN (${placeholders})`,
+                    [auth.currentUser.uid, ...ids]
+                );
+            }
             notifications = notifications.filter(n => {
                 const ms = n.dueTimestamp?.toMillis ? n.dueTimestamp.toMillis()
                          : n.dueDate ? new Date(n.dueDate + 'T' + (n.dueTime||'23:59')).getTime() : null;
@@ -7263,13 +7364,6 @@ window.adminPromptNotification = function(userId) {
         clearBtn.onclick = async () => {
             if (!confirm('Clear all notifications?')) return;
             try {
-                const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
-                if (!snap.exists()) return;
-                // Dismiss all current broadcast item IDs
-                const sData = snap.data();
-                const dismissed = sData.dismissedBroadcast || [];
-                broadcastItems.forEach(n => { if (!dismissed.includes(n.id)) dismissed.push(n.id); });
-                // Clear Turso inbox
                 if (typeof window.__execTurso !== 'function') {
                     await import('./src/db/client.js');
                 }
@@ -7634,6 +7728,10 @@ window.adminPromptNotification = function(userId) {
             }
             try {
                 await updateDoc(doc(db, "users", currentUser.uid), { username: newName });
+                // Also update Turso
+                if (typeof window.__execTurso === 'function') {
+                    await window.__execTurso('UPDATE users SET username = ? WHERE id = ?', [newName, currentUser.uid]);
+                }
                 statusMsg.innerText = "Updated!"; statusMsg.style.color = "#16a34a";
                 userData.stats.username = newName;
             } catch (err) { statusMsg.innerText = "Error: " + err.message; }
@@ -7666,7 +7764,7 @@ window.adminPromptNotification = function(userId) {
 
         document.getElementById('btnDeleteAccountTrigger').onclick = () => {
             window.showEFModal("Final Farewell?", "Delete your account permanently? This cannot be undone.", "DELETE", async () => {
-                try { renderLoading("Purging..."); await deleteDoc(doc(db, "users", currentUser.uid)); await deleteUser(currentUser); window.location.href = '/'; }
+                try { renderLoading("Purging..."); await deleteDoc(doc(db, "users", currentUser.uid)); if (typeof window.__execTurso === 'function') { await window.__execTurso('DELETE FROM users WHERE id = ?', [currentUser.uid]); } await deleteUser(currentUser); window.location.href = '/'; }
                 catch (e) { if (e.code === 'auth/requires-recent-login') signOut(auth); else renderSettings(); }
             });
         };
@@ -7715,10 +7813,12 @@ window.adminPromptNotification = function(userId) {
  * Checks if a username already exists in Firestore.
  */
     async function isUsernameUnique(username) {
-        // Direct doc lookup — 1 read guaranteed, no collection query
-        const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        const snap = await getDoc(doc(db, 'usernames', username));
-        return !snap.exists();
+        // Check via Turso users table
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const rows = await window.__execTurso('SELECT COUNT(*) as cnt FROM users WHERE username = ?', [username]);
+        return parseInt(rows?.[0]?.cnt || 0) === 0;
     }
 
 
@@ -8178,46 +8278,36 @@ window.mcGenerateSubEventKeys = async function(eventId) {
     if (!window.confirm(`Generate ${numKeys} unique 10-digit key(s) for this event?`)) return;
     
     try {
-        const { collection, doc, setDoc, writeBatch, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
         
-        // Check existing keys count to estimate if we need many more
-        const existingSnapshot = await sync.collection('subscription_events/' + eventId + '/keys');
-        const existingCount = existingSnapshot.length;
+        // Get existing keys from Turso
+        const existingRows = await window.__execTurso('SELECT id FROM event_keys WHERE event_id = ?', [eventId]) || [];
+        const existingKeys = new Set(existingRows.map(r => r.id));
         
-        // Generate unique keys
-        const keysRef = collection(db, 'subscription_events', eventId, 'keys');
-        const batch = writeBatch(db);
         let generated = 0;
         let attempts = 0;
-        const maxAttempts = numKeys * 10; // Avoid infinite loops
-        
-        // Collect existing keys for uniqueness check
-        const existingKeys = new Set(existingSnapshot.map(d => d.id));
+        const maxAttempts = numKeys * 10;
         
         while (generated < numKeys && attempts < maxAttempts) {
             attempts++;
-            // Generate random 10-digit string, padded with leading zeros
             const key = String(Math.floor(Math.random() * 10000000000)).padStart(10, '0');
             
             if (!existingKeys.has(key)) {
                 existingKeys.add(key);
-                const keyRef = doc(keysRef, key);
-                batch.set(keyRef, {
-                    key: key,
-                    used: false,
-                    usedBy: null,
-                    usedAt: null,
-                    createdAt: serverTimestamp()
-                });
-                generated++;
+                try {
+                    await window.__execTurso(
+                        'INSERT INTO event_keys (id, event_id, key_value, used, used_by, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                        [key, eventId, key, 0, null, new Date().toISOString()]
+                    );
+                    generated++;
+                } catch(e) { /* duplicate - skip */ }
             }
         }
         
-        await batch.commit();
-        
         window.showEFModal("Keys Generated", `Successfully generated ${generated} key(s) for this event.`, "AWESOME", null, true);
         
-        // Refresh the event details view
         const overlay = document.getElementById('ef-se-details-overlay');
         if (overlay) {
             overlay.remove();
@@ -8532,28 +8622,28 @@ window.mcViewSubEventDetails = async function(eventId) {
         const regHeading = document.getElementById('mc-total-registrations-summary');
         if (regHeading) regHeading.textContent = `(${totalRegistrations} total)`;
         
-        // ── Real-time updates via _data doc onSnapshot (1 read initial sync, real-time units for updates) ──
-        if (window._regDataListener) { try { window._regDataListener(); } catch(e) {} }
+        // ── Periodic Turso polling for registration data ──
+        if (window._regDataListener) { 
+            clearInterval(window._regDataListener); 
+            window._regDataListener = null;
+        }
         
-        window.__efTrackRead('event registrations (onSnapshot)');
-        window._regDataListener = onSnapshot(
-            doc(db, 'subscription_events/' + eventId + '/_data/registrations'),
-            (snap) => {
-                if (snap.exists()) {
-                    const students = snap.data().students || [];
-                    const count = students.length;
-                    const countEl = document.getElementById('mc-total-registrations');
-                    if (countEl) countEl.textContent = count;
-                    const regHeading = document.getElementById('mc-total-registrations-summary');
-                    if (regHeading) regHeading.textContent = `(${count} total)`;
-                }
+        window._regDataListener = setInterval(async () => {
+            try {
+                if (typeof window.__execTurso !== 'function') return;
+                const countRows = await window.__execTurso('SELECT COUNT(*) as cnt FROM event_registrations WHERE event_id = ?', [eventId]);
+                const count = parseInt(countRows?.[0]?.cnt || 0);
+                const countEl = document.getElementById('mc-total-registrations');
+                if (countEl) countEl.textContent = count;
+                const regHeading = document.getElementById('mc-total-registrations-summary');
+                if (regHeading) regHeading.textContent = `(${count} total)`;
+                
                 // Also re-render student table with latest attempt data
                 if (window.mcRenderRegStudentsTable) {
                     window.mcRenderRegStudentsTable(eventId);
                 }
-            },
-            (error) => console.error('Reg data listener error:', error)
-        );
+            } catch(e) {}
+        }, 30000); // Poll every 30 seconds
         
         // Auto-load student table replaced with manual button
         const regTableContainer = document.getElementById('mc-reg-students-table');
@@ -8612,8 +8702,10 @@ window.mcViewSubEventDetails = async function(eventId) {
 window.mcSaveEventDuration = async function(eventId) {
     const durationDays = parseInt(document.getElementById('ev-duration-select')?.value) || 30;
     try {
-        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        await updateDoc(doc(db, 'subscription_events', eventId), { durationDays });
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso('UPDATE subscription_events SET duration_days = ? WHERE id = ?', [durationDays, eventId]);
         window.showEFModal("Duration Saved", `Mock exams will be valid for ${durationDays} day(s).`, "OK", null, true);
     } catch (e) {
         console.error(e);
@@ -9395,34 +9487,49 @@ window.mcSaveCreatedEventMock = async function(eventId, subject, autoRelease=fal
             mockId = existingMocks[0].id;
             // Clear old attempts so students can retake
             try {
-                const oldAttempts = await sync.collection('mock_exams/' + mockId + '/attempts');
-                if (oldAttempts && oldAttempts.length > 0) {
-                    const batch = writeBatch(db);
-                    oldAttempts.forEach(a => batch.delete(doc(db, 'mock_exams', mockId, 'attempts', a.id)));
-                    await batch.commit();
-                    console.log('Cleared ' + oldAttempts.length + ' old attempts for mock ' + mockId);
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
                 }
+                await window.__execTurso('DELETE FROM mock_exam_attempts WHERE mock_id = ?', [mockId]);
+                console.log('Cleared old attempts for mock ' + mockId);
             } catch(e) {
                 console.warn('Could not clear old attempts:', e);
             }
         } else {
-            mockId = 'mock_' + doc(collection(db, 'mock_exams')).id;
+            mockId = 'mock_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
         }
         
-        await setDoc(doc(db, 'mock_exams', mockId), {
-            id: mockId,
-            eventId,
-            subject,
-            title,
-            questions: window.currentBuilderQuestions,
-            timeLimit: time,
-            isStrict:     document.getElementById('mc-tog-strict')?.checked ?? true,
-            isMock:       document.getElementById('mc-tog-mock')?.checked ?? true,
-            isCorrection: !(document.getElementById('mc-tog-nocorrection')?.checked ?? true),
-            isPrivate:    document.getElementById('mc-tog-private')?.checked ?? false,
-            isStrictMock: true,
-            createdAt: serverTimestamp()
-        });
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        
+        // Upsert mock exam in Turso mock_exams table
+        await window.__execTurso(
+            `INSERT INTO mock_exams (id, event_id, subject, title, time_limit, is_strict, is_mock, is_correction, is_private, is_strict_mock, questions_json, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+                title = excluded.title,
+                time_limit = excluded.time_limit,
+                is_strict = excluded.is_strict,
+                is_mock = excluded.is_mock,
+                is_correction = excluded.is_correction,
+                is_private = excluded.is_private,
+                questions_json = excluded.questions_json`,
+            [
+                mockId,
+                eventId,
+                subject,
+                title,
+                time,
+                document.getElementById('mc-tog-strict')?.checked ? 1 : 0,
+                document.getElementById('mc-tog-mock')?.checked ? 1 : 0,
+                !(document.getElementById('mc-tog-nocorrection')?.checked ?? true) ? 1 : 0,
+                document.getElementById('mc-tog-private')?.checked ? 1 : 0,
+                1,
+                JSON.stringify(window.currentBuilderQuestions),
+                new Date().toISOString()
+            ]
+        );
         
         sync.refresh('mock_exams').catch(() => {});
         if (!autoRelease) {
@@ -9505,26 +9612,18 @@ window.mcReleaseSubjectMock = async function(eventId, subject) {
 window.mcBroadcastEventResults = async function(eventId) {
     window.showEFModal("Broadcast Results", "This will calculate GPA, generate result sheets, and send them to all students who took the exams.", "BROADCAST NOW", async () => {
         try {
-            // Mark event as broadcasted
-            const { doc, updateDoc, setDoc, deleteDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            await updateDoc(doc(db, 'subscription_events', eventId), { resultsReleased: true });
-        // Force cleanup duplicates in _data/registrations
-        try {
-            const regRef = doc(db, 'subscription_events', eventId, '_data', 'registrations');
-            const regSnap = await getDoc(regRef);
-            if (regSnap.exists()) {
-                const students = regSnap.data().students || [];
-                const seen = new Set();
-                const unique = students.filter(s => { if(seen.has(s.uid)) return false; seen.add(s.uid); return true; });
-                if (unique.length !== students.length) {
-                    await updateDoc(regRef, { students: unique });
-                    console.log(`Deduped ${students.length - unique.length} duplicate registrations`);
-                }
+            // Mark event as broadcasted via Turso
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
             }
-        } catch(e) {}
+            await window.__execTurso('UPDATE subscription_events SET results_released = 1 WHERE id = ?', [eventId]);
+            
             await sync.refresh('subscription_events');
             const evData = await sync.doc('subscription_events/' + eventId) || {};
             const evTitle = evData.title || 'Mock Exam';
+        // Load registration data from Turso event_registrations
+        const regRows = await window.__execTurso('SELECT * FROM event_registrations WHERE event_id = ?', [eventId]) || [];
+        const students = regRows.map(r => ({ uid: r.uid, subjects: typeof r.subjects === 'string' ? JSON.parse(r.subjects || '[]') : (r.subjects || []) }));
             
             // Normalize subjects with CUs
             const subjects = (evData.availableSubjects || []).map(s => mcNormalizeSubject(s));
@@ -9566,10 +9665,9 @@ window.mcBroadcastEventResults = async function(eventId) {
                 });
             }
             
-            // Load registration data
-            const regDoc = doc(db, 'subscription_events', eventId, '_data', 'registrations');
-            const regSnap = await getDoc(regDoc);
-            const students = regSnap.exists() ? (regSnap.data().students || []) : [];
+            // Load registration data from Turso event_registrations
+            const regRows = await window.__execTurso('SELECT * FROM event_registrations WHERE event_id = ?', [eventId]) || [];
+            const students = regRows.map(r => ({ uid: r.uid, subjects: typeof r.subjects === 'string' ? JSON.parse(r.subjects || '[]') : (r.subjects || []) }));
             
             // Build a map of uid → registered subjects
             const uidToRegisteredSubjects = {};
@@ -9597,7 +9695,7 @@ window.mcBroadcastEventResults = async function(eventId) {
                 }
             }
             
-            // Remove duplicate students from _data/registrations (belt-and-suspenders)
+            // Remove duplicate students (belt-and-suspenders - Turso handles this)
             try {
                 const seen = new Set();
                 const unique = students.filter(s => {
@@ -9605,9 +9703,6 @@ window.mcBroadcastEventResults = async function(eventId) {
                     seen.add(s.uid);
                     return true;
                 });
-                if (unique.length !== students.length) {
-                    await updateDoc(regDoc, { students: unique });
-                }
             } catch(e) {}
             
             let totalSent = 0;
@@ -9626,23 +9721,16 @@ window.mcBroadcastEventResults = async function(eventId) {
                 // Build result sheet HTML
                 const resultHTML = buildResultSheetHTML(evTitle, data, gpa, gpaComment);
                 
-                // Save to user's results
-                const resultId = `event_${eventId}_${Date.now()}`;
-                const resRef = doc(db, 'users', uid, 'results', resultId);
-                await setDoc(resRef, {
-                    id: resultId,
-                    eventId,
-                    eventTitle: evTitle,
-                    subjects: data.subjects,
-                    gpa,
-                    gpaComment,
-                    totalCU,
-                    totalPoints,
-                    resultSheet: resultHTML,
-                    timestamp: serverTimestamp(),
-                    isMock: true,
-                    releasedAt: serverTimestamp()
-                });
+            // Save to user_results table via Turso
+            const resultId = 'res_' + Date.now().toString(36) + '_' + uid.substring(0,4);
+            await window.__execTurso(
+                `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, is_mock, corrections, result_sheet, gpa, gpa_comment, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    resultId, uid, eventId, evTitle, 0, 100, 'N/A', 0, 0, 0, 0, 0, 1, '[]',
+                    resultHTML, gpa.toFixed(2), gpaComment.substring(0, 200), new Date().toISOString()
+                ]
+            );
                 
                 // Add notification to user's inbox via Turso
                 const notifId = 'res_' + Date.now().toString(36) + '_' + uid.substring(0,4);
@@ -9809,8 +9897,10 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             if (n.name === subjectName) n.creditUnit = cu;
             return n;
         });
-        const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        await updateDoc(doc(db, 'subscription_events', eventId), { availableSubjects: subjects });
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso('UPDATE subscription_events SET available_subjects = ? WHERE id = ?', [JSON.stringify(subjects), eventId]);
         await sync.refresh('subscription_events');
         
         // Update the display in real-time
@@ -9824,7 +9914,7 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
             }
         }
         
-        window.showEFModal("Updated", `"${subjectName}" credit unit changed to ${cu}.`, "OK", null, true);
+        window.showEFModal("Updated", `\"${subjectName}\" credit unit changed to ${cu}.`, "OK", null, true);
     } catch (e) {
         console.error(e);
         window.showEFModal("Error", e.message, "OK", null, true);
@@ -9836,13 +9926,19 @@ window.mcEditSubjectCU = async function(eventId, subjectName, currentCU) {
 // -- Print individual result sheet (PDF download) --
     window.printResult = async function(resultId, eventId) {
         try {
-            const { getDoc, doc: fDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const snap = await getDoc(fDoc(db, 'users', auth.currentUser.uid, 'results', resultId));
-            if (!snap.exists()) { alert('Result not found.'); return; }
-            const data = snap.data();
-            if (!data.resultSheet) { alert('No result sheet available.'); return; }
-            // Use the proven printResultSheet function — opens a tab, auto-downloads PDF, shows success
-            window.printResultSheet(data.resultSheet);
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const rows = await window.__execTurso('SELECT * FROM user_results WHERE id = ? AND user_id = ?', [resultId, auth.currentUser.uid]);
+            if (!rows || rows.length === 0) { alert('Result not found.'); return; }
+            const data = rows[0];
+            if (!data.result_sheet) { 
+                // Build result sheet from raw data
+                const html = `<div style="padding:40px;text-align:center;"><h2>${data.course || 'Exam'} - ${data.score || 0}%</h2><p>Grade: ${data.grade || 'F'}</p><p>Correct: ${data.correct || 0}/${data.total_questions || 0}</p></div>`;
+                window.printResultSheet(html);
+                return;
+            }
+            window.printResultSheet(data.result_sheet);
         } catch(e) {
             console.error('Print failed:', e);
             alert('Failed to open result: ' + e.message);
