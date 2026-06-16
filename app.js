@@ -4823,7 +4823,7 @@ window.aupSwitch = function(tab) {
                 <div class="aup-section-title">System</div>
                 <div class="aup-2col">
                     <div class="aup-field"><label>EXA Rating</label>
-                        <input id="aup-rating" type="number" value="${u.exa_rating ?? u.exaRating || 800}" min="0" max="9999"></div>
+                        <input id="aup-rating" type="number" value="${u.exa_rating || u.exaRating || 800}" min="0" max="9999"></div>
                     <div class="aup-field"><label>Role</label>
                         <select id="aup-role">
                             <option value="student" ${u.role==='student'||!u.role?'selected':''}>Student</option>
