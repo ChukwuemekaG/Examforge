@@ -94,7 +94,7 @@ async function handleViewChange(view) {
         renderInbox();
         break;
       case 'results':
-        renderResults();
+        await renderResults();
         break;
       case 'library':
         renderLibrary();

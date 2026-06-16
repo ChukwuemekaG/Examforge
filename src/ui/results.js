@@ -1,10 +1,52 @@
 import { getState } from './core.js';
 import { getAnalytics, getAccuracyTrend } from '../utils/analytics.js';
 import { gradeFromScore } from '../utils/constants.js';
+import { exec } from '../db/client.js';
 
-export function renderResults() {
-  const { userData, workspace } = getState();
-  const results = userData.results || [];
+export async function renderResults() {
+  const { userData, workspace, currentUser } = getState();
+
+  // Start with empty results — fetch fresh data from Turso every time
+  let results = [];
+
+  try {
+    const freshRows = await exec(
+      'SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+      [currentUser.uid]
+    );
+
+    if (freshRows && freshRows.length > 0) {
+      results = freshRows
+        .filter(r => r.score > 0)
+        .map(r => ({
+          id: r.id,
+          quizId: r.quiz_id || '',
+          course: r.course || '',
+          date: r.created_at || '',
+          score: r.score || 0,
+          total: r.total || 100,
+          grade: r.grade || 'F',
+          correct: r.correct || 0,
+          totalQuestions: r.total_questions || 0,
+          timeTaken: r.time_taken || 0,
+          exaChange: r.exa_change || 0,
+          isRetake: r.is_retake === 1,
+          isMock: r.is_mock === 1,
+          corrections: typeof r.corrections === 'string' ? JSON.parse(r.corrections || '[]') : (r.corrections || [])
+        }));
+      // Update userData for other tabs
+      userData.recentResults = results;
+    } else {
+      // Ensure clean state when no results exist
+      userData.recentResults = [];
+    }
+  } catch (e) {
+    console.warn('Turso query in renderResults failed:', e);
+    // Fallback to any previously loaded data
+    results = userData.recentResults || [];
+  }
+
+  // Compute analytics from the fresh data AFTER the Turso query
   const analytics = getAnalytics(results);
 
   workspace.innerHTML = `
