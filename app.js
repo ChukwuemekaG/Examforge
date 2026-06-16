@@ -5601,8 +5601,6 @@ window.adminPromptNotification = function(userId) {
         `;
 
         try {
-            const isDailyOn = userData.stats?.subscriptions?.dailyQuiz !== false;
-            const isAdviceOn = userData.stats?.subscriptions?.advice !== false;
 
             // Try live data first, fall back to direct read for students
             let allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
@@ -5647,66 +5645,19 @@ window.adminPromptNotification = function(userId) {
                     `;
                 }
             } else if (events.length === 0) {
-                dynamicHTML = `<div style="text-align:center; padding:16px; font-size:0.7rem; color:var(--text-muted); border:2px dashed var(--border); border-radius:12px;">No premium subscriptions available at the moment.</div>`;
+                dynamicHTML = `<div style="text-align:center; padding:16px; font-size:0.7rem; color:var(--text-muted); border:2px dashed var(--border); border-radius:12px;">No mock exams available yet. Check back later.</div>`;
             }
 
             const container = document.getElementById('subs-container');
             if (!container) return;
 
             container.innerHTML = `
-                <div style="font-weight:700; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); padding:0 4px; margin-bottom: 4px;">Free</div>
-                <div class="card" style="padding:20px;">
-                    <div style="display:flex; align-items:center; gap:16px;">
-                        <div style="width:44px; height:44px; border-radius:var(--r-md); background:var(--brand-dim); border:2px solid var(--brand-glow); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            <span class="material-icons-round" style="color:var(--brand);">today</span>
-                        </div>
-                        <div style="flex:1;">
-                            <div style="font-weight:700;">Daily Quizzes</div>
-                            <div style="font-size:0.7rem; color:var(--text-muted);">Curated daily practice delivered straight to your schedule.</div>
-                        </div>
-                        <label class="ef-toggle">
-                            <input type="checkbox" id="sub-daily-toggle" ${isDailyOn ? 'checked' : ''}>
-                            <span class="ef-toggle-track"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="card" style="padding:20px;">
-                    <div style="display:flex; align-items:center; gap:16px;">
-                        <div style="width:44px; height:44px; border-radius:var(--r-md); background:var(--brand-dim); border:2px solid var(--brand-glow); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            <span class="material-icons-round" style="color:var(--brand);">tips_and_updates</span>
-                        </div>
-                        <div style="flex:1;">
-                            <div style="font-weight:700;">ExamForge Advice</div>
-                            <div style="font-size:0.7rem; color:var(--text-muted);">Educational tips and study strategies delivered to you.</div>
-                        </div>
-                        <label class="ef-toggle">
-                            <input type="checkbox" id="sub-advice-toggle" ${isAdviceOn ? 'checked' : ''}>
-                            <span class="ef-toggle-track"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div style="font-weight:700; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); padding:0 4px; margin: 12px 0 4px 0;">Premium Events</div>
+                <div style="font-weight:700; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); padding:0 4px; margin-bottom: 4px;">Mock Exams</div>
                 ${dynamicHTML}
                 <div style="text-align:center; padding:8px; font-size:0.65rem; color:var(--text-muted); margin-top: 8px;">
                     Premium subscriptions are managed by your institution admin.
                 </div>
             `;
-
-            // Attach toggle listeners
-            const saveSubToFirestore = async (key, value) => {
-                if (!auth.currentUser) return;
-                try {
-                    const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                    await updateDoc(doc(db, 'users', auth.currentUser.uid), { [`subscriptions.${key}`]: value });
-                    if (!userData.stats.subscriptions) userData.stats.subscriptions = {};
-                    userData.stats.subscriptions[key] = value;
-                } catch (e) { console.error('Sub save failed:', e); }
-            };
-
-            document.getElementById('sub-daily-toggle')?.addEventListener('change', e => saveSubToFirestore('dailyQuiz', e.target.checked));
-            document.getElementById('sub-advice-toggle')?.addEventListener('change', e => saveSubToFirestore('advice', e.target.checked));
 
             // Attach dynamic register listeners
             document.querySelectorAll('.btn-register-dynamic').forEach(btn => {
