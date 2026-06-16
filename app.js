@@ -7473,12 +7473,15 @@ window.mcLoadSubEvents = async function() {
         // Events from _liveData
         let events = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
 
-        // Admin fallback: read from Turso if live data is empty
+        // Admin fallback: read from Turso directly (bypasses sync cache)
         if (!events.length) {
             try {
-                const { orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                const directEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc')]) || [];
-                events = [...directEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                const freshRows = await window.__execTurso('SELECT id, title, created_at FROM subscription_events ORDER BY created_at DESC') || [];
+                const directEvents = freshRows.map(r => ({ id: r.id, title: r.title || '', createdAt: r.created_at || null }));
+                events = [...directEvents];
                 // Also populate _liveData for future reads
                 if (window._liveData) window._liveData.subscriptionEvents = events;
             } catch(e) {
