@@ -2634,8 +2634,11 @@ window.mcDeleteDailyAdvice = function(id, title) {
         "YES, PURGE IT",
         async () => {
             try {
-                // Step 1: Delete the advice document
-                await deleteDoc(doc(db, 'daily_advices', id));
+                // Step 1: Delete the advice document from Turso
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                await window.__execTurso('DELETE FROM daily_advices WHERE id = ?', [id]);
                 
                 // Step 2: Delete all user notification copies using collection group query
                 try {
@@ -2804,19 +2807,16 @@ window.mcPublishDailyAdvice = async function() {
             return;
         }
 
-        const baseId = doc(collection(db, 'daily_advices')).id;
-        const advId = 'adv_' + baseId;
+        const advId = 'adv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
 
-        // Write to daily_advices collection
-        await setDoc(doc(db, 'daily_advices', advId), {
-            id: advId,
-            title,
-            category,
-            content,
-            targetAudience: audience,
-            recipientCount: totalUsers,
-            createdAt: serverTimestamp()
-        });
+        // Write to daily_advices table via Turso
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso(
+            `INSERT INTO daily_advices (id, title, category, content) VALUES (?, ?, ?, ?)`,
+            [advId, title, category, content]
+        );
 
         // Update admin panel data
         const advSection = (window._liveData && window._liveData.dailyAdvices) ? [...window._liveData.dailyAdvices] : [];
@@ -3303,20 +3303,26 @@ window.mcSaveCreatedDailyQuiz = async function() {
     saveBtn.textContent = 'SAVING…';
     
     try {
-        const baseId = doc(collection(db, 'daily_quizzes')).id;
-        const dqid = 'dq_' + baseId;
-        const qDocRef = doc(db, 'daily_quizzes', dqid);
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const dqid = 'dq_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
         
         const maxAttempts = parseInt(document.getElementById('dq-builder-attempts')?.value) || 1;
         
-        await setDoc(qDocRef, {
-            id: dqid,
-            title,
-            questions: window.currentBuilderQuestions,
-            timeLimit: time,
-            maxAttempts: maxAttempts,
-            createdAt: serverTimestamp()
-        });
+        await window.__execTurso(
+            `INSERT INTO daily_quizzes (id, title, time_limit, max_attempts) VALUES (?, ?, ?, ?)`,
+            [dqid, title, time, maxAttempts]
+        );
+        
+        // Insert questions into daily_quiz_questions table
+        for (let i = 0; i < window.currentBuilderQuestions.length; i++) {
+            const q = window.currentBuilderQuestions[i];
+            await window.__execTurso(
+                `INSERT INTO daily_quiz_questions (quiz_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [dqid, q.question || '', q.options?.[0] || '', q.options?.[1] || '', q.options?.[2] || '', q.options?.[3] || '', q.correctIndex ?? 0, q.explanation || '', i]
+            );
+        }
         
         // Update _admin_panel/data for live card appearance
         const section = (window._liveData && window._liveData.dailyQuizzes) ? [...window._liveData.dailyQuizzes] : [];
@@ -3395,8 +3401,18 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             try {
                 const legacyAttempts = await sync.query('daily_quizzes/' + dqid + '/attempts', [orderBy('timestamp', 'desc')]);
                 if (legacyAttempts && legacyAttempts.length > 0) {
-                    // Persist to quiz doc for future 1-read access
-                    await updateDoc(doc(db, 'daily_quizzes', dqid), { attempts: legacyAttempts });
+                    // Persist legacy attempts to daily_quiz_attempts table
+                    if (typeof window.__execTurso !== 'function') {
+                        await import('./src/db/client.js');
+                    }
+                    for (const attempt of legacyAttempts) {
+                        try {
+                            await window.__execTurso(
+                                `INSERT INTO daily_quiz_attempts (quiz_id, user_id, score, correct, total, time_taken, answers) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                [dqid, attempt.userId || attempt.uid || '', attempt.score || 0, attempt.correct || 0, attempt.totalQuestions || 0, attempt.timeTaken || 0, JSON.stringify(attempt.answers || [])]
+                            );
+                        } catch(e) { /* skip duplicates */ }
+                    }
                     q.attempts = legacyAttempts;
                     // Update both caches so subsequent sync.doc calls return fresh data
                     if (sync && sync._setMemCache) sync._setMemCache('daily_quizzes/' + dqid, q);
@@ -3414,112 +3430,90 @@ window.mcViewDailyQuizDetails = async function(dqid) {
 
         if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} }
 
-        window.__efTrackRead('daily_quiz/'+dqid+' (onSnapshot)');
-        window._attemptsListener = onSnapshot(
-            doc(db, 'daily_quizzes/' + dqid),
-            (snap) => {
-                if (snap.exists()) {
-                    const data = snap.data();
-                    attempts = data.attempts || [];
-                    attemptCount = attempts.length;
-                    avgScore = attemptCount > 0 ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attemptCount) : 0;
-                    
-                    // Update summary stats
-                    const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
-                    const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
-                    if (countEl) countEl.textContent = attemptCount;
-                    if (avgEl) avgEl.textContent = avgScore + '%';
-
-                    // Rebuild table
-                    const container = document.querySelector('[data-at]');
-                    if (container) {
-                        if (attemptCount === 0) {
-                            container.innerHTML = `<div style="text-align:center;padding:48px 24px;border:2px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:0.8rem;">
-                                <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:8px;">people_outline</span>
-                                <strong style="color:var(--text);">No attempts recorded yet</strong>
-                                <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz.</div>
-                            </div>`;
-                        } else {
-                            container.innerHTML = `<table style="width:100%;min-width:500px;border-collapse:collapse;text-align:left;">
-                                <thead>
-                                    <tr style="background:var(--bg-inset);border-bottom:3px solid var(--text);">
-                                        <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Student</th>
-                                        <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Score</th>
-                                        <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Duration</th>
-                                        <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Submitted</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${attempts.map(a => {
-                                        const date = a.timestamp || 'Recently';
-                                        const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
-                                        const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
-                                        return `<tr style="border-bottom:1.5px solid var(--border);">
-                                            <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
-                                                ${a.displayName}
-                                                <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
-                                            </td>
-                                            <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">${a.score}%
-                                                <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
-                                            </td>
-                                            <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
-                                            <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
-                                        </tr>`;
-                                    }).join('')}
-                                </tbody>
-                            </table>`;
-                        }
-                    }
-                }
-            },
-            (error) => console.error('Quiz doc listener error:', error)
-        );
-        
+        // Fetch attempts from Turso daily_quiz_attempts table
         let attemptsHTML = '';
-        if (attemptCount === 0) {
-            attemptsHTML = `
-            <div style="text-align:center;padding:48px 24px;border:2px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:0.8rem;">
-                <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:8px;">people_outline</span>
-                <strong style="color:var(--text);">No attempts recorded yet</strong>
-                <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz using the shareable link.</div>
-            </div>`;
-        } else {
-            const tableRows = attempts.map(a => {
-                const date = a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Recently';
-                const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
-                const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
-                return `
-                <tr style="border-bottom:1.5px solid var(--border);">
-                    <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
-                        ${a.displayName}
-                        <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
-                    </td>
-                    <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">
-                        ${a.score}%
-                        <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
-                    </td>
-                    <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
-                    <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
-                </tr>`;
-            }).join('');
-            
-            attemptsHTML = `
-            <div style="border:2px solid var(--text);border-radius:10px;overflow-x:auto;background:var(--bg-card);">
-                <table style="width:100%;min-width:500px;border-collapse:collapse;text-align:left;">
-                    <thead>
-                        <tr style="background:var(--bg-inset);border-bottom:3px solid var(--text);">
-                            <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Student</th>
-                            <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Score</th>
-                            <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Duration</th>
-                            <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Submitted</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-            </div>`;
-        }
+        (async function fetchAttempts() {
+            try {
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                const rows = await window.__execTurso(
+                    'SELECT * FROM daily_quiz_attempts WHERE quiz_id = ? ORDER BY created_at DESC',
+                    [dqid]
+                ) || [];
+                attempts = rows.map(a => ({
+                    displayName: a.display_name || a.user_id || 'Unknown',
+                    email: '',
+                    score: a.score || 0,
+                    correct: a.correct || 0,
+                    totalQuestions: a.total || 0,
+                    timeTaken: a.time_taken || 0,
+                    timestamp: a.created_at || 'Recently'
+                }));
+                attemptCount = attempts.length;
+                avgScore = attemptCount > 0 ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attemptCount) : 0;
+
+                // Update summary stats
+                const countEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-ac]');
+                const avgEl = document.getElementById('ef-dq-det-body')?.querySelector('[data-aa]');
+                if (countEl) countEl.textContent = attemptCount;
+                if (avgEl) avgEl.textContent = avgScore + '%';
+
+                // Build attempts HTML
+                if (attemptCount === 0) {
+                    attemptsHTML = `
+                    <div style="text-align:center;padding:48px 24px;border:2px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:0.8rem;">
+                        <span class="material-icons-round" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:8px;">people_outline</span>
+                        <strong style="color:var(--text);">No attempts recorded yet</strong>
+                        <div style="margin-top:4px;">Students will show up here as soon as they complete the quiz using the shareable link.</div>
+                    </div>`;
+                } else {
+                    const tableRows = attempts.map(a => {
+                        const date = a.timestamp || 'Recently';
+                        const timeStr = a.timeTaken ? `${Math.floor(a.timeTaken / 60)}m ${a.timeTaken % 60}s` : 'Unknown';
+                        const scoreColor = a.score >= 80 ? '#16a34a' : a.score >= 50 ? '#2563eb' : 'var(--brand)';
+                        return `
+                        <tr style="border-bottom:1.5px solid var(--border);">
+                            <td style="padding:12px;font-size:0.8rem;font-weight:800;color:var(--text);">
+                                ${a.displayName}
+                                <div style="font-size:0.68rem;font-weight:600;color:var(--text-muted);">${a.email}</div>
+                            </td>
+                            <td style="padding:12px;font-size:0.82rem;font-weight:900;color:${scoreColor};">
+                                ${a.score}%
+                                <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">${a.correct || 0} / ${a.totalQuestions || 0}</div>
+                            </td>
+                            <td style="padding:12px;font-size:0.75rem;font-weight:700;color:var(--text-muted);">${timeStr}</td>
+                            <td style="padding:12px;font-size:0.7rem;font-weight:600;color:var(--text-muted);">${date}</td>
+                        </tr>`;
+                    }).join('');
+
+                    attemptsHTML = `
+                    <div style="border:2px solid var(--text);border-radius:10px;overflow-x:auto;background:var(--bg-card);">
+                        <table style="width:100%;min-width:500px;border-collapse:collapse;text-align:left;">
+                            <thead>
+                                <tr style="background:var(--bg-inset);border-bottom:3px solid var(--text);">
+                                    <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Student</th>
+                                    <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Score</th>
+                                    <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Duration</th>
+                                    <th style="padding:12px;font-size:0.7rem;font-weight:900;text-transform:uppercase;color:var(--text);">Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                            </tbody>
+                        </table>
+                    </div>`;
+                }
+
+                // Update the container if it already exists
+                const container = document.querySelector('[data-at]');
+                if (container) {
+                    container.innerHTML = attemptsHTML;
+                }
+            } catch(e) {
+                console.error('Failed to fetch quiz attempts:', e);
+            }
+        })();
         
         let subscriberCount = 0;
         // Subscriber count removed to eliminate getCountFromServer reads
@@ -3697,7 +3691,13 @@ window.mcDeleteDailyQuiz = function(dqid, title) {
         "DELETE",
         async () => {
             try {
-                await deleteDoc(doc(db, 'daily_quizzes', dqid));
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                // Delete quiz and related data from Turso
+                await window.__execTurso('DELETE FROM daily_quiz_attempts WHERE quiz_id = ?', [dqid]);
+                await window.__execTurso('DELETE FROM daily_quiz_questions WHERE quiz_id = ?', [dqid]);
+                await window.__execTurso('DELETE FROM daily_quizzes WHERE id = ?', [dqid]);
                 // Update _admin_panel/data to remove deleted quiz
                 const section = (window._liveData && window._liveData.dailyQuizzes) ? window._liveData.dailyQuizzes.filter(q => q.id !== dqid) : [];
                 window._updateAdminSection('dailyQuizzes', section).catch(() => {});
