@@ -290,6 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return { profile, schedule, inbox, recentResults };
+    };
+
+    /**
+     * Adds a schedule item to the user's embedded schedule array.
      * Reads current doc, appends, writes back.
      */
     window._addScheduleItem = async function(uid, item) {
@@ -985,6 +989,9 @@ function setupAdminListeners() {
                         } catch(e) {
                             userData.recentResults = [];
                         }
+                    } else {
+                        userData.recentResults = [];
+                    }
                     // Show admin nav if user is admin
                     const masterNav = document.getElementById('nav-master');
                     if (masterNav) {
@@ -5515,6 +5522,9 @@ window.adminPromptNotification = function(userId) {
                     } catch(e) {
                         userData.recentResults = [];
                     }
+                } else {
+                    userData.recentResults = [];
+                }
             }
             // Override with latest exam result from localStorage (covers quiz → dashboard flow)
             try {
