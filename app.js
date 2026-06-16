@@ -297,51 +297,90 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
-     * Adds a schedule item to the user's embedded schedule array.
-     * Reads current doc, appends, writes back.
+     * Adds a schedule item to the user's schedule via Turso.
      */
     window._addScheduleItem = async function(uid, item) {
-        const userRef = doc(db, 'users', uid);
-        await updateDoc(userRef, {
-            schedule: arrayUnion(item)
-        });
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const id = item.id || 'sched_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+        await window.__execTurso(
+            `INSERT INTO user_schedule (id, user_id, title, type, course, mock_id, event_id, quiz_url, time_limit, due_date, due_time, message, dismissed, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                id,
+                uid,
+                item.title || item.course || '',
+                item.type || 'daily_quiz',
+                item.course || '',
+                item.mockId || item.mock_id || null,
+                item.eventId || item.event_id || null,
+                item.quizUrl || item.quiz_url || '',
+                item.timeLimit || item.time_limit || null,
+                item.dueDate || item.due_date || null,
+                item.dueTime || item.due_time || null,
+                item.message || '',
+                item.dismissed ? 1 : 0,
+                new Date().toISOString()
+            ]
+        );
     };
 
     /**
-     * Removes a schedule item from the user's embedded schedule array by id.
+     * Removes a schedule item from the user's schedule via Turso.
      */
     window._removeScheduleItem = async function(uid, itemId) {
-        const userDoc = await sync.doc('users/' + uid);
-        if (!userDoc || !userDoc.schedule) return;
-        const updated = userDoc.schedule.filter(s => s.id !== itemId);
-        await updateDoc(doc(db, 'users', uid), { schedule: updated });
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso('DELETE FROM user_schedule WHERE id = ? AND user_id = ?', [itemId, uid]);
     };
 
     /**
-     * Adds a notification/inbox item to the user's embedded inbox array.
+     * Adds a notification/inbox item to the user's inbox via Turso.
      */
     window._addInboxItem = async function(uid, item) {
-        const userRef = doc(db, 'users', uid);
-        await updateDoc(userRef, {
-            inbox: arrayUnion(item)
-        });
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        const id = item.id || 'inbox_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+        await window.__execTurso(
+            `INSERT INTO user_inbox (id, user_id, type, title, message, result_id, event_id, quiz_url, action_path, is_read, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                id,
+                uid,
+                item.type || 'broadcast',
+                item.title || '',
+                item.message || '',
+                item.resultId || item.result_id || null,
+                item.eventId || item.event_id || null,
+                item.quizUrl || item.quiz_url || null,
+                item.actionPath || item.action_path || null,
+                item.isRead || item.is_read ? 1 : 0,
+                new Date().toISOString()
+            ]
+        );
     };
 
     /**
-     * Removes inbox items by id (for "clear all" functionality).
+     * Removes all inbox items for a user via Turso.
      */
     window._clearInboxItems = async function(uid) {
-        await updateDoc(doc(db, 'users', uid), { inbox: [] });
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso('DELETE FROM user_inbox WHERE user_id = ?', [uid]);
     };
 
     /**
-     * Removes a single inbox item by id.
+     * Removes a single inbox item by id via Turso.
      */
     window._removeInboxItem = async function(uid, itemId) {
-        const userDoc = await sync.doc('users/' + uid);
-        if (!userDoc || !userDoc.inbox) return;
-        const updated = userDoc.inbox.filter(n => n.id !== itemId);
-        await updateDoc(doc(db, 'users', uid), { inbox: updated });
+        if (typeof window.__execTurso !== 'function') {
+            await import('./src/db/client.js');
+        }
+        await window.__execTurso('DELETE FROM user_inbox WHERE id = ? AND user_id = ?', [itemId, uid]);
     };
 
     /**
@@ -5189,7 +5228,13 @@ window.udtEditSched = function(itemId) {
         const btn = document.getElementById('uesc-save');
         btn.disabled = true; btn.textContent = 'Saving…';
         try {
-            await updateDoc(doc(db, `users/${uid}/schedule`, itemId), updates);
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            await window.__execTurso(
+                `UPDATE user_schedule SET title = ?, course = ?, quiz_url = ?, message = ?, due_date = ?, due_time = ?, time_limit = ? WHERE id = ? AND user_id = ?`,
+                [updates.course, updates.course, updates.quizUrl, updates.message, updates.dueDate, updates.dueTime, updates.timeLimit, itemId, uid]
+            );
             const idx = ADM.state.schedItems.findIndex(s => s._id === itemId);
             if (idx !== -1) ADM.state.schedItems[idx] = { ...ADM.state.schedItems[idx], ...updates };
             ov.remove();
@@ -5241,8 +5286,16 @@ window.udtAddSchedule = function() {
         const btn = document.getElementById('uas-save');
         btn.disabled = true; btn.textContent = 'Saving…';
         try {
-            const ref = await addDoc(collection(db, `users/${uid}/schedule`), item);
-            ADM.state.schedItems.unshift({ _id: ref.id, ...item });
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const id = 'sched_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+            await window.__execTurso(
+                `INSERT INTO user_schedule (id, user_id, title, type, course, quiz_url, time_limit, due_date, due_time, message, dismissed, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [id, uid, item.course || title, item.type || 'daily_quiz', item.course || title, item.quizUrl || '', item.timeLimit || null, item.dueDate || null, item.dueTime || null, item.message || '', 0, new Date().toISOString()]
+            );
+            ADM.state.schedItems.unshift({ _id: id, ...item });
             const ct = document.getElementById('aup-tab-sched');
             if (ct) ct.textContent = `(${ADM.state.schedItems.length})`;
             ov.remove();
@@ -6610,7 +6663,10 @@ window.adminPromptNotification = function(userId) {
             clearSchedBtn.style.display = schedItems.length ? 'inline-flex' : 'none';
             clearSchedBtn.onclick = async () => {
                 if (!confirm('Clear all schedule items?')) return;
-                await updateDoc(doc(db, 'users', auth.currentUser.uid), { schedule: [] });
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                await window.__execTurso('DELETE FROM user_schedule WHERE user_id = ?', [auth.currentUser.uid]);
                 renderSchedule();
             };
         }
@@ -6625,9 +6681,17 @@ window.adminPromptNotification = function(userId) {
         // Auto-delete expired and hide from view
         const expired = userData.schedule.filter(s => { const ms = getDueMs(s); return ms !== null && ms < now; });
         if (expired.length) {
-            const b = writeBatch(db);
-            expired.forEach(s => b.delete(doc(db, `users/${auth.currentUser.uid}/schedule`, s.id)));
-            b.commit().catch(console.error);
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const ids = expired.map(s => s.id).filter(Boolean);
+            if (ids.length) {
+                const placeholders = ids.map(() => '?').join(',');
+                await window.__execTurso(
+                    `DELETE FROM user_schedule WHERE user_id = ? AND id IN (${placeholders})`,
+                    [auth.currentUser.uid, ...ids]
+                );
+            }
         }
         const active = userData.schedule.filter(s => { const ms = getDueMs(s); return ms === null || ms >= now; });
 
@@ -6743,18 +6807,10 @@ window.adminPromptNotification = function(userId) {
 
     window.deleteScheduleItem = async function(itemId) {
         try {
-            const userRef = doc(db, 'users', auth.currentUser.uid);
-            window.__efTrackRead('users/userId (deleteSchedule)');
-            const snap = await getDoc(userRef);
-            if (!snap.exists()) return;
-            const data = snap.data();
-            // Remove from personal schedule
-            const schedule = (data.schedule || []).filter(s => (s.id || s._id) !== itemId);
-            // Track dismissed broadcast schedule IDs so they don't reappear
-            const dismissedScheds = data.dismissedScheds || [];
-            if (!dismissedScheds.includes(itemId)) dismissedScheds.push(itemId);
-            if (dismissedScheds.length > 200) dismissedScheds.slice(-100);
-            await updateDoc(userRef, { schedule, dismissedScheds });
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            await window.__execTurso('DELETE FROM user_schedule WHERE (id = ? OR _id = ?) AND user_id = ?', [itemId, itemId, auth.currentUser.uid]);
             renderSchedule();
         } catch(e) { console.error(e); }
     };
@@ -7211,7 +7267,11 @@ window.adminPromptNotification = function(userId) {
                 const sData = snap.data();
                 const dismissed = sData.dismissedBroadcast || [];
                 broadcastItems.forEach(n => { if (!dismissed.includes(n.id)) dismissed.push(n.id); });
-                await updateDoc(doc(db, 'users', auth.currentUser.uid), { inbox: [], dismissedBroadcast: dismissed.slice(-200) });
+                // Clear Turso inbox
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                await window.__execTurso('DELETE FROM user_inbox WHERE user_id = ?', [auth.currentUser.uid]);
                 renderInbox();
             } catch(e) { console.error('Clear failed:', e); }
         };
@@ -7264,17 +7324,10 @@ window.adminPromptNotification = function(userId) {
 
     window.deleteNotification = async function(notifId) {
         try {
-            const userRef = doc(db, 'users', auth.currentUser.uid);
-            const snap = await getDoc(userRef);
-            if (!snap.exists()) return;
-            const data = snap.data();
-            // Remove from personal inbox
-            const inbox = (data.inbox || []).filter(n => n.id !== notifId);
-            // Also track dismissed broadcast IDs so they don't reappear
-            const dismissed = data.dismissedBroadcast || [];
-            if (!dismissed.includes(notifId)) dismissed.push(notifId);
-            if (dismissed.length > 200) dismissed.slice(-100);
-            await updateDoc(userRef, { inbox, dismissedBroadcast: dismissed });
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            await window.__execTurso('DELETE FROM user_inbox WHERE (id = ? OR _id = ?) AND user_id = ?', [notifId, notifId, auth.currentUser.uid]);
             renderInbox();
         } catch(e) { console.error(e); }
     };
@@ -9589,20 +9642,16 @@ window.mcBroadcastEventResults = async function(eventId) {
                     releasedAt: serverTimestamp()
                 });
                 
-                // Add notification to user's inbox
-                const userRef = doc(db, 'users', uid);
-                const userSnap = await getDoc(userRef);
-                const inbox = userSnap.exists() ? (userSnap.data().inbox || []) : [];
-                inbox.unshift({
-                    id: 'res_' + Date.now().toString(36) + '_' + uid.substring(0,4),
-                    type: 'result',
-                    title: `📊 ${evTitle}`,
-                    message: `Your results for ${evTitle} are now available.`,
-                    resultId: resultId,
-                    eventId: eventId,
-                    timestamp: new Date().toISOString()
-                });
-                await updateDoc(userRef, { inbox });
+                // Add notification to user's inbox via Turso
+                const notifId = 'res_' + Date.now().toString(36) + '_' + uid.substring(0,4);
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                await window.__execTurso(
+                    `INSERT INTO user_inbox (id, user_id, type, title, message, result_id, event_id, is_read, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [notifId, uid, 'result', `📊 ${evTitle}`, `Your results for ${evTitle} are now available.`, resultId, eventId, 0, new Date().toISOString()]
+                );
                 
                 totalSent++;
             }
