@@ -541,8 +541,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalRows = await window.__execTurso('SELECT COUNT(*) as count FROM users');
             const total = parseInt(totalRows?.[0]?.count || 0);
             await window.__execTurso(
-                `INSERT INTO user_counters (id, total_users) VALUES ('global', ?) ON CONFLICT(id) DO UPDATE SET total_users = ?`,
-                [total, total]
+                `INSERT OR REPLACE INTO counters (id, value) VALUES ('totalUsers', ?)`,
+                [total]
             );
             if (!silent) alert(`✅ Counter backfilled! Total users: ${total}\n\nUsers will get totalUsers on their next dashboard load.`);
         } catch (e) {
@@ -1106,12 +1106,12 @@ function setupAdminListeners() {
                         if (typeof window.__execTurso !== 'function') {
                             await import('./src/db/client.js');
                         }
+                        // Read current count, increment, then write back
+                        const curRows = await window.__execTurso('SELECT value FROM counters WHERE id = ?', ['totalUsers']);
+                        const curVal = parseInt(curRows?.[0]?.value || 0);
                         await window.__execTurso(
-                            `UPDATE user_counters SET total_users = total_users + 1 WHERE id = 'global'`
-                        );
-                        // Ensure row exists
-                        await window.__execTurso(
-                            `INSERT INTO user_counters (id, total_users) SELECT 'global', 1 WHERE NOT EXISTS (SELECT 1 FROM user_counters WHERE id = 'global')`
+                            `INSERT OR REPLACE INTO counters (id, value) VALUES ('totalUsers', ?)`,
+                            [curVal + 1]
                         );
                     } catch (e) {
                         console.warn('Could not update user counter:', e);
@@ -1122,8 +1122,8 @@ function setupAdminListeners() {
                         if (typeof window.__execTurso !== 'function') {
                             await import('./src/db/client.js');
                         }
-                        const totalRows = await window.__execTurso('SELECT total_users FROM user_counters WHERE id = ?', ['global']);
-                        const totalUsers = parseInt(totalRows?.[0]?.total_users || 0);
+                        const totalRows = await window.__execTurso('SELECT value FROM counters WHERE id = ?', ['totalUsers']);
+                        const totalUsers = parseInt(totalRows?.[0]?.value || 0);
                         if (totalUsers > 0) {
                             await window.__execTurso(
                                 'UPDATE users SET total_users = ? WHERE id = ?',
@@ -1233,8 +1233,8 @@ function setupAdminListeners() {
                             if (typeof window.__execTurso !== 'function') {
                                 await import('./src/db/client.js');
                             }
-                            const totalRows = await window.__execTurso('SELECT total_users FROM user_counters WHERE id = ?', ['global']);
-                            const total = parseInt(totalRows?.[0]?.total_users || 0);
+                            const totalRows = await window.__execTurso('SELECT value FROM counters WHERE id = ?', ['totalUsers']);
+                            const total = parseInt(totalRows?.[0]?.value || 0);
                             if (total > 0) {
                                 await window.__execTurso(
                                     'UPDATE users SET total_users = ? WHERE id = ?',
