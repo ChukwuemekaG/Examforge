@@ -89,7 +89,7 @@ export function initNavigation(navItems) {
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
     if (Math.abs(dx) > 60 && Math.abs(dy) < 100) {
-      const views = ['dashboard', 'library', 'subscriptions', 'schedule', 'results', 'inbox', 'settings'];
+      const views = ['dashboard', 'library', 'mocks', 'schedule', 'results', 'inbox', 'settings'];
       const idx = views.indexOf(currentView);
       if (dx < 0 && idx < views.length - 1) navigate(views[idx + 1]);
       else if (dx > 0 && idx > 0) navigate(views[idx - 1]);

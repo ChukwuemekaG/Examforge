@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const bottomNav = document.getElementById('bottomNav');
 
     // ─── Swipe navigation (mobile only) ──────────────────────────
-    const SWIPE_TABS = ['dashboard', 'library', 'subscriptions', 'schedule', 'results', 'inbox'];
+    const SWIPE_TABS = ['dashboard', 'library', 'mocks', 'schedule', 'results', 'inbox'];
 
     let swipeStartX = 0;
     let swipeStartY = 0;
@@ -376,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!window._liveRendering) {
                         window._liveRendering = true;
                         try {
-                            if (currentView === 'subscriptions') renderSubscriptions();
+                            if (currentView === 'mocks') renderMocks();
                             else if (currentView === 'library') renderLibrary();
                             else if (currentView === 'master') mcRenderTabContent();
                             else if (currentView === 'dashboard') window.updateDashboardUI();
@@ -1411,7 +1411,7 @@ function setupAdminListeners() {
                 switch (view) {
                     case 'dashboard': await renderDashboard(); break;
                     case 'master': await renderMaster(); break;
-                    case 'subscriptions': await renderSubscriptions(); break;
+                    case 'mocks': await renderMocks(); break;
                     case 'library': await renderLibrary(); break;
                     case 'topics': await renderTopics(params); break;
                     case 'schedule': await renderSchedule(); break;
@@ -5584,18 +5584,18 @@ window.adminPromptNotification = function(userId) {
         observer.observe(workspace);
     }
 
-    async function renderSubscriptions() {
+    async function renderMocks() {
         // Wait for live data to be loaded
         if (window._liveDataReady) await window._liveDataReady;
         workspace.innerHTML = `
         <div class="page-header">
-            <div class="page-title">Subscriptions</div>
-            <div class="page-sub">Manage your learning plans and premium access</div>
+            <div class="page-title">Mock Events</div>
+            <div class="page-sub">Practice with mock exams</div>
         </div>
         <div id="subs-container" style="display:flex; flex-direction:column; gap:16px; max-width:640px;">
             <div style="text-align:center; padding:48px; color:var(--text-muted);">
                 <span class="material-icons-round" style="animation:spin 1s linear infinite; font-size:2rem;">autorenew</span>
-                <div style="margin-top:8px; font-weight:700; font-size:0.8rem;">Loading Subscriptions...</div>
+                <div style="margin-top:8px; font-weight:700; font-size:0.8rem;">Loading Mocks...</div>
             </div>
         </div>
         `;
@@ -5954,8 +5954,8 @@ window.adminPromptNotification = function(userId) {
                 window.showEFModal("Success", "Registration successful! You will be notified when your exams are ready.", "AWESOME", null, true);
 
                 // Re-render subscriptions page if it exists
-                if (typeof renderSubscriptions === 'function') {
-                    renderSubscriptions();
+                if (typeof renderMocks === 'function') {
+                    renderMocks();
                 }
 
             } catch (e) {

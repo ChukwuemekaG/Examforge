@@ -25,7 +25,7 @@ export async function renderMaster() {
     <button class="btn btn-sm ${activeTab === 'courses' ? 'btn-primary' : 'btn-outline'}" data-tab="courses" onclick="window._switchMasterTab('courses')">Courses</button>
     <button class="btn btn-sm ${activeTab === 'dailyquiz' ? 'btn-primary' : 'btn-outline'}" data-tab="dailyquiz" onclick="window._switchMasterTab('dailyquiz')">Daily Quiz</button>
     <button class="btn btn-sm ${activeTab === 'dailyadvice' ? 'btn-primary' : 'btn-outline'}" data-tab="dailyadvice" onclick="window._switchMasterTab('dailyadvice')">Daily Advice</button>
-    <button class="btn btn-sm ${activeTab === 'subevents' ? 'btn-primary' : 'btn-outline'}" data-tab="subevents" onclick="window._switchMasterTab('subevents')">Sub Events</button>
+    <button class="btn btn-sm ${activeTab === 'subevents' ? 'btn-primary' : 'btn-outline'}" data-tab="subevents" onclick="window._switchMasterTab('subevents')">Mock Events</button>
     <button class="btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-outline'}" data-tab="users" onclick="window._switchMasterTab('users')">Users</button>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">

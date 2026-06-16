@@ -11,7 +11,7 @@ import { renderInbox } from './ui/inbox.js';
 import { renderResults } from './ui/results.js';
 import { renderLibrary } from './ui/library.js';
 import { renderSettings } from './ui/settings.js';
-import { renderSubscriptions } from './ui/subscriptions.js';
+import { renderMocks } from './ui/mocks.js';
 import { renderMaster } from './ui/master.js';
 
 // ─── Initialize ───
@@ -99,8 +99,8 @@ async function handleViewChange(view) {
       case 'library':
         renderLibrary();
         break;
-      case 'subscriptions':
-        renderSubscriptions();
+      case 'mocks':
+        renderMocks();
         break;
       case 'settings':
         renderSettings();
