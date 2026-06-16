@@ -2,6 +2,7 @@ import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { SyncManager } from './sync.js';
 import { collection, addDoc, arrayUnion, doc, getDoc, setDoc, updateDoc, serverTimestamp, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { execute as tursoExecute } from './src/db/client.js';
 
 // ── Safe DOM helpers - prevent null reference errors on mobile ──
 const $id = (id) => document.getElementById(id);
@@ -1254,28 +1255,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Also save to Turso (mock path)
                 try {
-                    if (typeof window.__executeTurso !== 'function') {
-                        try {
-                            await import('./src/db/client.js');
-                        } catch(e) {
-                            console.warn('Turso client load failed:', e);
-                        }
-                    }
-                    if (typeof window.__executeTurso === 'function') {
-                        const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-                        const mockCourseList = examState.subjects?.map(s => s.title).join(', ') || 'Mock Exam';
-                        const mockGrade2 = finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F';
-                        await window.__executeTurso(
-                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, is_mock, corrections, created_at)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                            [resultId, currentUser.uid, examState.quizId || '', mockCourseList, finalScore, 100, mockGrade2, correct, total, examState.timeTaken || 0, 0, 0, 1, JSON.stringify([]), new Date().toISOString()]
-                        );
-                        // Update user streak in Turso for mocks too
-                        await window.__executeTurso(
-                            `UPDATE users SET streak = ?, highest_streak = ?, last_exam_date = ? WHERE id = ?`,
-                            [streakUpdate.streak, streakUpdate.highestStreak, streakUpdate.lastExamDate || null, currentUser.uid]
-                        );
-                    }
+                    const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+                    const mockCourseList = examState.subjects?.map(s => s.title).join(', ') || 'Mock Exam';
+                    const mockGrade2 = finalScore >= 80 ? 'A' : finalScore >= 65 ? 'B' : finalScore >= 50 ? 'C' : finalScore >= 40 ? 'D' : 'F';
+                    await tursoExecute(
+                        `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, is_mock, corrections, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [resultId, currentUser.uid, examState.quizId || '', mockCourseList, finalScore, 100, mockGrade2, correct, total, examState.timeTaken || 0, 0, 0, 1, JSON.stringify([]), new Date().toISOString()]
+                    );
+                    // Update user streak in Turso for mocks too
+                    await tursoExecute(
+                        `UPDATE users SET streak = ?, highest_streak = ?, last_exam_date = ? WHERE id = ?`,
+                        [streakUpdate.streak, streakUpdate.highestStreak, streakUpdate.lastExamDate || null, currentUser.uid]
+                    );
                 } catch(e) {
                     console.warn('Turso mock save failed:', e);
                 }
@@ -1343,26 +1335,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Also save to Turso (non-mock path)
                 try {
-                    if (typeof window.__executeTurso !== 'function') {
-                        try {
-                            await import('./src/db/client.js');
-                        } catch(e) {
-                            console.warn('Turso client load failed:', e);
-                        }
-                    }
-                    if (typeof window.__executeTurso === 'function') {
-                        const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-                        await window.__executeTurso(
-                            `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, is_mock, corrections, created_at)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                            [resultId, currentUser.uid, examState.quizId || '', courseTitle, finalScore, 100, grade, correct, total, examState.timeTaken || 0, exaChange || 0, isRetake ? 1 : 0, 0, JSON.stringify(corrections || []), new Date().toISOString()]
-                        );
-                        // Update user's EXA rating and streak in Turso
-                        await window.__executeTurso(
-                            `UPDATE users SET exa_rating = ?, streak = ?, highest_streak = ?, last_exam_date = ? WHERE id = ?`,
-                            [newExa, streakUpdate.streak, streakUpdate.highestStreak, streakUpdate.lastExamDate || null, currentUser.uid]
-                        );
-                    }
+                    const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+                    await tursoExecute(
+                        `INSERT INTO user_results (id, user_id, quiz_id, course, score, total, grade, correct, total_questions, time_taken, exa_change, is_retake, is_mock, corrections, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [resultId, currentUser.uid, examState.quizId || '', courseTitle, finalScore, 100, grade, correct, total, examState.timeTaken || 0, exaChange || 0, isRetake ? 1 : 0, 0, JSON.stringify(corrections || []), new Date().toISOString()]
+                    );
+                    // Update user's EXA rating and streak in Turso
+                    await tursoExecute(
+                        `UPDATE users SET exa_rating = ?, streak = ?, highest_streak = ?, last_exam_date = ? WHERE id = ?`,
+                        [newExa, streakUpdate.streak, streakUpdate.highestStreak, streakUpdate.lastExamDate || null, currentUser.uid]
+                    );
                 } catch(e) {
                     console.warn('Turso save failed:', e);
                 }
