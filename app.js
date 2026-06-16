@@ -5555,10 +5555,19 @@ window.adminPromptNotification = function(userId) {
             // Try live data first, fall back to direct read for students
             let allEvents = (window._liveData && window._liveData.subscriptionEvents) || [];
             let events = [...allEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-            // Student fallback: read directly if live data empty (rules might not allow _admin_panel access)
+            // Student fallback: read from Turso directly (bypasses sync cache)
             if (!events.length) {
-                const directEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc'), limit(3)]) || [];
-                events = [...directEvents];
+                try {
+                    if (typeof window.__execTurso !== 'function') {
+                        await import('./src/db/client.js');
+                    }
+                    const freshRows = await window.__execTurso('SELECT id, title, created_at FROM subscription_events ORDER BY created_at DESC LIMIT 3') || [];
+                    const directEvents = freshRows.map(r => ({ id: r.id, title: r.title || '', createdAt: r.created_at || null }));
+                    events = [...directEvents];
+                    if (window._liveData) window._liveData.subscriptionEvents = events;
+                } catch(e) {
+                    console.warn('Student mock events fallback failed:', e);
+                }
             }
 
             // Check registrations for the current user
