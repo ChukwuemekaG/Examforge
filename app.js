@@ -6648,9 +6648,56 @@ window.adminPromptNotification = function(userId) {
     };
 
 
-    function renderResults() {
+    async function renderResults() {
+        // Load results directly from Turso (bypass cached userData)
+        let displayResults = (userData.recentResults || []).slice(0, 50);
+
+        // Try fresh Turso query
+        try {
+            // Ensure Turso client is loaded
+            if (typeof window.__execTurso !== 'function') {
+                try {
+                    await import('./src/db/client.js');
+                } catch(e) {}
+            }
+            // Clean up dummy data first
+            try {
+                await window.__execTurso(
+                    'DELETE FROM user_results WHERE user_id = ? AND (score = 0 OR score IS NULL OR course = ? OR course IS NULL)',
+                    [auth.currentUser.uid, '']
+                );
+            } catch(e) {}
+
+            const freshRows = await window.__execTurso(
+                'SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+                [auth.currentUser.uid]
+            );
+
+            if (freshRows && freshRows.length > 0) {
+                displayResults = freshRows.map(r => ({
+                    id: r.id,
+                    quizId: r.quiz_id || '',
+                    course: r.course || '',
+                    date: r.created_at || '',
+                    score: r.score || 0,
+                    total: r.total || 100,
+                    grade: r.grade || 'F',
+                    correct: r.correct || 0,
+                    totalQuestions: r.total_questions || 0,
+                    timeTaken: r.time_taken || 0,
+                    exaChange: r.exa_change || 0,
+                    isRetake: r.is_retake === 1,
+                    isMock: r.is_mock === 1,
+                    corrections: typeof r.corrections === 'string' ? JSON.parse(r.corrections || '[]') : (r.corrections || [])
+                })).filter(r => r.score > 0);
+                // Update userData for other tabs
+                userData.recentResults = displayResults;
+            }
+        } catch(e) {
+            console.warn('Direct Turso query failed:', e);
+        }
+
         const analytics = getAnalytics();
-        const displayResults = (userData.recentResults || []).slice(0, 50);
 
         // Internal helper to derive average letter grade
         const getAvgGrade = (avg) => {
