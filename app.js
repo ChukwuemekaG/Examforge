@@ -267,9 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 inbox = inboxRows || [];
             } catch(e) {}
             try {
+                // Clean up migration artifact rows (empty score or course)
+                try {
+                    await window.__execTurso('DELETE FROM user_results WHERE user_id = ? AND (score = 0 OR score IS NULL OR course = ? OR course IS NULL)', [uid, '']);
+                } catch(e) {}
                 const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [uid]);
                 recentResults = (resultRows || [])
-                    .filter(r => r.score > 0 || (r.course && r.course !== 'Exam' && r.course !== ''))
+                    .filter(r => r.score > 0)
                     .map(r => ({
                     id: r.id,
                     quizId: r.quiz_id || '',
@@ -967,9 +971,13 @@ function setupAdminListeners() {
                     // Results are in separate Turso table — load them asynchronously
                     if (typeof window.__execTurso === 'function') {
                         try {
+                            // Clean up migration artifact rows (empty score or course)
+                            try {
+                                await window.__execTurso('DELETE FROM user_results WHERE user_id = ? AND (score = 0 OR score IS NULL OR course = ? OR course IS NULL)', [user.uid, '']);
+                            } catch(e) {}
                             const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [user.uid]);
                             userData.recentResults = (resultRows || [])
-                                .filter(r => r.score > 0 || (r.course && r.course !== 'Exam' && r.course !== ''))
+                                .filter(r => r.score > 0)
                                 .map(r => ({
                                 id: r.id,
                                 quizId: r.quiz_id || '',
@@ -5500,9 +5508,13 @@ window.adminPromptNotification = function(userId) {
                 // Load results from separate Turso table
                 if (typeof window.__execTurso === 'function') {
                     try {
+                        // Clean up migration artifact rows (empty score or course)
+                        try {
+                            await window.__execTurso('DELETE FROM user_results WHERE user_id = ? AND (score = 0 OR score IS NULL OR course = ? OR course IS NULL)', [auth.currentUser.uid, '']);
+                        } catch(e) {}
                         const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [auth.currentUser.uid]);
                         userData.recentResults = (resultRows || [])
-                            .filter(r => r.score > 0 || (r.course && r.course !== 'Exam' && r.course !== ''))
+                            .filter(r => r.score > 0)
                             .map(r => ({
                             id: r.id,
                             quizId: r.quiz_id || '',
