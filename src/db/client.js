@@ -2,15 +2,13 @@
 
 const TURSO_PROXY_URL = window.__TURSO_PROXY_URL || 'https://examforge-q88x.onrender.com/v2/pipeline';
 
+// Read tracking — no longer enforced (no Firebase quota concerns)
 window.__efReads = 0;
-window.__efReadBudget = 10;
 window.__efWrites = 0;
 
 export function trackRead(label) {
-  if (window.__efReads >= window.__efReadBudget) return true;
   window.__efReads++;
-  console.log(`[DB] Read ${window.__efReads}/${window.__efReadBudget}: ${label}`);
-  return false;
+  return false; // Never block reads
 }
 
 export function trackWrite() { window.__efWrites++; }
