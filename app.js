@@ -238,12 +238,41 @@ document.addEventListener('DOMContentLoaded', () => {
     window._getUserData = async function(uid) {
         const userDoc = await sync.doc('users/' + uid);
         if (!userDoc) return { profile: null, schedule: [], inbox: [], recentResults: [] };
-        return {
-            profile: userDoc,
-            schedule: userDoc.schedule || [],
-            inbox: userDoc.inbox || [],
-            recentResults: userDoc.recentResults || []
+
+        // Map snake_case Turso fields to camelCase
+        const profile = {
+            id: userDoc.id,
+            email: userDoc.email || '',
+            displayName: userDoc.display_name || userDoc.displayName || '',
+            username: userDoc.username || '',
+            provider: userDoc.provider || '',
+            exaRating: userDoc.exa_rating ?? userDoc.exaRating ?? 800,
+            streak: userDoc.streak ?? 0,
+            highestStreak: userDoc.highest_streak ?? userDoc.highestStreak ?? 0,
+            lastExamDate: userDoc.last_exam_date || userDoc.lastExamDate || null,
+            role: userDoc.role || 'student',
+            fcmToken: userDoc.fcm_token || '',
+            createdAt: userDoc.created_at || userDoc.createdAt || null
         };
+
+        // Fetch from separate Turso tables (gracefully fall back if __execTurso unavailable)
+        let schedule = [], inbox = [], recentResults = [];
+        if (typeof window.__execTurso === 'function') {
+            try {
+                const schedRows = await window.__execTurso('SELECT * FROM user_schedule WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', [uid]);
+                schedule = schedRows || [];
+            } catch(e) {}
+            try {
+                const inboxRows = await window.__execTurso('SELECT * FROM user_inbox WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [uid]);
+                inbox = inboxRows || [];
+            } catch(e) {}
+            try {
+                const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [uid]);
+                recentResults = resultRows || [];
+            } catch(e) {}
+        }
+
+        return { profile, schedule, inbox, recentResults };
     };
 
     /**
@@ -910,13 +939,25 @@ function setupAdminListeners() {
                 // Immediately populate userData if user doc exists
                 if (userDataFromSync) {
                     userData.stats = {
-                        exaRating: userDataFromSync.exaRating ?? 800,
+                        exaRating: userDataFromSync.exa_rating ?? userDataFromSync.exaRating ?? 800,
                         streak: userDataFromSync.streak ?? 0,
-                        highestStreak: userDataFromSync.highestStreak ?? 0,
-                        lastExamDate: userDataFromSync.lastExamDate || null,
-                        role: userDataFromSync.role || 'student'
+                        highestStreak: userDataFromSync.highest_streak ?? userDataFromSync.highestStreak ?? 0,
+                        lastExamDate: userDataFromSync.last_exam_date || userDataFromSync.lastExamDate || null,
+                        role: userDataFromSync.role || 'student',
+                        displayName: userDataFromSync.display_name || userDataFromSync.displayName || '',
+                        username: userDataFromSync.username || ''
                     };
-                    userData.recentResults = userDataFromSync.recentResults || [];
+                    // Results are in separate Turso table — load them asynchronously
+                    if (typeof window.__execTurso === 'function') {
+                        try {
+                            const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [user.uid]);
+                            userData.recentResults = resultRows || [];
+                        } catch(e) {
+                            userData.recentResults = [];
+                        }
+                    } else {
+                        userData.recentResults = [];
+                    }
                     // Show admin nav if user is admin
                     const masterNav = document.getElementById('nav-master');
                     if (masterNav) {
@@ -974,13 +1015,12 @@ function setupAdminListeners() {
                     if (!data) return;
                     userData.stats = {
                         ...userData.stats,
-                        exaRating: data.exaRating ?? 800,
+                        exaRating: data.exa_rating ?? data.exaRating ?? 800,
                         streak: data.streak ?? 0,
-                        highestStreak: data.highestStreak ?? 0,
-                        lastExamDate: data.lastExamDate || null,
+                        highestStreak: data.highest_streak ?? data.highestStreak ?? 0,
+                        lastExamDate: data.last_exam_date || data.lastExamDate || null,
                         role: data.role || 'student'
                     };
-                    userData.recentResults = data.recentResults || [];
                     // Show admin nav if user is admin
                     const masterNav = document.getElementById('nav-master');
                     if (masterNav) {
@@ -5417,13 +5457,23 @@ window.adminPromptNotification = function(userId) {
                 // Map flat Firestore doc to userData structure
                 userData.stats = {
                     ...userData.stats,
-                    exaRating: freshData.exaRating ?? 800,
+                    exaRating: freshData.exa_rating ?? freshData.exaRating ?? 800,
                     streak: freshData.streak ?? 0,
-                    highestStreak: freshData.highestStreak ?? 0,
-                    lastExamDate: freshData.lastExamDate || null,
+                    highestStreak: freshData.highest_streak ?? freshData.highestStreak ?? 0,
+                    lastExamDate: freshData.last_exam_date || freshData.lastExamDate || null,
                     role: freshData.role || 'student'
                 };
-                userData.recentResults = freshData.recentResults || [];
+                // Load results from separate Turso table
+                if (typeof window.__execTurso === 'function') {
+                    try {
+                        const resultRows = await window.__execTurso('SELECT * FROM user_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', [auth.currentUser.uid]);
+                        userData.recentResults = resultRows || [];
+                    } catch(e) {
+                        userData.recentResults = [];
+                    }
+                } else {
+                    userData.recentResults = [];
+                }
             }
             // Override with latest exam result from localStorage (covers quiz → dashboard flow)
             try {
