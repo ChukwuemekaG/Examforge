@@ -2019,7 +2019,7 @@ function mcRenderUserGrid(users) {
     grid.innerHTML = users.map(u => {
         const name = u.displayName || u.username || u.email?.split('@')[0] || 'Unknown';
         const handle = u.username || '—';
-        const exaRating = u.exaRating ?? 800;
+        const exaRating = u.exa_rating ?? u.exaRating ?? 800;
         const parts = name.trim().split(' ');
         const initials = parts.length > 1 ? (parts[0][0]+parts[parts.length-1][0]).toUpperCase() : name.substring(0,2).toUpperCase();
         const isAdmin = u.role === 'admin';
@@ -4823,7 +4823,7 @@ window.aupSwitch = function(tab) {
                 <div class="aup-section-title">System</div>
                 <div class="aup-2col">
                     <div class="aup-field"><label>EXA Rating</label>
-                        <input id="aup-rating" type="number" value="${u.exaRating||800}" min="0" max="9999"></div>
+                        <input id="aup-rating" type="number" value="${u.exa_rating ?? u.exaRating || 800}" min="0" max="9999"></div>
                     <div class="aup-field"><label>Role</label>
                         <select id="aup-role">
                             <option value="student" ${u.role==='student'||!u.role?'selected':''}>Student</option>
@@ -4998,18 +4998,18 @@ window.aupSaveProfile = async function() {
     const btn = document.getElementById('aup-save-btn');
     btn.disabled = true; btn.textContent = 'Saving…';
     try {
-        await updateDoc(doc(db,'users',uid), {
-            displayName:   document.getElementById('aup-displayName').value.trim(),
-            username:      document.getElementById('aup-username').value.toLowerCase().trim(),
-            exaRating:     parseInt(document.getElementById('aup-rating').value)||800,
-            role:          document.getElementById('aup-role').value,
-            streak:        parseInt(document.getElementById('aup-streak').value)||0,
-            highestStreak: parseInt(document.getElementById('aup-hstreak').value)||0,
-            subscriptions: {
-                dailyQuiz: document.getElementById('aup-sub-daily').checked,
-                advice:    document.getElementById('aup-sub-advice').checked,
-            }
-        });
+        await window.__execTurso(
+            `UPDATE users SET display_name = ?, username = ?, exa_rating = ?, role = ?, streak = ?, highest_streak = ? WHERE id = ?`,
+            [
+                document.getElementById('aup-displayName').value.trim(),
+                document.getElementById('aup-username').value.toLowerCase().trim(),
+                parseInt(document.getElementById('aup-rating').value) || 800,
+                document.getElementById('aup-role').value,
+                parseInt(document.getElementById('aup-streak').value) || 0,
+                parseInt(document.getElementById('aup-hstreak').value) || 0,
+                uid
+            ]
+        );
         btn.innerHTML = '<span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">check_circle</span> Saved!';
         btn.style.background = '#16a34a';
         setTimeout(()=>{ btn.disabled=false; btn.innerHTML='<span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">save</span> Save Profile Changes'; btn.style.background=''; }, 2500);

@@ -1145,7 +1145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let exaChange = computeExaChange(finalScore, examState.timeTaken, examState.timeLimit);
             if (isRetake && exaChange > 5) exaChange = 5;
 
-            const oldExa = existingData.exa_rating ?? existingData.exaRating ?? 800;
+            const oldExa = Number(existingData.exa_rating ?? existingData.exaRating ?? 800);
             const newExa = Math.max(400, oldExa + exaChange); 
             const streakUpdate = computeNewStreak(existingData);
 
