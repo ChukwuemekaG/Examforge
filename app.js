@@ -1723,7 +1723,10 @@ function mcRenderUsersTab() {
     panel.innerHTML = `
         <div class="mc-section-hdr">
             <span class="mc-section-title">Student Registry</span>
-            <input class="mc-search" id="mc-user-search" placeholder="Search by name, username or email…" style="max-width:320px;width:100%;">
+            <div style="position:relative;max-width:320px;width:100%;">
+                <input class="mc-search" id="mc-user-search" placeholder="Search by name, username or email…" style="width:100%;" autocomplete="off">
+                <div id="mc-user-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:2px solid var(--border);border-radius:8px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.15);"></div>
+            </div>
         </div>
         <div id="mc-user-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
             <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
@@ -1735,6 +1738,7 @@ function mcRenderUsersTab() {
 
     let allUsers = [];
     let displayLimit = 50;
+    let selectedUserId = null;
 
     // ── Load ALL users on mount ────────────────────────────
     async function loadAllUsers() {
@@ -1763,13 +1767,21 @@ function mcRenderUsersTab() {
         const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
         // Smart filter: match by name, email, or username (case-insensitive, partial)
-        const filtered = q
+        let filtered = q
             ? allUsers.filter(u =>
                 (u.displayName||'').toLowerCase().includes(q) ||
                 (u.username||'').toLowerCase().includes(q) ||
                 (u.email||'').toLowerCase().includes(q)
               )
             : allUsers;
+        
+        // If a specific user was selected from suggestions, put them first
+        if (selectedUserId) {
+            const selected = filtered.find(u => u.id === selectedUserId);
+            if (selected) {
+                filtered = [selected, ...filtered.filter(u => u.id !== selectedUserId)];
+            }
+        }
 
         const sliced = filtered.slice(0, displayLimit);
 
@@ -1802,11 +1814,79 @@ function mcRenderUsersTab() {
         }
     }
 
-    // ── Real-time search on input ───────────────────────────
+    // ── Smart search with suggestions ────────────────────────
+    let suggestionsBox = document.getElementById('mc-user-suggestions');
     const searchInput = document.getElementById('mc-user-search');
+    
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            selectedUserId = null;
+            
+            if (val.length === 0) {
+                suggestionsBox.style.display = 'none';
+                renderFilteredUsers();
+                return;
+            }
+            
+            // Build suggestions (top 8 matches)
+            const matches = allUsers
+                .filter(u =>
+                    (u.displayName||'').toLowerCase().includes(val) ||
+                    (u.username||'').toLowerCase().includes(val) ||
+                    (u.email||'').toLowerCase().includes(val)
+                )
+                .slice(0, 8);
+            
+            if (matches.length === 0) {
+                suggestionsBox.style.display = 'none';
+                renderFilteredUsers();
+                return;
+            }
+            
+            suggestionsBox.innerHTML = matches.map(u => {
+                const name = u.displayName || u.username || u.email?.split('@')[0] || 'Unknown';
+                const email = u.email || '';
+                const matchField = (u.displayName||'').toLowerCase().includes(val) ? u.displayName :
+                                  (u.username||'').toLowerCase().includes(val) ? `@${u.username}` :
+                                  u.email;
+                const exa = u.exaRating ?? 800;
+                return `<div class="mc-suggestion-item" data-id="${u.id}" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);transition:background 0.15s;">
+                    <div style="width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.75rem;flex-shrink:0;">${name.substring(0,2).toUpperCase()}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;font-size:0.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${email} · EXA: ${exa}</div>
+                    </div>
+                    <span style="font-size:0.65rem;color:var(--brand);font-weight:600;">${matchField === u.displayName ? 'Name' : matchField.startsWith('@') ? 'Username' : 'Email'}</span>
+                </div>`;
+            }).join('');
+            suggestionsBox.style.display = 'block';
+            
+            // Add click handlers to suggestion items
+            suggestionsBox.querySelectorAll('.mc-suggestion-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    selectedUserId = el.dataset.id;
+                    suggestionsBox.style.display = 'none';
+                    searchInput.value = allUsers.find(u => u.id === selectedUserId)?.displayName || '';
+                    renderFilteredUsers();
+                });
+                // Hover effect
+                el.addEventListener('mouseenter', () => el.style.background = 'var(--bg-inset)');
+                el.addEventListener('mouseleave', () => el.style.background = '');
+            });
+            
+            // Still update the grid as they type
             renderFilteredUsers();
+        });
+        
+        // Close suggestions on blur
+        searchInput.addEventListener('blur', () => {
+            setTimeout(() => { suggestionsBox.style.display = 'none'; }, 200);
+        });
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.trim().length > 0 && suggestionsBox.children.length > 0) {
+                suggestionsBox.style.display = 'block';
+            }
         });
     }
 
@@ -2316,7 +2396,9 @@ window.mcViewDailyAdviceDetails = async function(id) {
             </div>
         </div>`;
     document.body.appendChild(overlay);
-    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    overlay.onclick = e => { if (e.target === overlay) { document.body.style.overflow = ''; document.documentElement.style.overflow = ''; overlay.remove(); } };
 
     try {
         const adv = await sync.doc('daily_advices/' + id);
@@ -3094,7 +3176,9 @@ window.mcViewDailyQuizDetails = async function(dqid) {
             </div>
         </div>`;
     document.body.appendChild(overlay);
-    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    overlay.onclick = e => { if (e.target === overlay) { document.body.style.overflow = ''; document.documentElement.style.overflow = ''; overlay.remove(); } };
         // Add cleanup for onSnapshot listener
     overlay.addEventListener('remove', () => {
         if (window._attemptsListener) { try { window._attemptsListener(); } catch(e) {} window._attemptsListener = null; }
@@ -4447,7 +4531,7 @@ window.openAdminUserModal = async function(uid) {
             </style>
             <!-- Header -->
             <div style="display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
-                <button onclick="document.getElementById('admin-user-panel').remove()"
+                <button onclick="document.body.style.overflow='';document.documentElement.style.overflow='';document.getElementById('admin-user-panel').remove()"
                     style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                     <span class="material-icons-round">arrow_back</span>
                 </button>
@@ -4456,7 +4540,7 @@ window.openAdminUserModal = async function(uid) {
                     <div id="aup-name" style="font-weight:900;font-size:1.1rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Loading…</div>
                     <div id="aup-sub" style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
                 </div>
-                <button onclick="document.getElementById('admin-user-panel').remove()"
+                <button onclick="document.body.style.overflow='';document.documentElement.style.overflow='';document.getElementById('admin-user-panel').remove()"
                     style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                     <span class="material-icons-round">close</span>
                 </button>
@@ -4483,7 +4567,7 @@ window.openAdminUserModal = async function(uid) {
         const userData_full = await window._getUserData(uid);
         const userData = userData_full.profile;
 
-        if (!userData) { overlay.remove(); alert('User not found.'); return; }
+        if (!userData) { document.body.style.overflow = ''; document.documentElement.style.overflow = ''; overlay.remove(); alert('User not found.'); return; }
 
         // Sort schedule and notifications by timestamp descending
         const results  = userData_full.recentResults || [];
@@ -4530,6 +4614,8 @@ window.openAdminUserModal = async function(uid) {
 
     } catch(e) {
         console.error(e);
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
         overlay.remove();
         alert('Failed to load user: ' + e.message);
     }
