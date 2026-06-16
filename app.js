@@ -5286,18 +5286,17 @@ window.mcDeleteCourse = function(courseId, courseTitle) {
         "YES, DELETE IT",
         async () => {
             try {
-                // Delete all topics under this course first
-                const topics = await sync.collection('unicourses/' + courseId + '/topics') || [];
-                const batch = writeBatch(db);
-                topics.forEach(t => {
-                    batch.delete(doc(db, 'unicourses', courseId, 'topics', t.id));
-                });
-                // Delete the main course doc
-                batch.delete(doc(db, 'unicourses', courseId));
-                await batch.commit();
-                // No need to sync — course is being deleted
-                
-                // Meta app updates removed — course tracking via local JSON only
+                // Delete from Turso (courses, topics, questions)
+                if (typeof window.__execTurso === 'function') {
+                    await window.__execTurso('DELETE FROM questions WHERE course_id = ?', [courseId]);
+                    await window.__execTurso('DELETE FROM topics WHERE course_id = ?', [courseId]);
+                    await window.__execTurso('DELETE FROM courses WHERE id = ?', [courseId]);
+                }
+
+                // Update in-memory courses list
+                if (window._liveData && window._liveData.courses) {
+                    window._liveData.courses = window._liveData.courses.filter(c => c.id !== courseId);
+                }
 
                 window.showEFModal("Course Deleted", `The course "${courseTitle}" has been deleted successfully.`, "OKAY", null, true);
                 mcRenderCoursesTab();

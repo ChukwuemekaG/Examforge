@@ -1090,9 +1090,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function computeNewStreak(existingData) {
         const todayStr = new Date().toISOString().split('T')[0]; 
-        const lastDate = existingData.lastExamDate || null;
+        const lastDate = existingData.last_exam_date || existingData.lastExamDate || null;
         if (!lastDate) return { streak: 1, highestStreak: 1, lastExamDate: todayStr };
-        if (lastDate === todayStr) return { streak: existingData.streak || 1, highestStreak: existingData.highestStreak || 1, lastExamDate: todayStr };
+        if (lastDate === todayStr) return { streak: existingData.streak || 1, highestStreak: existingData.highest_streak ?? existingData.highestStreak ?? 1, lastExamDate: todayStr };
 
         const lastDateObj = new Date(lastDate);
         lastDateObj.setHours(12, 0, 0, 0); 
@@ -1103,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
         let newStreak = (diffDays === 1) ? (existingData.streak || 0) + 1 : 1;
-        const newHighest = Math.max(newStreak, existingData.highestStreak || 0);
+        const newHighest = Math.max(newStreak, existingData.highest_streak ?? existingData.highestStreak ?? 0);
         return { streak: newStreak, highestStreak: newHighest, lastExamDate: todayStr };
     }
 
@@ -1145,7 +1145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let exaChange = computeExaChange(finalScore, examState.timeTaken, examState.timeLimit);
             if (isRetake && exaChange > 5) exaChange = 5;
 
-            const oldExa = existingData.exaRating || 800;
+            const oldExa = existingData.exa_rating ?? existingData.exaRating ?? 800;
             const newExa = Math.max(400, oldExa + exaChange); 
             const streakUpdate = computeNewStreak(existingData);
 
@@ -1170,7 +1170,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 await setDoc(doc(db, "mock_exams", examState.quizId, "attempts", currentUser.uid), {
                     uid: currentUser.uid,
-                    displayName: currentUser.displayName || existingData.displayName || currentUser.email || 'Anonymous',
+                    displayName: currentUser.displayName || existingData.display_name || existingData.displayName || currentUser.email || 'Anonymous',
                     email: currentUser.email || 'No email',
                     score: finalScore,
                     correct: correct,
@@ -1297,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             completedBy: arrayUnion(currentUser.uid),
                             attempts: arrayUnion({
                                 uid: currentUser.uid,
-                                displayName: currentUser.displayName || existingData.displayName || currentUser.email || 'Anonymous',
+                                displayName: currentUser.displayName || existingData.display_name || existingData.displayName || currentUser.email || 'Anonymous',
                                 email: currentUser.email || 'No email',
                                 score: finalScore,
                                 correct: correct,
