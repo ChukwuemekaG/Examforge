@@ -1718,8 +1718,8 @@ async function renderMaster() {
             </button>
             <button class="mc-tab ${masterTab==='subevents'?'active':''}" onclick="window.mcSwitchTab('subevents')">
                 <span class="material-icons-round" style="font-size:0.9rem;vertical-align:middle;margin-right:4px;">event_available</span>
-                <span class="mc-tab-label">Subscription Events</span>
-                <span class="mc-tab-label-short">Events</span>
+                <span class="mc-tab-label">Mock Events</span>
+                <span class="mc-tab-label-short">Mocks</span>
             </button>
         </div>
  
@@ -7493,8 +7493,8 @@ window.mcRenderSubEventsTab = async function() {
         <div style="max-width:1100px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
             <div class="mc-section-hdr" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:3px solid var(--text);padding-bottom:10px;margin-bottom:8px;">
                 <div>
-                    <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.3rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Subscription Events</span>
-                    <div style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Manage dynamic registrations, subjects, and event-based mock exams.</div>
+                    <span class="mc-section-title" style="font-size:clamp(1rem,5vw,1.3rem);font-weight:900;text-transform:uppercase;color:var(--text);display:block;word-break:break-word;">Mock Events</span>
+                    <div style="font-size:0.78rem;font-weight:800;color:var(--text-muted);margin-top:4px;">Create and manage mock exams, subjects, and student registrations.</div>
                 </div>
                 <button class="btn btn-primary" onclick="window.mcOpenCreateSubEventModal()" style="font-weight:900;border:3px solid var(--text);padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:0.8rem;">
                     <span class="material-icons-round" style="font-size:1.1rem;vertical-align:middle;">add_circle</span> CREATE EVENT
@@ -7502,7 +7502,7 @@ window.mcRenderSubEventsTab = async function() {
             </div>
 
             <div>
-                <h2 style="font-weight:900;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Active Subscription Events</h2>
+                <h2 style="font-weight:900;font-size:1rem;text-transform:uppercase;color:var(--text);margin:0 0 10px 0;">Active Mock Events</h2>
                 <div id="mc-subevents-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
                     <div style="grid-column:1/-1;text-align:center;padding:56px;color:var(--text-muted);">
                         <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;margin-bottom:8px;">autorenew</span>
@@ -7521,14 +7521,28 @@ window.mcLoadSubEvents = async function() {
 
     try {
         // Events from _liveData
-        const events = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
+        let events = (window._liveData && window._liveData.subscriptionEvents) ? [...window._liveData.subscriptionEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)) : [];
+
+        // Admin fallback: read from Turso if live data is empty
+        if (!events.length) {
+            try {
+                const { orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                const directEvents = await sync.query('subscription_events', [orderBy('createdAt', 'desc')]) || [];
+                events = [...directEvents].sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+                // Also populate _liveData for future reads
+                if (window._liveData) window._liveData.subscriptionEvents = events;
+            } catch(e) {
+                console.warn('Fallback query failed:', e);
+            }
+        }
 
         if (events.length === 0) {
             grid.innerHTML = `
             <div style="grid-column:1/-1;text-align:center;padding:48px 24px;border:3px dashed var(--border);border-radius:12px;color:var(--text-muted);">
                 <span class="material-icons-round" style="font-size:3rem;margin-bottom:12px;opacity:0.35;">event_available</span>
-                <div style="font-weight:800;font-size:1.1rem;color:var(--text);margin-bottom:6px;">No Events Created</div>
-                <button class="btn btn-primary" onclick="window.mcOpenCreateSubEventModal()" style="font-size:0.75rem;padding:8px 16px;">Create Event</button>
+                <div style="font-weight:800;font-size:1.1rem;color:var(--text);margin-bottom:6px;">No Mock Events Yet</div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">Create your first mock event to get started.</div>
+                <button class="btn btn-primary" onclick="window.mcOpenCreateSubEventModal()" style="font-size:0.75rem;padding:8px 16px;">Create Mock Event</button>
             </div>`;
             return;
         }
