@@ -9,7 +9,7 @@ import {
     EmailAuthProvider,
     deleteUser
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, arrayUnion, arrayRemove, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { LocalCache } from './cache.js';
 import { SyncManager } from './sync.js';
 
@@ -384,8 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
-     * Syncs allQuestions + metadata from topics subcollection into the course doc.
-     * This ensures students can read 1 doc (the course doc) for all questions.
+     * Syncs course-level metadata (total_time_limit, flags) from topics into courses table.
      * Called after every topic/question CRUD operation.
      */
     window._syncCourseQuestions = async function(courseId) {
@@ -395,36 +394,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const topics = await window.__execTurso('SELECT * FROM topics WHERE course_id = ? ORDER BY sort_order ASC', [courseId]);
             if (!topics || !topics.length) {
-                // No topics — clear course-level fields
-                await updateDoc(doc(db, 'unicourses', courseId), {
-                    allQuestions: [],
-                    totalTimeLimit: 0,
-                    isStrict: false,
-                    isMock: false,
-                    isCorrection: true
-                });
+                // No topics — reset course-level fields
+                await window.__execTurso(
+                    'UPDATE courses SET total_time_limit = ?, is_strict = ?, is_mock = ?, is_correction = ?, topic_count = ? WHERE id = ?',
+                    [0, 0, 0, 1, 0, courseId]
+                );
                 return;
             }
             
-            let allQuestions = [];
             let totalTimeLimit = 0;
             let anyStrict = false, anyMock = false, anyNoCorrection = false;
             
             topics.forEach(t => {
-                if (t.questions) allQuestions.push(...t.questions);
-                totalTimeLimit += (t.timeLimit || 0);
-                if (t.isStrict) anyStrict = true;
-                if (t.isMock) anyMock = true;
-                if (t.isCorrection === false) anyNoCorrection = true;
+                totalTimeLimit += (t.time_limit || 0);
+                if (t.is_strict) anyStrict = true;
+                if (t.is_mock) anyMock = true;
+                if (t.is_correction === 0) anyNoCorrection = true;
             });
             
-            await updateDoc(doc(db, 'unicourses', courseId), {
-                allQuestions,
-                totalTimeLimit,
-                isStrict: anyStrict,
-                isMock: anyMock,
-                isCorrection: !anyNoCorrection
-            });
+            await window.__execTurso(
+                'UPDATE courses SET total_time_limit = ?, is_strict = ?, is_mock = ?, is_correction = ?, topic_count = ? WHERE id = ?',
+                [totalTimeLimit, anyStrict ? 1 : 0, anyMock ? 1 : 0, anyNoCorrection ? 0 : 1, topics.length, courseId]
+            );
 
             // Also update _admin_panel/data courses section
             const section = (window._liveData && window._liveData.courses) ? [...window._liveData.courses] : [];
@@ -773,10 +764,14 @@ function setupAdminListeners() {
         if (!courseId || !topicId || !timeLimit) return alert("Please fill all fields.");
 
         try {
-            await setDoc(doc(db, "unicourses", courseId, "topics", topicId), {
-                timeLimit: timeLimit,
-                questions: [] 
-            });
+            // Ensure Turso client is loaded
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            await window.__execTurso(
+                'INSERT INTO topics (id, course_id, title, time_limit, is_strict, is_mock, is_correction, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [topicId, courseId, topicId, timeLimit, 0, 0, 1, 0]
+            );
             alert(`Topic ${topicId} added to ${courseId}!`);
             loadCourseBrowser();
         } catch (e) {
@@ -808,8 +803,15 @@ function setupAdminListeners() {
         };
 
         try {
-            const topicRef = doc(db, "unicourses", courseId, "topics", topicId);
-            await updateDoc(topicRef, { questions: arrayUnion(newQuestion) });
+            // Ensure Turso client is loaded
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            const newQId = 'q_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+            await window.__execTurso(
+                'INSERT INTO questions (id, topic_id, course_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [newQId, topicId, courseId, newQuestion.question, newQuestion.options[0], newQuestion.options[1], newQuestion.options[2], newQuestion.options[3], newQuestion.correctIndex, newQuestion.explanation, 0]
+            );
             alert("Question added successfully!");
         } catch (e) {
             console.error(e);
@@ -4077,15 +4079,14 @@ window.mcOpenCreateTopicModal = function(courseId) {
         const timeLimit = parseInt(document.getElementById('mc-new-topic-time').value) || 40;
         if (!id) return alert('Topic ID is required.');
         try {
-            await setDoc(doc(db,'unicourses',courseId,'topics',id), {
-                title: title || id,
-                timeLimit,
-                isStrict:     document.getElementById('mc-tog-strict').checked,
-                isMock:       document.getElementById('mc-tog-mock').checked,
-                isCorrection: !document.getElementById('mc-tog-nocorrection').checked,
-                isPrivate:    document.getElementById('mc-tog-private').checked,
-                questions: []
-            });
+            // Ensure Turso client is loaded
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
+            }
+            await window.__execTurso(
+                'INSERT INTO topics (id, course_id, title, time_limit, is_strict, is_mock, is_correction, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [id, courseId, title || id, timeLimit, document.getElementById('mc-tog-strict').checked ? 1 : 0, document.getElementById('mc-tog-mock').checked ? 1 : 0, !document.getElementById('mc-tog-nocorrection').checked ? 1 : 0, 0]
+            );
                 // Sync course doc with all questions
                 window._syncCourseQuestions(courseId).catch(() => {});
             overlay.remove();
@@ -4165,10 +4166,11 @@ window.mcOpenCreateQuestionModal = function(courseId, topicId) {
                 correctIndex: r.correct_index,
                 explanation: r.explanation || ''
             }));
-            const updatedQuestions = [...existingQs, newQ];
-            await setDoc(doc(db, 'unicourses', courseId, 'topics', topicId),
-                { questions: updatedQuestions },
-                { merge: true });
+            const newQId = 'q_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+            await window.__execTurso(
+                'INSERT INTO questions (id, topic_id, course_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [newQId, topicId, courseId, newQ.question, newQ.options[0], newQ.options[1], newQ.options[2], newQ.options[3], newQ.correctIndex, newQ.explanation, existingQs.length]
+            );
                 // Sync course doc with all questions
                 window._syncCourseQuestions(courseId).catch(() => {});
             overlay.remove();
@@ -4253,14 +4255,10 @@ window.mcOpenEditTopicModal = async function(courseId, topicId) {
         const btn = document.getElementById('mc-update-topic-btn');
         btn.disabled = true; btn.textContent = 'Saving…';
         try {
-            await updateDoc(doc(db,'unicourses',courseId,'topics',topicId), {
-                title,
-                timeLimit,
-                isStrict:     document.getElementById('mc-tog-strict').checked,
-                isMock:       document.getElementById('mc-tog-mock').checked,
-                isCorrection: !document.getElementById('mc-tog-nocorrection').checked,
-                isPrivate:    document.getElementById('mc-tog-private').checked,
-            });
+            await window.__execTurso(
+                'UPDATE topics SET title = ?, time_limit = ?, is_strict = ?, is_mock = ?, is_correction = ? WHERE id = ? AND course_id = ?',
+                [title, timeLimit, document.getElementById('mc-tog-strict').checked ? 1 : 0, document.getElementById('mc-tog-mock').checked ? 1 : 0, !document.getElementById('mc-tog-nocorrection').checked ? 1 : 0, topicId, courseId]
+            );
                 // Sync course doc with all questions
                 window._syncCourseQuestions(courseId).catch(() => {});
             overlay.remove();
@@ -4342,21 +4340,20 @@ window.mcOpenEditQuestionModal = async function(courseId, topicId, questionIndex
         const btn = document.getElementById('mc-update-q-btn');
         btn.disabled = true; btn.textContent = 'Saving…';
         try {
-            // Read latest questions array, splice the edited one in, write back
-            const tRef = doc(db,'unicourses',courseId,'topics',topicId);
+            // Read latest questions to get the target question ID
             if (typeof window.__execTurso !== 'function') {
                 await import('./src/db/client.js');
             }
             const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
-            const qs = qRows.map(r => ({
-                id: r.id,
-                question: r.question,
-                options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
-                correctIndex: r.correct_index,
-                explanation: r.explanation || ''
-            }));
-            qs[questionIndex] = { ...qs[questionIndex], question, options, correctIndex, explanation };
-            await updateDoc(tRef, { questions: qs });
+            const targetQ = qRows[questionIndex];
+            if (!targetQ) {
+                btn.disabled = false; btn.textContent = 'Save Changes';
+                return alert('Question not found.');
+            }
+            await window.__execTurso(
+                'UPDATE questions SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_index = ?, explanation = ? WHERE id = ?',
+                [question, options[0], options[1], options[2], options[3], correctIndex, explanation, targetQ.id]
+            );
                 // Sync course doc with all questions
                 window._syncCourseQuestions(courseId).catch(() => {});
                     overlay.remove();
@@ -4713,8 +4710,13 @@ window.mcOpenBulkImportModal = function(courseId, topicId) {
                 id: Date.now() + Math.floor(Math.random() * 1e6)
             }));
 
-            const tRef = doc(db, 'unicourses', courseId, 'topics', topicId);
-            await updateDoc(tRef, { questions: [...existing, ...stamped] });
+            // Insert each question as its own row
+            for (const sq of stamped) {
+                await window.__execTurso(
+                    'INSERT INTO questions (id, topic_id, course_id, question, option_a, option_b, option_c, option_d, correct_index, explanation, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    ['q_' + sq.id.toString(36), topicId, courseId, sq.question, sq.options[0] || '', sq.options[1] || '', sq.options[2] || '', sq.options[3] || '', sq.correctIndex, sq.explanation || '', existing.length + stamped.indexOf(sq)]
+                );
+            }
                 // Sync course doc with all questions
                 window._syncCourseQuestions(courseId).catch(() => {});
             overlay.remove();
@@ -5374,15 +5376,10 @@ window.mcDeleteQuestion = async function(courseId, topicId, questionIndex) {
             await import('./src/db/client.js');
         }
         const qRows = await window.__execTurso('SELECT * FROM questions WHERE topic_id = ? ORDER BY sort_order ASC', [topicId]) || [];
-        const questions = qRows.map(r => ({
-            id: r.id,
-            question: r.question,
-            options: [r.option_a || '', r.option_b || '', r.option_c || '', r.option_d || ''],
-            correctIndex: r.correct_index,
-            explanation: r.explanation || ''
-        }));
-        questions.splice(questionIndex, 1);
-        await updateDoc(doc(db,'unicourses',courseId,'topics',topicId), { questions });
+        const targetQ = qRows[questionIndex];
+        if (targetQ) {
+            await window.__execTurso('DELETE FROM questions WHERE id = ?', [targetQ.id]);
+        }
         // Sync course doc with all questions
         window._syncCourseQuestions(courseId).catch(() => {});
         mcRenderCoursesTab(courseId, topicId);
@@ -5420,8 +5417,7 @@ window.mcDeleteAllQuestions = async function(courseId, topicId) {
                     "ERASE ALL QUESTIONS",
                     async () => {
                         try {
-                            const tRef = doc(db, 'unicourses', courseId, 'topics', topicId);
-                            await updateDoc(tRef, { questions: [] });
+                            await window.__execTurso('DELETE FROM questions WHERE topic_id = ?', [topicId]);
                             // Sync course doc with all questions
                             window._syncCourseQuestions(courseId).catch(() => {});
                             window.mcRenderCoursesTab(courseId, topicId);
@@ -5478,7 +5474,13 @@ window.mcDeleteTopic = function(courseId, topicId, topicTitle) {
         "YES, DELETE IT",
         async () => {
             try {
-                await deleteDoc(doc(db, 'unicourses', courseId, 'topics', topicId));
+                // Ensure Turso client is loaded
+                if (typeof window.__execTurso !== 'function') {
+                    await import('./src/db/client.js');
+                }
+                // Delete questions and topic from Turso
+                await window.__execTurso('DELETE FROM questions WHERE topic_id = ?', [topicId]);
+                await window.__execTurso('DELETE FROM topics WHERE id = ? AND course_id = ?', [topicId, courseId]);
                 // Sync course doc with all questions
                 window._syncCourseQuestions(courseId).catch(() => {});
                 window.showEFModal("Topic Deleted", `The topic "${topicTitle}" has been deleted successfully.`, "OKAY", null, true);
