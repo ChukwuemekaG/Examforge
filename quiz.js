@@ -1254,6 +1254,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Also save to Turso (mock path)
                 try {
+                    if (typeof window.__executeTurso !== 'function') {
+                        try {
+                            await import('./src/db/client.js');
+                        } catch(e) {
+                            console.warn('Turso client load failed:', e);
+                        }
+                    }
                     if (typeof window.__executeTurso === 'function') {
                         const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
                         const mockCourseList = examState.subjects?.map(s => s.title).join(', ') || 'Mock Exam';
@@ -1336,6 +1343,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Also save to Turso (non-mock path)
                 try {
+                    if (typeof window.__executeTurso !== 'function') {
+                        try {
+                            await import('./src/db/client.js');
+                        } catch(e) {
+                            console.warn('Turso client load failed:', e);
+                        }
+                    }
                     if (typeof window.__executeTurso === 'function') {
                         const resultId = 'res_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
                         await window.__executeTurso(
