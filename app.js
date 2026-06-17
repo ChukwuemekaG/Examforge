@@ -6715,22 +6715,49 @@ window.adminPromptNotification = function(userId) {
         let broadcastScheds = [];
         
         try {
-            // Read user data via sync (cache-first, already preloaded)
-            const userDoc = await sync.doc('users/' + auth.currentUser.uid) || {};
-            schedItems = userDoc.schedule || [];
-            
-            // Load broadcast schedules via sync (already preloaded)
-            const schedDoc = await sync.doc('_schedules/latest') || {};
-            broadcastScheds = schedDoc.items || [];
-            
-            // Filter out dismissed broadcast schedule items
-            const dismissedScheds = userDoc.dismissedScheds || [];
-            if (dismissedScheds.length) {
-                broadcastScheds = broadcastScheds.filter(s => !dismissedScheds.includes(s.id || s._id));
+            // Load personal schedule from Turso user_schedule table
+            if (typeof window.__execTurso !== 'function') {
+                await import('./src/db/client.js');
             }
+            const personalRows = await window.__execTurso(
+                'SELECT id, title, type, course, mock_id, event_id, quiz_url, time_limit, due_date, due_time, message, dismissed, created_at FROM user_schedule WHERE user_id = ? AND dismissed = 0 ORDER BY created_at DESC',
+                [auth.currentUser.uid]
+            ) || [];
+            schedItems = personalRows.map(r => ({
+                id: r.id,
+                title: r.title || '',
+                type: r.type || 'study',
+                course: r.course || '',
+                mockId: r.mock_id || '',
+                eventId: r.event_id || '',
+                quizUrl: r.quiz_url || '',
+                timeLimit: r.time_limit || 0,
+                dueDate: r.due_date || '',
+                dueTime: r.due_time || '',
+                message: r.message || '',
+                dismissed: r.dismissed === 1
+            }));
+            
+            // Load broadcast schedules from Turso broadcast_schedules table
+            const broadcastRows = await window.__execTurso(
+                'SELECT id, type, title, course, mock_id, event_id, quiz_url, time_limit, due_date, due_time, message, created_at FROM broadcast_schedules ORDER BY created_at DESC'
+            ) || [];
+            broadcastScheds = broadcastRows.map(r => ({
+                id: r.id,
+                type: r.type || 'mock_exam',
+                title: r.title || '',
+                course: r.course || '',
+                mockId: r.mock_id || '',
+                eventId: r.event_id || '',
+                quizUrl: r.quiz_url || '',
+                timeLimit: r.time_limit || 0,
+                dueDate: r.due_date || '',
+                dueTime: r.due_time || '',
+                message: r.message || ''
+            }));
             
             schedItems = [...schedItems, ...broadcastScheds];
-            userData.schedule = (schedItems || []).sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+            userData.schedule = (schedItems || []).sort((a, b) => (a.created_at || 0) - (b.created_at || 0));
         } catch(e) { console.error(e); }
 
         const container = document.getElementById('schedule-content');
