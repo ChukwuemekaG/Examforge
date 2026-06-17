@@ -12,6 +12,7 @@ import {
 import { collection, collectionGroup, query, orderBy, onSnapshot, getDocs, doc, addDoc, getDoc, serverTimestamp, limit, getCountFromServer, updateDoc, where, deleteDoc, setDoc, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { LocalCache } from './cache.js';
 import { SyncManager } from './sync.js';
+import { showConfirmAsync } from './src/utils/helpers.js';
 
 // Global cache and sync instances
 let sync = null;
@@ -6768,7 +6769,7 @@ window.adminPromptNotification = function(userId) {
         if (clearSchedBtn) {
             clearSchedBtn.style.display = schedItems.length ? 'inline-flex' : 'none';
             clearSchedBtn.onclick = async () => {
-                if (!confirm('Clear all schedule items?')) return;
+                if (!await showConfirmAsync('Clear all schedule items?')) return;
                 if (typeof window.__execTurso !== 'function') {
                     await import('./src/db/client.js');
                 }
@@ -6916,7 +6917,7 @@ window.adminPromptNotification = function(userId) {
             if (typeof window.__execTurso !== 'function') {
                 await import('./src/db/client.js');
             }
-            await window.__execTurso('DELETE FROM user_schedule WHERE (id = ? OR _id = ?) AND user_id = ?', [itemId, itemId, auth.currentUser.uid]);
+            await window.__execTurso('DELETE FROM user_schedule WHERE id = ? AND user_id = ?', [itemId, auth.currentUser.uid]);
             renderSchedule();
         } catch(e) { console.error(e); }
     };
