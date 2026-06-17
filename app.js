@@ -6904,7 +6904,7 @@ window.adminPromptNotification = function(userId) {
                         <button onclick="window._startMockExam('${s.mockId || ''}', '${s.quizUrl}')" class="btn btn-primary btn-sm" style="text-decoration:none;border:none;cursor:pointer;">
                             <span class="material-icons-round" style="font-size:1rem;vertical-align:middle;">play_arrow</span> Start
                         </button>` : ''}
-                        <button onclick="window.deleteScheduleItem('${s.id || s._id || ''}')" title="Remove"
+                        <button onclick="window.deleteScheduleItem('${s.id || s._id || ''}', event)" title="Remove"
                             style="background:transparent;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;padding:5px;color:var(--text-muted);display:flex;align-items:center;transition:border-color .15s;"
                             onmouseenter="this.style.borderColor='#dc2626';this.style.color='#dc2626';"
                             onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)';">
@@ -6915,12 +6915,31 @@ window.adminPromptNotification = function(userId) {
             }).join('')}`;
     }
 
-    window.deleteScheduleItem = async function(itemId) {
+    window.deleteScheduleItem = async function(itemId, event) {
         try {
+            if (!itemId) {
+                // Try to find the item in the DOM
+                if (event && event.target) {
+                    const card = event.target.closest('.sched-card');
+                    if (card) {
+                        const idx = Array.from(card.parentNode.children).indexOf(card);
+                        if (idx >= 0 && userData.schedule && userData.schedule[idx]) {
+                            itemId = userData.schedule[idx].id || userData.schedule[idx]._id;
+                        }
+                    }
+                }
+                if (!itemId) {
+                    console.warn('deleteScheduleItem: no itemId, refreshing');
+                    userData.schedule = [];
+                    renderSchedule(true);
+                    return;
+                }
+            }
             if (typeof window.__execTurso !== 'function') {
                 await import('./src/db/client.js');
             }
             await window.__execTurso('DELETE FROM user_schedule WHERE id = ? AND user_id = ?', [itemId, auth.currentUser.uid]);
+            await window.__execTurso('DELETE FROM broadcast_schedules WHERE id = ?', [itemId]);
             userData.schedule = [];
             renderSchedule(true);
         } catch(e) { console.error(e); }
