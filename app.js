@@ -460,10 +460,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const eventsList = await sync.query('subscription_events', []) || [];
             window._liveData.subscriptionEvents = eventsList.map(e => ({ id: e.id, title: e.title || '', createdAt: e.created_at || null }));
 
-            const quizzesList = await sync.collection('daily_quizzes') || [];
+            const quizzesList = await window.__execTurso('SELECT id, title FROM daily_quizzes ORDER BY created_at DESC') || [];
             window._liveData.dailyQuizzes = quizzesList.map(q => ({ id: q.id, title: q.title || '' }));
 
-            const advicesList = await sync.collection('daily_advices') || [];
+            const advicesList = await window.__execTurso('SELECT id, title FROM daily_advices ORDER BY created_at DESC') || [];
             window._liveData.dailyAdvices = advicesList.map(a => ({ id: a.id, title: a.title || '' }));
         } catch(e) {
             console.warn('Failed to load live data from Turso:', e);
