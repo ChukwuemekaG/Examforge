@@ -6916,24 +6916,30 @@ window.adminPromptNotification = function(userId) {
     }
 
     window.deleteScheduleItem = async function(itemId, event) {
+        // OPTIMISTIC UI: instantly dim and remove the card from DOM
+        if (event && event.target) {
+            const card = event.target.closest('.sched-card');
+            if (card) {
+                card.style.transition = 'opacity 0.2s';
+                card.style.opacity = '0.3';
+                setTimeout(() => { if (card.parentNode) card.remove(); }, 200);
+            }
+        }
+
         try {
-            if (!itemId) {
-                // Try to find the item in the DOM
-                if (event && event.target) {
-                    const card = event.target.closest('.sched-card');
-                    if (card) {
-                        const idx = Array.from(card.parentNode.children).indexOf(card);
-                        if (idx >= 0 && userData.schedule && userData.schedule[idx]) {
-                            itemId = userData.schedule[idx].id || userData.schedule[idx]._id;
-                        }
+            if (!itemId && event && event.target) {
+                const card = event.target.closest('.sched-card');
+                if (card) {
+                    const idx = Array.from(card.parentNode.children).indexOf(card);
+                    if (idx >= 0 && userData.schedule && userData.schedule[idx]) {
+                        itemId = userData.schedule[idx].id || userData.schedule[idx]._id;
                     }
                 }
-                if (!itemId) {
-                    console.warn('deleteScheduleItem: no itemId, refreshing');
-                    userData.schedule = [];
-                    renderSchedule(true);
-                    return;
-                }
+            }
+            if (!itemId) {
+                userData.schedule = [];
+                renderSchedule(true);
+                return;
             }
             if (typeof window.__execTurso !== 'function') {
                 await import('./src/db/client.js');
@@ -6941,8 +6947,14 @@ window.adminPromptNotification = function(userId) {
             await window.__execTurso('DELETE FROM user_schedule WHERE id = ? AND user_id = ?', [itemId, auth.currentUser.uid]);
             await window.__execTurso('DELETE FROM broadcast_schedules WHERE id = ?', [itemId]);
             userData.schedule = [];
+            // Silent refresh in background to sync state
+            setTimeout(() => renderSchedule(true), 500);
+        } catch(e) {
+            console.error(e);
+            // Re-render on error to restore the card
+            userData.schedule = [];
             renderSchedule(true);
-        } catch(e) { console.error(e); }
+        }
     };
 
 
