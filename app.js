@@ -6693,8 +6693,9 @@ window.adminPromptNotification = function(userId) {
     }
 
     // ─── SCHEDULE ─────────────────────────────────────────────────
-    async function renderSchedule() {
-        workspace.innerHTML = `
+    async function renderSchedule(silent) {
+        if (!silent) {
+            workspace.innerHTML = `
             <div class="page-header">
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; width:100%; flex-wrap:wrap; gap:12px;">
                     <div>
@@ -6711,6 +6712,7 @@ window.adminPromptNotification = function(userId) {
                     <span class="material-icons-round" style="animation:spin 1s linear infinite;display:inline-block;font-size:1.8rem;">autorenew</span>
                 </div>
             </div>`;
+        }
 
         let schedItems = [];
         let broadcastScheds = [];
@@ -6774,7 +6776,8 @@ window.adminPromptNotification = function(userId) {
                     await import('./src/db/client.js');
                 }
                 await window.__execTurso('DELETE FROM user_schedule WHERE user_id = ?', [auth.currentUser.uid]);
-                renderSchedule();
+                userData.schedule = [];
+                renderSchedule(true);
             };
         }
 
@@ -6918,7 +6921,8 @@ window.adminPromptNotification = function(userId) {
                 await import('./src/db/client.js');
             }
             await window.__execTurso('DELETE FROM user_schedule WHERE id = ? AND user_id = ?', [itemId, auth.currentUser.uid]);
-            renderSchedule();
+            userData.schedule = [];
+            renderSchedule(true);
         } catch(e) { console.error(e); }
     };
 
