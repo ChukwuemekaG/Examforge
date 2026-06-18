@@ -4886,6 +4886,8 @@ window.openAdminUserModal = async function(uid) {
         </div>`;
 
     document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     overlay.onclick = e => { 
         if (e.target === overlay) {
             document.body.style.overflow = '';
