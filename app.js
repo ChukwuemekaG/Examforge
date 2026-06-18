@@ -3388,6 +3388,7 @@ window.mcSaveCreatedDailyQuiz = async function() {
         
         window.showEFModal("Quiz Published", "Your new daily quiz has been saved and published successfully!", "AWESOME", null, true);
         mcLoadDailyQuizSubCount();
+        mcLoadDailyQuizzes();
         window.__dqSaving = false;
         
     } catch (e) {
