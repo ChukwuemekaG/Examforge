@@ -3500,7 +3500,8 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                     [dqid]
                 ) || [];
                 attempts = rows.map(a => ({
-                    displayName: a.display_name || a.user_id || 'Unknown',
+                    displayName: 'Unknown',
+                    userId: a.user_id || '',
                     email: '',
                     score: a.score || 0,
                     correct: a.correct || 0,
@@ -3508,6 +3509,22 @@ window.mcViewDailyQuizDetails = async function(dqid) {
                     timeTaken: a.time_taken || 0,
                     timestamp: a.created_at || 'Recently'
                 }));
+
+                // Look up user names from the users table
+                const userIds = [...new Set(attempts.filter(a => a.userId).map(a => a.userId))];
+                if (userIds.length > 0) {
+                    const userRows = await window.__execTurso(
+                        `SELECT id, display_name FROM users WHERE id IN (${userIds.map(() => '?').join(',')})`,
+                        userIds
+                    ) || [];
+                    const userNameMap = {};
+                    userRows.forEach(u => { userNameMap[u.id] = u.display_name || u.id; });
+                    attempts.forEach(a => {
+                        if (a.userId && userNameMap[a.userId]) {
+                            a.displayName = userNameMap[a.userId];
+                        }
+                    });
+                }
                 attemptCount = attempts.length;
                 avgScore = attemptCount > 0 ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attemptCount) : 0;
 
