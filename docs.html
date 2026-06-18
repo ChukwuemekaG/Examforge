@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExamForge - Full Documentation</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}:root{--bg:#0a0a0f;--bg-card:#12121a;--bg-inset:#1a1a26;--border:#2a2a3e;--text:#e8e8f0;--text-sub:#a0a0b8;--text-muted:#6b6b80;--brand:#fe6961;--success:#16a34a;--font:Inter,sans-serif;--font-mono:JetBrains Mono,monospace;--radius:10px}
+html{scroll-behavior:smooth}body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.app-wrapper{display:flex;min-height:100vh}.sidebar{width:280px;flex-shrink:0;background:var(--bg-card);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;z-index:10}
+.sidebar-header{padding:20px 20px 12px;border-bottom:1px solid var(--border)}.sidebar-header h1{font-size:1.2rem;font-weight:900;letter-spacing:-0.03em}.sidebar-header h1 span{color:var(--brand)}.sidebar-header .version{font-size:0.65rem;color:var(--text-muted);font-weight:600}
+.sidebar-nav{padding:8px 0 24px}.sidebar-nav a{display:flex;align-items:center;gap:10px;padding:8px 20px;color:var(--text-sub);text-decoration:none;font-size:0.82rem;font-weight:500;border-left:3px solid transparent}.sidebar-nav a:hover{color:var(--text);background:rgba(255,255,255,0.03)}.sidebar-nav a.active{color:var(--brand);border-left-color:var(--brand);background:rgba(254,105,97,0.06);font-weight:600}
+.sidebar-nav .nav-section{padding:16px 20px 4px;font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted)}.main-content{flex:1;min-width:0;max-width:100%}.content-inner{max-width:960px;margin:0 auto;padding:40px 48px 80px}
+h1{font-size:2.4rem;font-weight:900;letter-spacing:-0.03em;margin-bottom:8px}h2{font-size:1.5rem;font-weight:800;margin-top:48px;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);color:var(--text)}h2 .hash{color:var(--brand);margin-right:8px}
+h3{font-size:1.1rem;font-weight:700;margin-top:32px;margin-bottom:10px;color:var(--text)}p{margin-bottom:16px;color:var(--text-sub);font-size:0.92rem}a{color:var(--brand)}a:hover{text-decoration:underline}
+code{font-family:var(--font-mono);font-size:0.82rem;background:var(--bg-inset);padding:2px 6px;border-radius:4px;color:var(--brand);border:1px solid var(--border)}pre{background:var(--bg-inset);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;overflow-x:auto;margin-bottom:20px;font-family:var(--font-mono);font-size:0.8rem}pre code{background:none;padding:0;border:none;color:var(--text)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:16px}.card-title{font-weight:700;font-size:0.9rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.tag{display:inline-block;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:4px;background:var(--bg-inset);color:var(--text-muted);border:1px solid var(--border);text-transform:uppercase}.tag-brand{background:rgba(254,105,97,0.12);color:var(--brand);border-color:rgba(254,105,97,0.3)}.tag-green{background:rgba(22,163,74,0.12);color:var(--success);border-color:rgba(22,163,74,0.3)}
+table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:0.85rem}thead th{text-align:left;padding:10px 12px;font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);border-bottom:2px solid var(--border);background:var(--bg-card)}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text-sub)}.func-list{list-style:none;padding:0}.func-item{padding:12px 0;border-bottom:1px solid var(--border)}.func-item:last-child{border-bottom:none}
+.func-name{font-family:var(--font-mono);font-weight:600;color:var(--brand);font-size:0.85rem;display:inline-block;margin-bottom:3px}.func-desc{font-size:0.82rem;color:var(--text-sub)}
+.badge{display:inline-block;font-size:0.6rem;font-weight:700;padding:1px 6px;border-radius:3px;text-transform:uppercase}.badge-db{background:rgba(127,86,217,0.15);color:#a78bfa}.badge-core{background:rgba(254,105,97,0.12);color:var(--brand)}.badge-quiz{background:rgba(37,99,235,0.12);color:#60a5fa}
+.hero{text-align:center;padding:60px 0 40px}.hero h1{font-size:3rem;margin-bottom:12px}.hero h1 span{color:var(--brand)}.hero p{font-size:1.05rem;max-width:600px;margin:0 auto 16px;color:var(--text-muted)}.hero .meta{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:0.8rem;color:var(--text-muted)}
+.toc-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;margin-bottom:32px}.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}.toc-grid a{display:block;padding:6px 10px;color:var(--text-sub);font-size:0.82rem;border-radius:4px}.toc-grid a:hover{color:var(--text);background:var(--bg-inset);text-decoration:none}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}@media(max-width:900px){.sidebar{display:none}.content-inner{padding:24px 20px}.hero h1{font-size:2rem}}
+</style>
+</head>
+<body><div class="app-wrapper">
+<nav class="sidebar"><div class="sidebar-header"><h1>Exam<span>Forge</span></h1><div class="version">v2.0 - Full Docs</div></div><div class="sidebar-nav">
+<div class="nav-section">Overview</div>
+<a href="#overview">Overview</a>
+<a href="#architecture">Architecture</a>
+<a href="#data-flow">Data Flow</a>
+<div class="nav-section">Database</div>
+<a href="#schema">Turso Schema</a>
+<a href="#db-layer">DB Client</a>
+<a href="#db-modules">DB Modules</a>
+<div class="nav-section">Application</div>
+<a href="#app-js">Monolithic app.js</a>
+<a href="#src-app">Modular src/app.js</a>
+<a href="#quiz-engine">Quiz Engine</a>
+<a href="#sync-manager">SyncManager</a>
+<a href="#local-cache">LocalCache</a>
+<div class="nav-section">UI Modules</div>
+<a href="#ui-dashboard">Dashboard</a>
+<a href="#ui-library">Library</a>
+<a href="#ui-results">Results</a>
+<a href="#ui-schedule">Schedule</a>
+<a href="#ui-inbox">Inbox</a>
+<a href="#ui-mocks">Mock Events</a>
+<a href="#ui-settings">Settings</a>
+<a href="#ui-master">Master Panel</a>
+<div class="nav-section">Server & Auth</div>
+<a href="#server">Server/Proxy</a>
+<a href="#auth">Auth System</a>
+<a href="#utilities">Utilities</a>
+<div class="nav-section">Infrastructure</div>
+<a href="#cloudflare">Cloudflare Worker</a>
+<a href="#service-worker">Service Worker</a>
+<a href="#deployment">Deployment</a>
+</div></nav>
+<main class="main-content"><div class="content-inner">
+<section class="hero"><h1>Exam<span>Forge</span></h1><p>A comprehensive academic assessment platform.</p><div class="meta"><span>Monolithic + Modular</span><span>Turso + Firebase</span><span>SPA</span><span>PWA</span></div></section>
+<div class="toc-card"><h3>Table of Contents</h3><div class="toc-grid">
+<a href="#overview">Overview</a>
+<a href="#architecture">Architecture</a>
+<a href="#data-flow">Data Flow</a>
+<a href="#schema">Turso Schema</a>
+<a href="#db-layer">DB Client</a>
+<a href="#db-modules">DB Modules</a>
+<a href="#app-js">app.js (Monolithic)</a>
+<a href="#src-app">src/app.js (Modular)</a>
+<a href="#quiz-engine">Quiz Engine</a>
+<a href="#sync-manager">SyncManager</a>
+<a href="#local-cache">LocalCache</a>
+<a href="#ui-dashboard">Dashboard</a>
+<a href="#ui-library">Library</a>
+<a href="#ui-results">Results</a>
+<a href="#ui-schedule">Schedule</a>
+<a href="#ui-inbox">Inbox</a>
+<a href="#ui-mocks">Mock Events</a>
+<a href="#ui-settings">Settings</a>
+<a href="#ui-master">Master Panel</a>
+<a href="#server">Server/Proxy</a>
+<a href="#auth">Auth System</a>
+<a href="#utilities">Utilities</a>
+<a href="#cloudflare">Cloudflare Worker</a>
+<a href="#service-worker">Service Worker</a>
+<a href="#deployment">Deployment</a>
+</div></div>
+<h2 id="overview"><span class="hash">#</span>Overview</h2>
+<p>ExamForge is a full-featured Single Page Application (SPA) for academic assessment. Supports course-based, topic-based, daily quiz, and mock exam modes. Uses Firebase Auth and Turso (edge SQLite) with a cache-first SyncManager layer.</p>
+<div class="grid-2"><div class="card"><div class="card-title">Core Features</div><ul style="font-size:0.85rem;color:var(--text-sub);padding-left:18px;line-height:1.8;"><li>Adaptive quizzing (exam/practice modes)</li><li>EXA Rating system (ELO-based)</li><li>Streak tracking and analytics</li><li>Mock exams with anti-cheat</li><li>Daily quizzes with attempt tracking</li><li>Course library with topic hierarchy</li><li>Real-time inbox and schedule</li><li>Admin master panel (full CRUD)</li><li>PDF result sheets</li><li>Firestore-to-Turso migration</li></ul></div><div class="card"><div class="card-title">Tech Stack</div><ul style="font-size:0.85rem;color:var(--text-sub);padding-left:18px;line-height:1.8;"><li>Vanilla JS SPA</li><li>Turso (edge SQLite)</li><li>Firebase Auth</li><li>IndexedDB caching</li><li>Custom SyncManager</li><li>Express.js server</li><li>Cloudflare Workers</li><li>PWA enabled</li></ul></div></div>
+<h2 id="architecture"><span class="hash">#</span>Architecture</h2>
+<p>Dual-entry architecture: monolithic app.js (Firebase-integrated) and modular src/ (Turso-first ES modules), sharing the same HTML shell.</p>
+<pre><code>Examforge/
+  app.js            Monolithic SPA
+  quiz.js           Monolithic quiz
+  login.js          Auth UI
+  sync.js           SyncManager
+  cache.js          LocalCache
+  server.js         Express + Turso proxy
+  turso-proxy.js    CORS proxy
+  turso-worker.js   Cloudflare worker
+  firebase-config.js Firebase init
+  sw.js             Service Worker
+  src/
+    app.js          Modular entry
+    quiz.js         Quiz router
+    db/             DB modules
+    ui/             UI modules
+    quiz/           Quiz modules
+    utils/          Utilities</code></pre>
+<h2 id="data-flow"><span class="hash">#</span>Data Flow</h2>
+<div class="card"><div class="card-title">Read Path</div><pre><code>UI Module -> SyncManager
+  1. In-Memory Cache (instant)
+  2. IndexedDB (LocalCache)
+  3. Turso HTTP API</code></pre></div>
+<div class="card"><div class="card-title">Write Path</div><pre><code>UI Module -> DB Module -> DB Client
+  -> Turso API -> Clear caches</code></pre></div>
+<div class="card"><div class="card-title">Real-time</div><pre><code>SyncManager.subscribe(path, cb, 30s)
+  -> Poll -> Compare -> Notify</code></pre></div>
+<h2 id="schema"><span class="hash">#</span>Turso Database Schema</h2>
+<p>18 tables defined in src/db/schema.js, created with CREATE TABLE IF NOT EXISTS on app startup.</p>
+<div class="grid-2">
+<div class="card"><div class="card-title"><span class="badge badge-core">Core</span> users</div><pre><code>id TEXT PRIMARY KEY
+email TEXT NOT NULL
+display_name TEXT
+username TEXT
+provider TEXT
+exa_rating INTEGER DEFAULT 800
+streak INTEGER DEFAULT 0
+highest_streak INTEGER DEFAULT 0
+last_exam_date TEXT
+role TEXT DEFAULT student
+total_users INTEGER DEFAULT 0
+fcm_token TEXT
+created_at TEXT
+updated_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-db">Content</span> courses</div><pre><code>id TEXT PRIMARY KEY
+title TEXT NOT NULL
+level TEXT
+total_time_limit INTEGER
+is_strict INTEGER
+is_mock INTEGER
+is_correction INTEGER
+topic_count INTEGER
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-db">Content</span> topics</div><pre><code>id TEXT PRIMARY KEY
+course_id TEXT NOT NULL
+title TEXT NOT NULL
+time_limit INTEGER
+is_strict INTEGER
+is_mock INTEGER
+is_correction INTEGER
+sort_order INTEGER
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-db">Content</span> questions</div><pre><code>id INTEGER PRIMARY KEY AUTOINCREMENT
+topic_id TEXT NOT NULL
+course_id TEXT NOT NULL
+question TEXT NOT NULL
+option_a TEXT
+option_b TEXT
+option_c TEXT
+option_d TEXT
+correct_index INTEGER
+explanation TEXT
+sort_order INTEGER</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-quiz">Quiz</span> daily_quizzes</div><pre><code>id TEXT PRIMARY KEY
+title TEXT NOT NULL
+time_limit INTEGER
+max_attempts INTEGER DEFAULT 1
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-quiz">Quiz</span> daily_quiz_questions</div><pre><code>id INTEGER PRIMARY KEY AUTOINCREMENT
+quiz_id TEXT NOT NULL
+question TEXT NOT NULL
+option_a TEXT
+option_b TEXT
+option_c TEXT
+option_d TEXT
+correct_index INTEGER
+explanation TEXT
+sort_order INTEGER</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-quiz">Quiz</span> daily_quiz_attempts</div><pre><code>id INTEGER PRIMARY KEY AUTOINCREMENT
+quiz_id TEXT NOT NULL
+user_id TEXT NOT NULL
+score REAL
+correct INTEGER
+total INTEGER
+time_taken REAL
+answers TEXT (JSON)
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">User</span> user_results</div><pre><code>id TEXT PRIMARY KEY
+user_id TEXT NOT NULL
+quiz_id TEXT
+course TEXT
+score REAL
+total REAL
+grade TEXT
+correct INTEGER
+total_questions INTEGER
+time_taken REAL
+exa_change INTEGER
+is_retake INTEGER
+is_mock INTEGER
+corrections TEXT (JSON)
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">User</span> user_schedule</div><pre><code>id TEXT PRIMARY KEY
+user_id TEXT NOT NULL
+title TEXT NOT NULL
+type TEXT
+course TEXT
+mock_id TEXT
+event_id TEXT
+quiz_url TEXT
+time_limit INTEGER
+due_date TEXT
+due_time TEXT
+message TEXT
+dismissed INTEGER DEFAULT 0
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">User</span> user_inbox</div><pre><code>id TEXT PRIMARY KEY
+user_id TEXT NOT NULL
+type TEXT
+title TEXT NOT NULL
+message TEXT
+result_id TEXT
+event_id TEXT
+quiz_url TEXT
+action_path TEXT
+is_read INTEGER DEFAULT 0
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">System</span> broadcast_notifications</div><pre><code>id TEXT PRIMARY KEY
+type TEXT
+title TEXT NOT NULL
+message TEXT
+quiz_url TEXT
+brand_color TEXT
+brand_icon TEXT
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">System</span> broadcast_schedules</div><pre><code>id TEXT PRIMARY KEY
+type TEXT
+title TEXT NOT NULL
+course TEXT
+mock_id TEXT
+event_id TEXT
+quiz_url TEXT
+time_limit INTEGER
+due_date TEXT
+due_time TEXT
+message TEXT
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-db">Events</span> subscription_events</div><pre><code>id TEXT PRIMARY KEY
+title TEXT NOT NULL
+description TEXT
+available_subjects TEXT (JSON)
+max_subjects INTEGER
+results_released INTEGER
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-db">Events</span> event_registrations</div><pre><code>id INTEGER PRIMARY KEY AUTOINCREMENT
+event_id TEXT NOT NULL
+user_id TEXT NOT NULL
+display_name TEXT
+email TEXT
+subjects TEXT (JSON)
+score REAL
+correct INTEGER
+total_questions INTEGER
+time_taken REAL
+submitted_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-db">Events</span> event_keys</div><pre><code>id TEXT PRIMARY KEY
+event_id TEXT NOT NULL
+used_by TEXT
+used_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-quiz">Mock</span> mock_exams</div><pre><code>id TEXT PRIMARY KEY
+event_id TEXT NOT NULL
+subject TEXT NOT NULL
+title TEXT
+time_limit INTEGER
+questions TEXT (JSON)
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-quiz">Mock</span> mock_exam_attempts</div><pre><code>id INTEGER PRIMARY KEY AUTOINCREMENT
+mock_id TEXT NOT NULL
+user_id TEXT NOT NULL
+display_name TEXT
+email TEXT
+score REAL
+correct INTEGER
+total INTEGER
+time_taken REAL
+answers TEXT (JSON)
+browser_agent TEXT
+platform TEXT
+screen_resolution TEXT
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">System</span> counters</div><pre><code>id TEXT PRIMARY KEY
+value INTEGER DEFAULT 0</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">System</span> admin_panel</div><pre><code>id TEXT PRIMARY KEY DEFAULT data
+courses TEXT (JSON)
+daily_quizzes TEXT (JSON)
+daily_advices TEXT (JSON)
+subscription_events TEXT (JSON)
+total_student_count INTEGER
+updated_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">System</span> daily_advices</div><pre><code>id TEXT PRIMARY KEY
+title TEXT NOT NULL
+category TEXT
+content TEXT
+created_at TEXT</code></pre></div>
+<div class="card"><div class="card-title"><span class="badge badge-core">System</span> usernames</div><pre><code>username TEXT PRIMARY KEY
+user_id TEXT NOT NULL
+email TEXT NOT NULL</code></pre></div>
+</div>
+<h2 id="db-layer"><span class="hash">#</span>DB Client Layer</h2>
+<p><code>src/db/client.js</code> - Core HTTP client for Turso v2/pipeline API.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>exec(sql, params?)</span><span class='func-desc'> Executes SELECT queries, returns array of row objects.</span></li>
+<li class='func-item'><span class='func-name'>execOne(sql, params?)</span><span class='func-desc'> Same as exec but returns first row or null.</span></li>
+<li class='func-item'><span class='func-name'>execute(sql, params?)</span><span class='func-desc'> Executes writes (INSERT/UPDATE/DELETE). Returns {affectedRows, lastInsertId}.</span></li>
+<li class='func-item'><span class='func-name'>batch(statements)</span><span class='func-desc'> Executes multiple statements sequentially.</span></li>
+<li class='func-item'><span class='func-name'>trackRead(label)</span><span class='func-desc'> No-op read tracking. Always returns false.</span></li>
+</ul>
+<p>Window aliases: <code>window.__execTurso</code> = exec, <code>window.__executeTurso</code> = execute. Proxy URL: https://examforge-q88x.onrender.com/v2/pipeline</p>
+<h2 id="db-modules"><span class="hash">#</span>Database Modules</h2>
+<h3>users.js</h3>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>getUser(id), getUserByEmail(email)</span><span class='func-desc'> User lookup by ID or email.</span></li>
+<li class='func-item'><span class='func-name'>createUser, updateUser, updateUserData</span><span class='func-desc'> User profile CRUD. Converts camelCase to snake_case.</span></li>
+<li class='func-item'><span class='func-name'>addInboxItem, getInboxItems, deleteInboxItem, clearInbox</span><span class='func-desc'> Inbox management.</span></li>
+<li class='func-item'><span class='func-name'>addScheduleItem, getScheduleItems, deleteScheduleItem, dismissScheduleItem</span><span class='func-desc'> Schedule management.</span></li>
+<li class='func-item'><span class='func-name'>addResult, getRecentResults</span><span class='func-desc'> Quiz result storage.</span></li>
+<li class='func-item'><span class='func-name'>getUsername, createUsername</span><span class='func-desc'> Username-to-uid mapping.</span></li>
+<li class='func-item'><span class='func-name'>getStudentCount, getAllUsers, searchUsers</span><span class='func-desc'> Admin user queries.</span></li>
+</ul>
+<h3>courses.js</h3>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>getAllCourses, getCourse, createCourse, updateCourse, deleteCourse</span><span class='func-desc'> Course CRUD.</span></li>
+<li class='func-item'><span class='func-name'>getTopics, getTopic, createTopic, updateTopic, deleteTopic</span><span class='func-desc'> Topic CRUD with course association.</span></li>
+<li class='func-item'><span class='func-name'>getQuestions, createQuestion, updateQuestion, deleteQuestion</span><span class='func-desc'> Question CRUD with 4 options.</span></li>
+</ul>
+<h3>quizzes.js</h3>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>getAllQuizzes, getQuiz, createQuiz, deleteQuiz</span><span class='func-desc'> Daily quiz CRUD.</span></li>
+<li class='func-item'><span class='func-name'>getQuizQuestions, setQuizQuestions, createQuizQuestion</span><span class='func-desc'> Question management for quizzes.</span></li>
+<li class='func-item'><span class='func-name'>getQuizAttempts, saveQuizAttempt, hasUserTakenQuiz</span><span class='func-desc'> Attempt tracking.</span></li>
+</ul>
+<h3>events.js</h3>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>getAllEvents, getEvent, createEvent, updateEvent, deleteEvent</span><span class='func-desc'> Event CRUD.</span></li>
+<li class='func-item'><span class='func-name'>getRegistrations, registerStudent, updateStudentScore, getStudentRegistration</span><span class='func-desc'> Registration management.</span></li>
+<li class='func-item'><span class='func-name'>validateKey, useKey, getEventKeys, createEventKey</span><span class='func-desc'> Key management for events.</span></li>
+</ul>
+<h3>mocks.js</h3>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>getMock, getEventMocks, createMock, updateMockQuestions, deleteMock</span><span class='func-desc'> Mock exam CRUD.</span></li>
+<li class='func-item'><span class='func-name'>getMockAttempts, saveMockAttempt</span><span class='func-desc'> Attempt tracking with browser info.</span></li>
+</ul>
+<h3>Other DB modules</h3>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>schedules.js</span><span class='func-desc'> getBroadcastSchedules, addBroadcastSchedule, clearBroadcastSchedules.</span></li>
+<li class='func-item'><span class='func-name'>notifications.js</span><span class='func-desc'> getBroadcastNotifications, addBroadcastNotification, clearBroadcastNotifications.</span></li>
+<li class='func-item'><span class='func-name'>advices.js</span><span class='func-desc'> getAllAdvices, getAdvice, createAdvice, deleteAdvice.</span></li>
+<li class='func-item'><span class='func-name'>counters.js</span><span class='func-desc'> getCounter, incrementCounter, setCounter, getUserCount.</span></li>
+<li class='func-item'><span class='func-name'>results.js</span><span class='func-desc'> getResult, saveUserResult.</span></li>
+<li class='func-item'><span class='func-name'>ranking.js</span><span class='func-desc'> getNationalRanking(userRating), getUsersByRating().</span></li>
+<li class='func-item'><span class='func-name'>admin.js</span><span class='func-desc'> getAdminPanel, updateAdminSection, updateAdminPanel.</span></li>
+</ul>
+<h2 id="app-js"><span class="hash">#</span>Monolithic app.js</h2>
+<p>Original SPA engine (~10,000 lines) handling all views in one file with Firebase and Turso.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>DOMContentLoaded Setup</span><span class='func-desc'> Initializes DOM refs, swipe navigation, modal scroll-lock.</span></li>
+<li class='func-item'><span class='func-name'>Swipe Navigation</span><span class='func-desc'> Mobile swipe: dashboard-library-mocks-schedule-results-inbox.</span></li>
+<li class='func-item'><span class='func-name'>setupGlobalModalScrollLock()</span><span class='func-desc'> MutationObserver-based scroll lock.</span></li>
+<li class='func-item'><span class='func-name'>window._getUserData(uid)</span><span class='func-desc'> Reads profile, schedule, inbox, results from Turso.</span></li>
+<li class='func-item'><span class='func-name'>window._addScheduleItem / _removeScheduleItem</span><span class='func-desc'> Manage user_schedule via Turso.</span></li>
+<li class='func-item'><span class='func-name'>window._addInboxItem / _clearInboxItems</span><span class='func-desc'> Manage user_inbox entries.</span></li>
+<li class='func-item'><span class='func-name'>window._syncCourseQuestions(courseId)</span><span class='func-desc'> Syncs course metadata from topics to courses table.</span></li>
+<li class='func-item'><span class='func-name'>window._liveData / _setupLiveDataListener()</span><span class='func-desc'> Shared real-time data hub.</span></li>
+<li class='func-item'><span class='func-name'>window._ensureAdminSection / _updateAdminSection</span><span class='func-desc'> Admin data management.</span></li>
+<li class='func-item'><span class='func-name'>window._backfillUserCounter()</span><span class='func-desc'> Count users for national ranking.</span></li>
+<li class='func-item'><span class='func-name'>window._broadcastNotification / _broadcastSchedule</span><span class='func-desc'> Insert broadcast data.</span></li>
+<li class='func-item'><span class='func-name'>window.updateDashboardUI()</span><span class='func-desc'> Updates EXA rating/streak/rank cards.</span></li>
+<li class='func-item'><span class='func-name'>loadCourseBrowser()</span><span class='func-desc'> Renders course library from Turso.</span></li>
+<li class='func-item'><span class='func-name'>getNationalRanking(userRating)</span><span class='func-desc'> Queries Turso for rank/percentile.</span></li>
+<li class='func-item'><span class='func-name'>computeStreakDisplay(stats)</span><span class='func-desc'> Validates streak via lastExamDate.</span></li>
+<li class='func-item'><span class='func-name'>getWeeklyBest / getAccuracyTrend</span><span class='func-desc'> Analytics computations.</span></li>
+<li class='func-item'><span class='func-name'>getResultSheetCSS()</span><span class='func-desc'> A4 print CSS for PDF result sheets.</span></li>
+<li class='func-item'><span class='func-name'>EXA_TITLES (10 tiers)</span><span class='func-desc'> New Recruit (I) to Examforge Legend (X).</span></li>
+<li class='func-item'><span class='func-name'>renderRankCardHTML(title, exaRating)</span><span class='func-desc'> Rank card with color states.</span></li>
+</ul>
+<h2 id="src-app"><span class="hash">#</span>Modular src/app.js</h2>
+<p>Modern ES module entry point. Initializes Turso schema, navigation, auth, view routing.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>handleViewChange(view)</span><span class='func-desc'> View router for all 8 views. Scrolls to top, renders errors.</span></li>
+<li class='func-item'><span class='func-name'>initSchema()</span><span class='func-desc'> Creates 18 Turso tables if not exist.</span></li>
+<li class='func-item'><span class='func-name'>authModule.initAuth()</span><span class='func-desc'> Firebase auth init + user data load from Turso.</span></li>
+<li class='func-item'><span class='func-name'>initNotificationBell()</span><span class='func-desc'> Fixed notification bell icon.</span></li>
+<li class='func-item'><span class='func-name'>initNavigation()</span><span class='func-desc'> Sidebar/bottom nav + popstate handlers.</span></li>
+</ul>
+<h2 id="quiz-engine"><span class="hash">#</span>Quiz Engine</h2>
+<h3>src/quiz/init.js</h3>
+<p>Parses URL params (mockid, dqid, course, topic), loads questions from Turso.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>initQuiz()</span><span class='func-desc'> Detects quiz type, configures examState (questions, answers, timer, flags).</span></li>
+<li class='func-item'><span class='func-name'>examState</span><span class='func-desc'> Central state object for quiz lifecycle.</span></li>
+</ul>
+<h3>src/quiz/engine.js</h3>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>startTimer/stopTimer</span><span class='func-desc'> 1-second interval timer with expire callback.</span></li>
+<li class='func-item'><span class='func-name'>formatTime(seconds)</span><span class='func-desc'> Converts to MM:SS string.</span></li>
+<li class='func-item'><span class='func-name'>goToQuestion, answerQuestion</span><span class='func-desc'> Navigation and answer recording.</span></li>
+<li class='func-item'><span class='func-name'>getAnsweredCount, getUnansweredCount</span><span class='func-desc'> Progress tracking.</span></li>
+<li class='func-item'><span class='func-name'>calculateResults()</span><span class='func-desc'> Score, correct count, per-question details.</span></li>
+</ul>
+<h3>src/quiz/results.js</h3>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>showResults()</span><span class='func-desc'> Renders score, grade, corrections review.</span></li>
+<li class='func-item'><span class='func-name'>calculateExaChange(oldRating, score)</span><span class='func-desc'> ELO-like change (K=32, clamped -50 to +50).</span></li>
+</ul>
+<h3>Monolithic quiz.js</h3>
+<p>~1,500 line quiz engine with anti-cheat, subject tabs, question map, swipe, and fullscreen.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>init()</span><span class='func-desc'> URL detection: dqid, mockid, JSON files, JAMB mode, course+topic.</span></li>
+<li class='func-item'><span class='func-name'>beginActiveQuiz()</span><span class='func-desc'> Anti-cheat, fullscreen, timer, subject tabs rendering.</span></li>
+<li class='func-item'><span class='func-name'>forceSubmit()</span><span class='func-desc'> Finalizes quiz, calculates and shows results.</span></li>
+<li class='func-item'><span class='func-name'>Anti-cheat measures</span><span class='func-desc'> Fullscreen requirement, context menu block, keyboard shortcut block, visibility change auto-submit.</span></li>
+</ul>
+<h2 id="sync-manager"><span class="hash">#</span>SyncManager</h2>
+<p><code>sync.js</code> (934 lines) - Cache-first Turso access layer with IndexedDB persistence, request deduplication, and polling subscriptions.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>doc(path)</span><span class='func-desc'> Cache-first document fetch (e.g., users/abc123).</span></li>
+<li class='func-item'><span class='func-name'>collection(path)</span><span class='func-desc'> Cache-first collection fetch.</span></li>
+<li class='func-item'><span class='func-name'>query(path, constraints)</span><span class='func-desc'> Query with WHERE/ORDER BY/LIMIT.</span></li>
+<li class='func-item'><span class='func-name'>collectionGroup(id, constraints)</span><span class='func-desc'> Collection group (SELECT * FROM table).</span></li>
+<li class='func-item'><span class='func-name'>subscribe(path, cb, pollMs)</span><span class='func-desc'> Polling subscription on data change.</span></li>
+<li class='func-item'><span class='func-name'>liveCollection(path, onChange, pollMs)</span><span class='func-desc'> Polling live collection.</span></li>
+<li class='func-item'><span class='func-name'>unsubscribe(path, cb?)</span><span class='func-desc'> Remove subscriber and stop poller.</span></li>
+<li class='func-item'><span class='func-name'>refresh(path, constraints?)</span><span class='func-desc'> Force refresh bypassing cache.</span></li>
+<li class='func-item'><span class='func-name'>preload(paths)</span><span class='func-desc'> Pre-load documents at session start.</span></li>
+<li class='func-item'><span class='func-name'>destroy()</span><span class='func-desc'> Clean up pollers and subscribers.</span></li>
+</ul>
+<h2 id="local-cache"><span class="hash">#</span>LocalCache (IndexedDB)</h2>
+<p><code>cache.js</code> (338 lines) - Zero-dependency IndexedDB wrapper. DB: examforge-cache, version 1, store: cache.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>get(path)</span><span class='func-desc'> Retrieve entry by path. Returns {path, data, type, fetchedAt}.</span></li>
+<li class='func-item'><span class='func-name'>set(path, data, type)</span><span class='func-desc'> Store entry (doc/collection/query).</span></li>
+<li class='func-item'><span class='func-name'>delete(path), clear()</span><span class='func-desc'> Remove single or all entries.</span></li>
+<li class='func-item'><span class='func-name'>getAllByType(type)</span><span class='func-desc'> Get entries filtered by type.</span></li>
+<li class='func-item'><span class='func-name'>getStale(maxAgeMs), deleteStale(maxAgeMs)</span><span class='func-desc'> Age-based cache invalidation.</span></li>
+<li class='func-item'><span class='func-name'>has(path), entries()</span><span class='func-desc'> Check existence and list all entries.</span></li>
+</ul>
+<h2 id="ui-dashboard"><span class="hash">#</span>Dashboard</h2>
+<p><code>src/ui/dashboard.js</code> - EXA rating, rank cards, analytics, recent history, schedule.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>renderDashboard()</span><span class='func-desc'> Renders welcome, EXA rating, progress roadmap (10 rank cards), stats grid (national rank, accuracy, streak, weekly best), recent history, upcoming schedule, profile card.</span></li>
+<li class='func-item'><span class='func-name'>updateDashboardUI()</span><span class='func-desc'> In-place updates for EXA rating, streak, rank cards.</span></li>
+<li class='func-item'><span class='func-name'>getExaTitle(rating)</span><span class='func-desc'> Returns title from EXA_TITLES array.</span></li>
+<li class='func-item'><span class='func-name'>getAccuracyTrend, getWeeklyBest</span><span class='func-desc'> Analytics helper functions.</span></li>
+</ul>
+<h2 id="ui-library"><span class="hash">#</span>Library</h2>
+<p><code>src/ui/library.js</code> - Course browser grouped by level with search.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>renderLibrary()</span><span class='func-desc'> Fetches courses from Turso, groups by level, renders searchable grid.</span></li>
+<li class='func-item'><span class='func-name'>renderCourseList(courseList)</span><span class='func-desc'> Renders course cards (title, description, topic count, level).</span></li>
+</ul>
+<h2 id="ui-results"><span class="hash">#</span>Results</h2>
+<p><code>src/ui/results.js</code> - Performance history with analytics.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>renderResults()</span><span class='func-desc'> Fetches fresh results from Turso, renders analytics cards and result table with progress bars.</span></li>
+</ul>
+<h2 id="ui-schedule"><span class="hash">#</span>Schedule</h2>
+<p><code>src/ui/schedule.js</code> - Study plan grouped by proximity (overdue, today, tomorrow, this week, upcoming).</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>renderSchedule()</span><span class='func-desc'> Renders personal + broadcast schedule items.</span></li>
+<li class='func-item'><span class='func-name'>groupByDate(items)</span><span class='func-desc'> Groups items into time buckets.</span></li>
+<li class='func-item'><span class='func-name'>formatRelativeDate(dateStr)</span><span class='func-desc'> Color-coded relative date labels.</span></li>
+</ul>
+<h2 id="ui-inbox"><span class="hash">#</span>Inbox</h2>
+<p><code>src/ui/inbox.js</code> - Notifications with unread tracking, broadcast messages, result links.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>renderInbox()</span><span class='func-desc'> Renders personal + broadcast notifications with unread count.</span></li>
+<li class='func-item'><span class='func-name'>formatRelativeTime(dateStr)</span><span class='func-desc'> Relative time (just now, Xm ago, Xh ago, Xd ago).</span></li>
+</ul>
+<h2 id="ui-mocks"><span class="hash">#</span>Mock Events</h2>
+<p><code>src/ui/mocks.js</code> - Academic event listings and registration.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>renderMocks()</span><span class='func-desc'> Lists subscription events with subjects and status.</span></li>
+<li class='func-item'><span class='func-name'>window._openEventRegistration(eventId)</span><span class='func-desc'> Opens registration modal with confirmation.</span></li>
+</ul>
+<h2 id="ui-settings"><span class="hash">#</span>Settings</h2>
+<p><code>src/ui/settings.js</code> - Profile view, dark mode toggle, sign out.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>renderSettings()</span><span class='func-desc'> Profile info, theme toggle, sign out button.</span></li>
+</ul>
+<h2 id="ui-master"><span class="hash">#</span>Master Panel (Admin)</h2>
+<p>src/ui/master.js + master-courses.js + master-events.js + master-users.js - Full admin control panel.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>renderMaster()</span><span class='func-desc'> Tabbed admin panel: Courses, Daily Quiz, Daily Advice, Mock Events, Users. Sync/migrate buttons.</span></li>
+<li class='func-item'><span class='func-name'>master-courses.js</span><span class='func-desc'> Course/Topic/Question CRUD with prompt-based forms.</span></li>
+<li class='func-item'><span class='func-name'>master-events.js</span><span class='func-desc'> Event CRUD with subject/key management, mock creation, result broadcasting.</span></li>
+<li class='func-item'><span class='func-name'>master-users.js</span><span class='func-desc'> User list with search, detail view, profile editing, result history.</span></li>
+<li class='func-item'><span class='func-name'>window._syncMyData()</span><span class='func-desc'> Sync single user from Firestore to Turso.</span></li>
+<li class='func-item'><span class='func-name'>window._startMigration()</span><span class='func-desc'> Full Firestore-to-Turso migration (9 steps).</span></li>
+</ul>
+<h2 id="server"><span class="hash">#</span>Server / Proxy</h2>
+<p><code>server.js</code> - Express server serving static files and proxying Turso API.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>POST /v2/pipeline</span><span class='func-desc'> Proxies JSON body to Turso with auth token. Handles CORS.</span></li>
+<li class='func-item'><span class='func-name'>Static files</span><span class='func-desc'> Serves root directory, correct MIME types for JS modules.</span></li>
+</ul>
+<p><code>turso-proxy.js</code> - Standalone CORS proxy (port 3001) for local dev.</p>
+<h2 id="auth"><span class="hash">#</span>Auth System</h2>
+<p>firebase-config.js + login.js + src/ui/auth.js - Firebase Auth with Turso sync.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>Firebase Auth</span><span class='func-desc'> Email/password + Google. Email verification required.</span></li>
+<li class='func-item'><span class='func-name'>login.js</span><span class='func-desc'> Login/register with username resolution, Firestore user creation.</span></li>
+<li class='func-item'><span class='func-name'>src/ui/auth.js</span><span class='func-desc'> Auth state listener, Turso user sync, role detection.</span></li>
+<li class='func-item'><span class='func-name'>initAuth()</span><span class='func-desc'> Returns Promise resolving to user. Creates Turso user on first login.</span></li>
+<li class='func-item'><span class='func-name'>logout()</span><span class='func-desc'> Signs out from Firebase.</span></li>
+<li class='func-item'><span class='func-name'>isAdmin()</span><span class='func-desc'> Checks if user role is admin.</span></li>
+</ul>
+<h2 id="utilities"><span class="hash">#</span>Utilities</h2>
+<div class="grid-2">
+<div class="card"><div class="card-title">helpers.js</div><ul class="func-list"><li class='func-item'><span class='func-name'>generateId, formatDate, formatTime</span><span class='func-desc'> ID generation and date formatting.</span></li>
+<li class='func-item'><span class='func-name'>shuffle, debounce, clamp, clone</span><span class='func-desc'> Utility functions.</span></li>
+<li class='func-item'><span class='func-name'>showModal, showConfirm, showPrompt, showAlert</span><span class='func-desc'> Modal dialog system.</span></li>
+<li class='func-item'><span class='func-name'>showConfirmAsync, getURLParam, escapeHTML</span><span class='func-desc'> Promisified confirm, URL parsing, HTML escape.</span></li>
+</ul></div>
+<div class="card"><div class="card-title">constants.js</div><ul class="func-list"><li class='func-item'><span class='func-name'>EXA_TITLES</span><span class='func-desc'> 10 rank tiers with min/max rating, roman numerals, icons.</span></li>
+<li class='func-item'><span class='func-name'>getExaTitle(rating), gradeFromScore(score)</span><span class='func-desc'> Title and grade lookup functions.</span></li>
+</ul></div>
+<div class="card"><div class="card-title">analytics.js</div><ul class="func-list"><li class='func-item'><span class='func-name'>getAnalytics(results)</span><span class='func-desc'> Compute avg, count, best score/course.</span></li>
+<li class='func-item'><span class='func-name'>getWeeklyBest, getAccuracyTrend, computeStreakDisplay</span><span class='func-desc'> Analytics helpers.</span></li>
+</ul></div>
+<div class="card"><div class="card-title">pdf.js</div><ul class="func-list"><li class='func-item'><span class='func-name'>getResultSheetCSS()</span><span class='func-desc'> A4 print CSS with watermark.</span></li>
+<li class='func-item'><span class='func-name'>buildResultSheetHTML(event, student, gpa, comment)</span><span class='func-desc'> Build result sheet HTML.</span></li>
+<li class='func-item'><span class='func-name'>printResultSheet(html)</span><span class='func-desc'> Open PDF in new tab via html2pdf.js.</span></li>
+</ul></div>
+<div class="card"><div class="card-title">migrate.js</div><p>Firestore-to-Turso migration (9 steps): Users, Courses/Topics/Questions, Daily Quizzes, Daily Advice, Events, Mocks, Notifications, Schedules, Counters. Resume support.</p></div>
+</div>
+<h2 id="cloudflare"><span class="hash">#</span>Cloudflare Worker</h2>
+<p><code>turso-worker.js</code> - Path-preserving Turso proxy on Cloudflare Workers. Handles CORS preflight, forwards POST requests to Turso with Bearer token. Provides globally-distributed alternative to Express proxy.</p>
+<h2 id="service-worker"><span class="hash">#</span>Service Worker</h2>
+<p><code>sw.js</code> - PWA service worker.</p>
+<ul class="func-list">
+<li class='func-item'><span class='func-name'>Install/Activate</span><span class='func-desc'> Skip waiting, claim clients, clean old caches.</span></li>
+<li class='func-item'><span class='func-name'>notificationclick</span><span class='func-desc'> Focus window or open new one on notification click.</span></li>
+<li class='func-item'><span class='func-name'>push</span><span class='func-desc'> Display FCM push notifications with rich formatting.</span></li>
+</ul>
+<h2 id="deployment"><span class="hash">#</span>Deployment</h2>
+<div class="grid-2">
+<div class="card"><div class="card-title">Render (Node)</div><p>server.js deployed as web service with Turso proxy at /v2/pipeline.</p></div>
+<div class="card"><div class="card-title">Cloudflare Workers</div><p>turso-worker.js provides globally-distributed Turso proxy.</p></div>
+<div class="card"><div class="card-title">Firebase Hosting</div><p>Static assets via Firebase Hosting. Auth via Cloud Functions.</p></div>
+<div class="card"><div class="card-title">Turso DB</div><p>Edge SQLite at examforge-chukwuemekagodson.aws-us-east-2.turso.io.</p></div>
+</div>
+
+</div></main></div></body></html>
