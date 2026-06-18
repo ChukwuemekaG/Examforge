@@ -1,6 +1,18 @@
 const FONT_CACHE = 'examforge-cache-v19';
 
 self.addEventListener('install', (event) => {
+  // Delete any old caches that don't match the current cache name
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== FONT_CACHE) {
+            return caches.delete(cache);
+          }
+        })
+      );
+    })
+  );
   self.skipWaiting();
 });
 

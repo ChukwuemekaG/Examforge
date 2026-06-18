@@ -2,7 +2,8 @@ import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { SyncManager } from './sync.js';
 import { collection, addDoc, arrayUnion, doc, getDoc, setDoc, updateDoc, serverTimestamp, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { execute as tursoExecute } from './src/db/client.js';
+import * as loading from './src/ui/components/loading.js';
+import * as quizzes from './src/db/quizzes.js';
 
 // ── Safe DOM helpers - prevent null reference errors on mobile ──
 const $id = (id) => document.getElementById(id);
@@ -105,12 +106,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dqid) {
             examState.quizId = dqid;
             try {
-                const d = await sync.doc('daily_quizzes/' + dqid);
+                const d = await quizzes.getQuiz(dqid);
                 if (!d) throw new Error(`Daily Quiz not found.`);
                 const maxAttempts = d.maxAttempts || 1;
                 
-                // Check for existing attempt (embedded completedBy array — 0 extra reads)
-                const allQuestions = d.questions || [];
+                // If questions are not embedded, fetch them from the Turso table
+                let allQuestions = d.questions || [];
+
+                if (!allQuestions || allQuestions.length === 0) {
+                    allQuestions = await quizzes.getQuizQuestions(dqid);
+                }
+                
                 let existingAttempt = null;
                 const storageKey = 'examforge_dq_' + dqid;
                 const cachedAttempt = localStorage.getItem(storageKey);

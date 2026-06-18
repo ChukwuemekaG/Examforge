@@ -29,7 +29,16 @@ export async function deleteQuiz(id) {
 // Quiz questions
 export async function getQuizQuestions(quizId) {
   trackRead('daily_quiz_questions/' + quizId);
-  return exec('SELECT * FROM daily_quiz_questions WHERE quiz_id = ? ORDER BY sort_order ASC', [quizId]);
+  const rows = await exec(`SELECT * FROM daily_quiz_questions WHERE quiz_id = ? ORDER BY sort_order ASC`, [quizId]);
+  // Transform rows to match the expected in-memory format
+  return rows.map(r => ({
+    id: r.id,
+    question: r.question,
+    options: [r.option_a, r.option_b, r.option_c, r.option_d],
+    correctIndex: r.correct_index,
+    explanation: r.explanation,
+    sortOrder: r.sort_order
+  }));
 }
 
 export async function setQuizQuestions(quizId, questions) {

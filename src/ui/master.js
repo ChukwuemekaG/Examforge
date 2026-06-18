@@ -10,8 +10,18 @@ import * as events from '../db/events.js';
 import * as counters from '../db/counters.js';
 import { showConfirm, showPrompt, showConfirmAsync, showAlert } from '../utils/helpers.js';
 import { renderUsersTab } from './master-users.js';
+import * as loading from './components/loading.js';
 
 let activeTab = 'courses';
+
+window._copyQuizLink = function(id) {
+  const url = `${window.location.origin}/quiz.html?dqid=${id}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showAlert('Quiz link copied to clipboard!');
+  }).catch(err => {
+    showAlert('Failed to copy link: ' + err.message);
+  });
+};
 
 export async function renderMaster() {
   const { workspace } = getState();
@@ -139,6 +149,7 @@ async function renderActiveTab() {
 // ─── Daily Quiz Tab ───
 
 async function renderDailyQuizTab(container) {
+  loading.showLoadingOverlay('Loading quizzes...');
   let quizList = [];
   try { quizList = await quizzes.getAllQuizzes(); } catch (e) { console.warn(e); }
   
@@ -170,12 +181,16 @@ async function renderDailyQuizTab(container) {
         </div>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-outline btn-sm" onclick="window._viewDailyQuiz('${q.id}')">View</button>
+          <button class="btn btn-outline btn-sm" onclick="window._copyQuizLink('${q.id}')">Copy Link</button>
           <button class="btn btn-outline btn-sm" onclick="window._deleteDailyQuiz('${q.id}')">Delete</button>
         </div>
       </div>`;
     }).join('')}
   `;
+  loading.hideLoadingOverlay();
 }
+
+// Duplicate renderDailyQuizTab removed - kept the version with loading overlay
 
 window._viewDailyQuiz = async function(id) {
   try {
@@ -302,17 +317,26 @@ window._saveDailyQuiz = async function() {
   
   if (questions.length === 0) { showAlert('Please add at least one question.', 'Missing Questions'); return; }
   
+  // Save quiz with proper module usage
   try {
-    const { default: quizzes } = await import('../db/quizzes.js');
+    loading.showLoadingOverlay('Saving quiz...');
+    // Use the statically imported quizzes module
     const id = await quizzes.createQuiz({ title, timeLimit, maxAttempts });
     await quizzes.setQuizQuestions(id, questions);
-    
+    const savedQuestions = await quizzes.getQuizQuestions(id);
+    if (!savedQuestions || savedQuestions.length === 0) {
+      loading.hideLoadingOverlay();
+      showAlert('Error: No questions were saved for this quiz.', 'Error');
+      return;
+    }
+    loading.hideLoadingOverlay();
     document.getElementById('ef-custom-modal').remove();
     window._dqQuestions = [];
     showAlert('Quiz created with ' + questions.length + ' questions!', 'Success');
     const content = document.getElementById('master-tab-content');
     if (content) await renderDailyQuizTab(content);
   } catch (e) {
+    loading.hideLoadingOverlay();
     showAlert('Error: ' + e.message, 'Error');
   }
 };

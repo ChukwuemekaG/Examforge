@@ -2,6 +2,7 @@
 
 import * as courses from '../db/courses.js';
 import { showPrompt, showConfirmAsync, showAlert } from '../utils/helpers.js';
+import * as loading from './components/loading.js';
 
 let currentCourseId = null;
 let currentTopicId = null;
@@ -27,10 +28,12 @@ window._createCourse = async function() {
   if (!title) return;
   const level = await showPrompt('Level (e.g. 100, 200):', '100') || '100';
   try {
+    loading.showLoadingOverlay('Creating course...');
     await courses.createCourse({ title, level });
+    loading.hideLoadingOverlay();
     const container = document.getElementById('master-tab-content');
     if (container) await renderMasterCourses(container);
-  } catch (e) { showAlert('Error: ' + e.message); }
+  } catch (e) { loading.hideLoadingOverlay(); showAlert('Error: ' + e.message); }
 };
 
 window._deleteCourse = async function(id) {
