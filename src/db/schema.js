@@ -5,10 +5,7 @@ export async function initSchema(db) {
   // Check if tables already exist (skip schema init on subsequent loads)
   try {
     const result = await db.exec("SELECT COUNT(*) as cnt FROM users");
-    if (result && result.length > 0) {
-      console.log('[Schema] Tables already exist, skipping creation');
-      return;
-    }
+    // Continue to table creation even if users table exists; errors for existing tables are caught later
   } catch (e) {
     // Table doesn't exist, proceed with creation
     console.log('[Schema] Tables not found, creating...');
@@ -213,6 +210,17 @@ export async function initSchema(db) {
       explanation TEXT DEFAULT '',
       sort_order INTEGER DEFAULT 0
     )`,
+    `CREATE TABLE IF NOT EXISTS daily_quiz_broadcasts (
+      broadcast_id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      quiz_url TEXT,
+      message TEXT,
+      due_date TEXT,
+      due_time TEXT,
+      recipient_count INTEGER DEFAULT 0,
+      sent_by TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS daily_quiz_attempts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       quiz_id TEXT NOT NULL,
@@ -266,4 +274,29 @@ export async function initSchema(db) {
   } else {
     console.log('[Schema] Some tables failed to create');
   }
+
+  // Migration for topics table if id column is not TEXT
+  console.log('[Schema] Starting migrations...');
+  const info = await db.exec('PRAGMA table_info(topics)');
+  const idCol = info.find(col => col.name === 'id');
+  if (idCol && idCol.type.toUpperCase() !== 'TEXT') {
+    console.log('[Schema] Migrating topics table to TEXT id');
+    await db.execute('ALTER TABLE topics RENAME TO topics_old');
+    await db.execute(`CREATE TABLE IF NOT EXISTS topics (
+      id TEXT PRIMARY KEY,
+      course_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      time_limit INTEGER DEFAULT 0,
+      is_strict INTEGER DEFAULT 0,
+      is_mock INTEGER DEFAULT 0,
+      is_correction INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await db.execute(`INSERT INTO topics (id, course_id, title, time_limit, is_strict, is_mock, is_correction, sort_order, created_at)
+      SELECT id, course_id, title, time_limit, is_strict, is_mock, is_correction, sort_order, created_at FROM topics_old`);
+    await db.execute('DROP TABLE topics_old');
+    console.log('[Schema] Topics migration completed');
+  }
+  console.log('[Schema] Migrations finished');
 }
