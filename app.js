@@ -2634,6 +2634,8 @@ window.mcViewDailyAdviceDetails = async function(id) {
         </div>`;
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
     document.documentElement.style.overflow = 'hidden';
     overlay.onclick = e => { if (e.target === overlay) { document.body.style.overflow = ''; document.documentElement.style.overflow = ''; overlay.remove(); } };
 
@@ -3885,6 +3887,8 @@ window.mcViewTopicResults = async function(courseId, topicId) {
     overlay.onclick = e => { 
         if (e.target === overlay) {
             document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
             document.documentElement.style.overflow = '';
             overlay.remove(); 
         }
@@ -3893,6 +3897,8 @@ window.mcViewTopicResults = async function(courseId, topicId) {
     const escHandler = (e) => {
         if (e.key === 'Escape' && document.getElementById('admin-user-panel')) {
             document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
             document.documentElement.style.overflow = '';
             overlay.remove();
             document.removeEventListener('keydown', escHandler);
@@ -4056,6 +4062,8 @@ window.mcOpenCreateCourseModal = function() {
     overlay.onclick = e => { 
         if (e.target === overlay) {
             document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
             document.documentElement.style.overflow = '';
             overlay.remove(); 
         }
@@ -4064,6 +4072,8 @@ window.mcOpenCreateCourseModal = function() {
     const escHandler = (e) => {
         if (e.key === 'Escape' && document.getElementById('admin-user-panel')) {
             document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
             document.documentElement.style.overflow = '';
             overlay.remove();
             document.removeEventListener('keydown', escHandler);
@@ -4856,7 +4866,7 @@ window.openAdminUserModal = async function(uid) {
             </style>
             <!-- Header -->
             <div style="display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:2px solid var(--border);background:var(--bg-card);flex-shrink:0;">
-                <button onclick="document.body.style.overflow='';document.documentElement.style.overflow='';document.getElementById('admin-user-panel').remove()"
+                <button onclick="document.body.style.overflow='';document.body.style.position='';document.body.style.width='';document.documentElement.style.overflow='';document.getElementById('admin-user-panel').remove()"
                     style="width:40px;height:40px;border-radius:8px;background:var(--bg-inset);border:2px solid var(--border);cursor:pointer;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                     <span class="material-icons-round">arrow_back</span>
                 </button>
@@ -4865,7 +4875,7 @@ window.openAdminUserModal = async function(uid) {
                     <div id="aup-name" style="font-weight:900;font-size:1.1rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Loading…</div>
                     <div id="aup-sub" style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
                 </div>
-                <button onclick="document.body.style.overflow='';document.documentElement.style.overflow='';document.getElementById('admin-user-panel').remove()"
+                <button onclick="document.body.style.overflow='';document.body.style.position='';document.body.style.width='';document.documentElement.style.overflow='';document.getElementById('admin-user-panel').remove()"
                     style="width:40px;height:40px;border-radius:8px;background:transparent;border:2px solid var(--border);cursor:pointer;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
                     <span class="material-icons-round">close</span>
                 </button>
@@ -4887,10 +4897,14 @@ window.openAdminUserModal = async function(uid) {
 
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
     document.documentElement.style.overflow = 'hidden';
     overlay.onclick = e => { 
         if (e.target === overlay) {
             document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
             document.documentElement.style.overflow = '';
             overlay.remove(); 
         }
@@ -4899,6 +4913,8 @@ window.openAdminUserModal = async function(uid) {
     const escHandler = (e) => {
         if (e.key === 'Escape' && document.getElementById('admin-user-panel')) {
             document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
             document.documentElement.style.overflow = '';
             overlay.remove();
             document.removeEventListener('keydown', escHandler);
@@ -4910,7 +4926,7 @@ window.openAdminUserModal = async function(uid) {
         const userData_full = await window._getUserData(uid);
         const userData = userData_full.profile;
 
-        if (!userData) { document.body.style.overflow = ''; document.documentElement.style.overflow = ''; overlay.remove(); alert('User not found.'); return; }
+        if (!userData) { document.body.style.overflow = ''; document.body.style.position = ''; document.body.style.width = ''; document.documentElement.style.overflow = ''; overlay.remove(); alert('User not found.'); return; }
 
         // Sort schedule and notifications by timestamp descending
         const results  = userData_full.recentResults || [];
@@ -4959,6 +4975,8 @@ window.openAdminUserModal = async function(uid) {
     } catch(e) {
         console.error(e);
         document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
         document.documentElement.style.overflow = '';
         overlay.remove();
         alert('Failed to load user: ' + e.message);
