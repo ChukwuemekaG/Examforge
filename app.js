@@ -3312,9 +3312,16 @@ window.mcRemoveBuilderOption = function(qIdx, optIdx) {
 };
 
 window.mcSaveCreatedDailyQuiz = async function() {
-    // Prevent spam clicking
-    if (window.__dqSaving) return;
-    window.__dqSaving = true;
+    // Prevent spam clicking - check button state instead of flag
+    const saveBtn = document.querySelector('#ef-dq-builder-modal .btn-primary') || 
+                    document.querySelector('[onclick*="mcSaveCreatedDailyQuiz"]');
+    if (saveBtn && saveBtn.disabled) return;
+    
+    // Disable button and show loading IMMEDIATELY (before any validation)
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SAVING…';
+    }
     
     const title = document.getElementById('dq-builder-title')?.value.trim();
     const time = parseInt(document.getElementById('dq-builder-time')?.value) || 10;
@@ -3323,14 +3330,17 @@ window.mcSaveCreatedDailyQuiz = async function() {
     
     if (!title) {
         window.showEFModal("Invalid Title", "Please enter a valid title for the daily quiz.", "OKAY", null, true);
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'SAVE & PUBLISH'; }
         return;
     }
     if (time <= 0 || time > 180) {
         window.showEFModal("Invalid Time", "Please enter a valid time limit (between 1 and 180 minutes).", "OKAY", null, true);
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'SAVE & PUBLISH'; }
         return;
     }
     if (window.currentBuilderQuestions.length === 0) {
         window.showEFModal("Empty Quiz", "Please add at least one question to the quiz.", "OKAY", null, true);
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'SAVE & PUBLISH'; }
         return;
     }
     
@@ -3338,22 +3348,16 @@ window.mcSaveCreatedDailyQuiz = async function() {
         const q = window.currentBuilderQuestions[i];
         if (!q.question.trim()) {
             window.showEFModal("Missing Content", `Question #${i + 1} has no statement text.`, "OKAY", null, true);
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'SAVE & PUBLISH'; }
             return;
         }
         for (let j = 0; j < q.options.length; j++) {
             if (!q.options[j].trim()) {
                 window.showEFModal("Missing Option", `Option #${j + 1} in Question #${i + 1} is empty.`, "OKAY", null, true);
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'SAVE & PUBLISH'; }
                 return;
             }
         }
-    }
-    
-    // Disable button and show loading
-    const saveBtn = document.querySelector('#ef-dq-builder-modal .btn-primary') || 
-                    document.querySelector('[onclick*="mcSaveCreatedDailyQuiz"]');
-    if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'SAVING…';
     }
     
     try {
@@ -3389,12 +3393,10 @@ window.mcSaveCreatedDailyQuiz = async function() {
         window.showEFModal("Quiz Published", "Your new daily quiz has been saved and published successfully!", "AWESOME", null, true);
         mcLoadDailyQuizSubCount();
         mcLoadDailyQuizzes();
-        window.__dqSaving = false;
         
     } catch (e) {
         console.error(e);
         window.showEFModal("Save Failed", "Could not publish quiz: " + e.message, "OK", null, true);
-        window.__dqSaving = false;
         if (saveBtn) {
             saveBtn.disabled = false;
             saveBtn.textContent = 'SAVE & PUBLISH';
